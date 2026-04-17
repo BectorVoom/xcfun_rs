@@ -34,7 +34,20 @@ Implement the 5 LDA exchange-correlation functionals (SlaterX, Vwn3C, Vwn5C, Pz8
 - **D-12:** All three evaluation modes (PartialDerivatives, Potential, Contracted) are implemented for LDA in this phase. LDA potential mode is straightforward (v_xc = dE/dn, no gradient divergence), making it a good first implementation of all three modes.
 - **D-13:** `eval_setup()` validates that the chosen `VarType` provides the required `Dependency` flags, the order is <= MAX_ORDER, and the mode is compatible with the active functionals' dependencies.
 - **D-14:** `eval()` implements the variable-pair loop from `docs/design/05-processing-flows.md`: for each variable pair (i,j) with i<=j, seed a CTaylor, evaluate all active functionals, accumulate weighted results, extract output coefficients.
-- **D-15:** Batch evaluation (`evaluate_batch`) processes multiple density points sequentially in Phase 2. Parallel chunking (via `std::thread::scope`) is deferred to Phase 8 optimization unless trivially achievable.
+
+### CubeCL-Based Evaluation (USER DIRECTIVE)
+- **D-15:** **CPU evaluation logic MUST use cubecl.** Write evaluation kernels using `#[cube]` macros so the same code runs on both CPU (`CpuRuntime`) and GPU (`WgpuRuntime`/`CudaRuntime`) without separate implementations.
+- **D-15a:** Batch evaluation (`evaluate_batch`) is implemented as cubecl kernels using `#[cube(launch)]` with `Array<f64>` for input/output buffers. Each thread processes one grid point (`ABSOLUTE_POS`).
+- **D-15b:** For single-point evaluation (`eval`), the pure Rust path with CTaylor AD remains (cubecl adds overhead for single-point). The cubecl path is for batch workloads.
+- **D-15c:** CubeCL kernel coding patterns (MANDATORY -- from reference docs):
+  - Use `f64::exp(x)` not `x.exp()` for transcendentals in `#[cube]` code
+  - Use `if` statements not `if` expressions: `let mut v = default; if cond { v = a; }`
+  - Use `#[comptime]` for compile-time constants (derivative order, functional parameters)
+  - Use `ABSOLUTE_POS` for thread indexing, `terminate!()` for bounds checking
+  - Stay within CubeCL-supported types: `f64`, `f32`, `u32`, `i32` (no `usize` in device code)
+- **D-15d:** The `xcfun-gpu` crate hosts all cubecl kernels and runtime management. It depends on `cubecl-core` (always) and `cubecl-cpu` (always, for CpuRuntime). GPU backends (`cubecl-cuda`, `cubecl-wgpu`) are feature-gated.
+- **D-15e:** LDA functional formulas are written as `#[cube]` functions (scalar math on f64 -- SlaterX, VWN, PW92, PZ81). These cubecl functions implement the energy computation directly, separate from the `Functional` trait (which uses the generic `Num` trait for AD). The cubecl versions are specialized for f64 batch evaluation.
+- **D-15f:** Buffer management: input density arrays uploaded via `client.create()`, output allocated via `client.empty()`, results read back via `client.read_one()`. Buffer caching for repeated calls is deferred to Phase 6.
 
 ### Alias Table
 - **D-16:** Static alias definitions in `xcfun-functionals/src/aliases.rs` (or `xcfun-eval` if the eval crate owns composition). Each alias maps a name string to a list of `(FunctionalId, f64)` pairs plus optional parameters (e.g., `exx`).
@@ -82,6 +95,13 @@ Implement the 5 LDA exchange-correlation functionals (SlaterX, Vwn3C, Vwn5C, Pz8
 - `xcfun-master/src/functionals/pz81c.hpp` -- PZ81 helper
 - `xcfun-master/src/functionals/aliases.cpp` -- Alias definitions (LDA subset: lda, svwn, svwn5, svwn3, vwn, vwn5, vwn3)
 - `xcfun-master/src/functionals/list_of_functionals.hpp` -- Complete functional registry and enum mapping
+
+### CubeCL Reference (USER DIRECTIVE)
+- `docs/manual/Cubecl/cubecl_3d_dft.md` -- CpuRuntime usage pattern, `#[cube(launch_unchecked)]`, Array<f64> buffers, f64::cos/sin, launch configuration
+- `docs/manual/Cubecl/erf.md` -- `erf()` in cubecl kernels, Float trait, Line<F> vectorization, backend numeric differences
+- `docs/manual/Cubecl/Cubecl_vector.md` -- Array input/output, ABSOLUTE_POS, kernel launch with ArrayArg::from_raw_parts
+- `docs/manual/Cubecl/cubecl_reduce_sum.md` -- CpuRuntime + CpuDevice setup, TensorHandleRef, reduce operations
+- `docs/manual/Cubecl/cubecl_error_solution_guide/mismatched types.md` -- CRITICAL: if-expression pitfalls, associated function calls (f64::exp not .exp()), CubeCL best practices
 
 ### Architecture
 - `docs/design/00-overview.md` -- Crate decomposition, dependency graph
