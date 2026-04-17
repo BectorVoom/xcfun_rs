@@ -4,6 +4,7 @@
 //! over both scalar evaluation (f64) and automatic differentiation (CTaylor).
 
 use crate::ctaylor::CTaylor;
+use crate::math;
 
 /// Numeric trait for types usable in xcfun functionals.
 ///
@@ -209,69 +210,64 @@ impl<const N: usize> Num for CTaylor<f64, N> {
         self.c[0] = val;
     }
 
-    // Transcendental functions -- stubs to be implemented in Plan 03 (01-03-PLAN.md)
-    // via tmath.rs. The Num trait must be fully defined now so xcfun-core can depend
-    // on it, but CTaylor transcendental implementations require compose-based
-    // Taylor expansion which is built in Plan 03.
-
     fn exp(self) -> Self {
-        panic!("CTaylor::exp not yet implemented -- see Plan 03 (01-03-PLAN.md)")
+        math::ctaylor_exp(self)
     }
 
     fn log(self) -> Self {
-        panic!("CTaylor::log not yet implemented -- see Plan 03 (01-03-PLAN.md)")
+        math::ctaylor_log(self)
     }
 
     fn sqrt(self) -> Self {
-        panic!("CTaylor::sqrt not yet implemented -- see Plan 03 (01-03-PLAN.md)")
+        math::ctaylor_sqrt(self)
     }
 
     fn cbrt(self) -> Self {
-        panic!("CTaylor::cbrt not yet implemented -- see Plan 03 (01-03-PLAN.md)")
+        math::ctaylor_cbrt(self)
     }
 
-    fn pow(self, _exponent: f64) -> Self {
-        panic!("CTaylor::pow not yet implemented -- see Plan 03 (01-03-PLAN.md)")
+    fn pow(self, exponent: f64) -> Self {
+        math::ctaylor_pow(self, exponent)
     }
 
-    fn powi(self, _n: i32) -> Self {
-        panic!("CTaylor::powi not yet implemented -- see Plan 03 (01-03-PLAN.md)")
+    fn powi(self, n: i32) -> Self {
+        math::ctaylor_powi(self, n)
     }
 
     fn abs(self) -> Self {
-        panic!("CTaylor::abs not yet implemented -- see Plan 03 (01-03-PLAN.md)")
+        math::ctaylor_abs(self)
     }
 
     fn sin(self) -> Self {
-        panic!("CTaylor::sin not yet implemented -- see Plan 03 (01-03-PLAN.md)")
+        math::ctaylor_sin(self)
     }
 
     fn cos(self) -> Self {
-        panic!("CTaylor::cos not yet implemented -- see Plan 03 (01-03-PLAN.md)")
+        math::ctaylor_cos(self)
     }
 
     fn atan(self) -> Self {
-        panic!("CTaylor::atan not yet implemented -- see Plan 03 (01-03-PLAN.md)")
+        math::ctaylor_atan(self)
     }
 
     fn asin(self) -> Self {
-        panic!("CTaylor::asin not yet implemented -- see Plan 03 (01-03-PLAN.md)")
+        math::ctaylor_asin(self)
     }
 
     fn acos(self) -> Self {
-        panic!("CTaylor::acos not yet implemented -- see Plan 03 (01-03-PLAN.md)")
+        math::ctaylor_acos(self)
     }
 
     fn asinh(self) -> Self {
-        panic!("CTaylor::asinh not yet implemented -- see Plan 03 (01-03-PLAN.md)")
+        math::ctaylor_asinh(self)
     }
 
     fn erf(self) -> Self {
-        panic!("CTaylor::erf not yet implemented -- see Plan 03 (01-03-PLAN.md)")
+        math::ctaylor_erf(self)
     }
 
     fn sqrtx_asinh_sqrtx(self) -> Self {
-        panic!("CTaylor::sqrtx_asinh_sqrtx not yet implemented -- see Plan 03 (01-03-PLAN.md)")
+        math::ctaylor_sqrtx_asinh_sqrtx(self)
     }
 
     fn lt(&self, other: &Self) -> bool {
