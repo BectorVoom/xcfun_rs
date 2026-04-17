@@ -1,5 +1,6 @@
 pub mod compose;
 pub mod ctaylor;
+pub mod math;
 pub mod num;
 pub mod tmath;
 
