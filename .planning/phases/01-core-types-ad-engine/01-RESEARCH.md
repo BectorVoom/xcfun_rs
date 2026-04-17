@@ -534,22 +534,16 @@ pub mod constants {
 | A2 | C_SLATER value 0.9305... matches C++ exactly to all 16 digits | Code Examples | If even one digit differs, all functionals will fail 1e-12 tolerance. MEDIUM risk: verify by computing in Rust at runtime and comparing. |
 | A3 | Splitting `multo_skipconst` to handle the borrow-checker limitation (simultaneous read of dst[..half] and write of dst[half..]) can be done without extra allocation | Code Examples | May need a temporary copy of the low half. LOW risk: 1 KiB max temporary per call. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Const generic array bounds on stable Rust**
-   - What we know: Rust 1.92 supports `const N: usize` and `[T; 1 << N]` in struct definitions
-   - What's unclear: Whether `where [(); 1 << N]:` bounds compile on stable, or if we need `generic_const_exprs` nightly feature
-   - Recommendation: Test with a minimal example. Fallback: use a sealed trait `ValidOrder` implemented for N=0..7
+1. **Const generic array bounds on stable Rust** (RESOLVED)
+   - Resolution: `[T; 1 << N]` in struct definitions works on stable Rust. The `where [(); 1 << N]:` bound syntax requires `generic_const_exprs` (nightly). Use the fallback: define CTaylor with `pub c: [T; 1 << N]` directly (this works because `1 << N` is a valid const expression in array types). If additional where-clause bounds are needed, use a sealed trait `ValidOrder` implemented for N=0..7.
 
-2. **C_SLATER precise value**
-   - What we know: C++ computes `pow(81 / (32 * M_PI), 1.0 / 3.0)` at initialization
-   - What's unclear: Whether Rust `f64::powf` produces bit-identical results to C++ `pow()`
-   - Recommendation: Compute both at test time and verify. If they differ, use the C++ value as a literal.
+2. **C_SLATER precise value** (RESOLVED)
+   - Resolution: Use the C++ computed value as a Rust `const` literal with all 16 significant digits. Compute `(81.0_f64 / (32.0 * std::f64::consts::PI)).powf(1.0 / 3.0)` at test time and verify it matches. If any digit differs, the literal from C++ takes precedence. Add a `#[test]` that asserts the const matches the computed value.
 
-3. **Test data extraction from C++ source**
-   - What we know: Each functional .cpp file has `test_in` and `test_out` arrays as struct initializers
-   - What's unclear: Whether all 78 functionals have test data (some may have empty arrays)
-   - Recommendation: Write a script to extract all test data during Phase 1. Missing data should be flagged, not silently ignored.
+3. **Test data extraction from C++ source** (RESOLVED)
+   - Resolution: Phase 1 extracts test data by reading C++ source files (xcfun-master/src/functionals/*.cpp) and copying test_in/test_out arrays into a Rust test_data module. Not all 78 functionals need test data in Phase 1 — only the AD engine and core types need validation here. Full functional test data extraction happens in Phase 2 (validation pipeline).
 
 ## Environment Availability
 
