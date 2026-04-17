@@ -37,8 +37,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 01-01-PLAN.md -- Workspace setup + xcfun-ad core (CTaylor, arithmetic, Num trait, compose)
-- [ ] 01-02-PLAN.md -- xcfun-core types (enums, DensityVars, error, constants, Functional trait, stub crates)
-- [ ] 01-03-PLAN.md -- Transcendental functions, special functions, and numerical stability
+- [x] 01-02-PLAN.md -- xcfun-core types (enums, DensityVars, error, constants, Functional trait, stub crates)
+- [x] 01-03-PLAN.md -- Transcendental functions, special functions, and numerical stability
 
 ### Phase 2: LDA Functionals + Validation Pipeline
 **Goal**: Users can evaluate LDA exchange-correlation energies and potentials with verified accuracy against C++ reference data
