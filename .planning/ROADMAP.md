@@ -33,12 +33,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Composed functions (chain rule) yield correct mixed partial derivatives verified against known analytical values
   4. AD engine handles edge cases (near-zero density, extreme coefficients) without NaN or panic
   5. FunctionalId enum covers all 78 variants with name lookup and dependency metadata
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
-- [ ] 01-03: TBD
+- [ ] 01-01-PLAN.md -- Workspace setup + xcfun-ad core (CTaylor, arithmetic, Num trait, compose)
+- [ ] 01-02-PLAN.md -- xcfun-core types (enums, DensityVars, error, constants, Functional trait, stub crates)
+- [ ] 01-03-PLAN.md -- Transcendental functions, special functions, and numerical stability
 
 ### Phase 2: LDA Functionals + Validation Pipeline
 **Goal**: Users can evaluate LDA exchange-correlation energies and potentials with verified accuracy against C++ reference data
@@ -161,7 +161,7 @@ Note: Phase 6 (GPU) depends on Phases 2+3; Phase 8 depends on Phases 6+7.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Core Types + AD Engine | 0/3 | Not started | - |
+| 1. Core Types + AD Engine | 0/3 | Planned | - |
 | 2. LDA Functionals + Validation Pipeline | 0/3 | Not started | - |
 | 3. GGA Functionals | 0/3 | Not started | - |
 | 4. Meta-GGA Functionals | 0/3 | Not started | - |
