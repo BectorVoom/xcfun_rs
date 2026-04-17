@@ -36,7 +36,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md -- Workspace setup + xcfun-ad core (CTaylor, arithmetic, Num trait, compose)
+- [x] 01-01-PLAN.md -- Workspace setup + xcfun-ad core (CTaylor, arithmetic, Num trait, compose)
 - [ ] 01-02-PLAN.md -- xcfun-core types (enums, DensityVars, error, constants, Functional trait, stub crates)
 - [ ] 01-03-PLAN.md -- Transcendental functions, special functions, and numerical stability
 
