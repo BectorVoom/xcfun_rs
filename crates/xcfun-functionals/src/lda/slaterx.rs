@@ -1,6 +1,4 @@
 //! Slater LDA exchange functional.
-//!
-//! Placeholder -- will be implemented in Task 2.
 
 use xcfun_ad::Num;
 use xcfun_core::constants;
@@ -54,5 +52,24 @@ impl Functional for SlaterX {
                 -0.365895279649e-01,
             ],
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use approx::assert_relative_eq;
+
+    #[test]
+    fn slaterx_energy_matches_cpp() {
+        let input: Vec<f64> = vec![39.0, 38.0];
+        let dv = DensityVars::from_input(&input, VarType::A_B).unwrap();
+        let energy = SlaterX.energy(&dv);
+        assert_relative_eq!(energy, -0.241948147838e+03, max_relative = 1e-11);
+    }
+
+    #[test]
+    fn slaterx_depends_density() {
+        assert_eq!(SlaterX.depends(), Dependency::DENSITY);
     }
 }

@@ -1,6 +1,4 @@
 //! PW92 LDA correlation functional.
-//!
-//! Placeholder -- will be fully implemented in Task 2.
 
 use xcfun_ad::Num;
 use xcfun_core::density_vars::DensityVars;
@@ -14,8 +12,26 @@ use super::helpers;
 pub struct Pw92C;
 
 impl Functional for Pw92C {
-    fn energy<T: Num>(&self, _d: &DensityVars<T>) -> T {
-        T::zero() // placeholder
+    fn energy<T: Num>(&self, d: &DensityVars<T>) -> T {
+        // Port of C++ pw92eps::pw92eps(d) * d.n
+        // Non-XCFUN_REF_PW92C path (exact constants)
+        let c: f64 = 8.0 / (9.0 * (2.0 * 2.0_f64.powf(1.0 / 3.0) - 2.0));
+
+        let zeta4 = d.zeta.clone().powi(4);
+        let omega_val = helpers::pw92_omega(&d.zeta);
+        let sqrt_r = d.r_s.clone().sqrt();
+
+        let e0 = helpers::pw92_eopt(&sqrt_r, &helpers::PW92_TUVWXYP[0]);
+        let e1 = helpers::pw92_eopt(&sqrt_r, &helpers::PW92_TUVWXYP[1]);
+        let e2 = helpers::pw92_eopt(&sqrt_r, &helpers::PW92_TUVWXYP[2]);
+
+        // C++: e0 - e2 * omegaval * (1 - zeta4) / c + (e1 - e0) * omegaval * zeta4
+        let one_minus_zeta4 = T::one() - zeta4.clone();
+        let eps = e0.clone()
+            - e2 * omega_val.clone() * one_minus_zeta4 / T::from_f64(c)
+            + (e1 - e0) * omega_val * zeta4;
+
+        d.n.clone() * eps
     }
 
     fn depends(&self) -> Dependency {
@@ -54,5 +70,24 @@ impl Functional for Pw92C {
                 7.9516089195232130e-04,
             ],
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use approx::assert_relative_eq;
+
+    #[test]
+    fn pw92c_energy_matches_cpp() {
+        let input: Vec<f64> = vec![39.0, 38.0];
+        let dv = DensityVars::from_input(&input, VarType::A_B).unwrap();
+        let energy = Pw92C.energy(&dv);
+        assert_relative_eq!(energy, -8.4713855882783946e+00, epsilon = 1e-11);
+    }
+
+    #[test]
+    fn pw92c_depends_density() {
+        assert_eq!(Pw92C.depends(), Dependency::DENSITY);
     }
 }
