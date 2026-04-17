@@ -50,12 +50,14 @@ Plans:
   3. LDA aliases (svwn, svwn5, etc.) expand to correct weighted functional compositions
   4. Automated test suite compares every implemented functional against C++ reference data and reports max/mean error
   5. Batch evaluation processes multiple density points in a single call
-**Plans**: TBD
+**Plans:** 5 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
-- [ ] 02-03: TBD
+- [ ] 02-01-PLAN.md -- LDA helpers + 5 LDA functionals with unit tests
+- [ ] 02-02-PLAN.md -- FunctionalImpl enum dispatch + test data + LDA aliases
+- [ ] 02-03-PLAN.md -- XcFunctional evaluation pipeline (3 modes)
+- [ ] 02-04-PLAN.md -- CubeCL batch evaluation kernels + runtime
+- [ ] 02-05-PLAN.md -- Integration tests + validation infrastructure
 
 ### Phase 3: GGA Functionals
 **Goal**: Users can evaluate gradient-corrected exchange-correlation functionals covering the PBE, Becke, LYP, and B97 families
@@ -161,8 +163,8 @@ Note: Phase 6 (GPU) depends on Phases 2+3; Phase 8 depends on Phases 6+7.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Core Types + AD Engine | 0/3 | Planned | - |
-| 2. LDA Functionals + Validation Pipeline | 0/3 | Not started | - |
+| 1. Core Types + AD Engine | 3/3 | Complete | - |
+| 2. LDA Functionals + Validation Pipeline | 0/5 | Planned | - |
 | 3. GGA Functionals | 0/3 | Not started | - |
 | 4. Meta-GGA Functionals | 0/3 | Not started | - |
 | 5. Hybrid Functionals + Aliases | 0/3 | Not started | - |
