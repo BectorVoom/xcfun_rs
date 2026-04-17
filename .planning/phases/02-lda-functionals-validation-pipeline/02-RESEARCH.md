@@ -634,22 +634,20 @@ pub const LDA_ALIASES: &[AliasEntry] = &[
 | A5 | cubecl `f64::log(x)` computes natural log (ln) matching Rust's `f64::ln()` | Code Examples | Low -- standard math convention. |
 | A6 | `xcfun-eval` does not currently depend on `xcfun-functionals` (needs to be added) | Architecture | Low -- just a Cargo.toml change. |
 
-## Open Questions
 
-1. **VWN3 Reference Test Data**
+## Open Questions (RESOLVED)
+
+1. **VWN3 Reference Test Data** (RESOLVED)
    - What we know: VWN3 has no built-in test data in the C++ source (`vwn3.cpp` has no test arrays).
-   - What's unclear: What exact expected output values to use for validation.
-   - Recommendation: Use the same input densities as VWN5 (a=39, b=38), compute VWN3 output using the formula, and validate that VWN3 + SlaterX = SVWN3 alias output. Cross-validate by building C++ xcfun if available.
+   - Resolution: Two-pronged validation strategy: (a) Compute VWN3 energy at the standard test input [39.0, 38.0] by implementing the VWN3 formula using f64 arithmetic directly in a unit test (the formula is deterministic given the known parameters from `vwn.hpp` -- para=[-0.4092860, 0.0621814, 13.0720, 42.7198], ferro=[-0.7432940, 0.0310907, 20.1231, 101.578]). The unit test computes the expected energy once via f64, stores it, then validates that the Functional trait path (via Num/CTaylor) produces the same value within 1e-14. (b) Cross-validate via alias composition: verify that `XcFunctional::set("svwn3")::eval()` equals `SlaterX::energy() + Vwn3C::energy()` within 1e-14. This confirms both the functional and the alias table are correct without needing external C++ reference data. The threshold for VWN3 is 1e-11 (same as other LDA functionals) for the self-consistency check.
 
-2. **cubecl `f64::powf` Support**
+2. **cubecl `f64::powf` Support** (RESOLVED)
    - What we know: cubecl docs show `f64::cos`, `f64::sin`, `f64::exp`, `f64::sqrt`, `f64::log`. No explicit example of `f64::powf`.
-   - What's unclear: Whether `f64::powf(x, 4.0/3.0)` compiles in `#[cube]` code.
-   - Recommendation: Try it. If it fails, use `x * f64::cbrt(x)` for `x^(4/3)` and `f64::exp(a * f64::log(x))` for general powers.
+   - Resolution: Use the fallback approach as the primary implementation: for `x^(4/3)`, use `x * f64::cbrt(x)` (if cbrt is available) or `f64::exp(4.0/3.0 * f64::log(x))`. For general powers in VWN (`atan`, `log` -- no arbitrary `powf` needed), the cubecl-supported `f64::log`, `f64::exp`, `f64::sqrt` suffice. If `f64::powf` compiles, use it; otherwise the `exp(a*log(x))` workaround is functionally identical. Plan 04 Task 1 documents both paths.
 
-3. **Variable-Pair Loop Implementation with Const Generics**
-   - What we know: The eval loop needs `CTaylor<f64, N>` where N depends on the derivative order and number of variables. Rust const generics don't support runtime-dependent N.
-   - What's unclear: How to dispatch to the right N at runtime.
-   - Recommendation: Use a match on order to dispatch to monomorphized functions: `match order { 0 => eval_order::<1>(), 1 => eval_order::<{1<<n_vars}>(), 2 => eval_order::<{1<<n_vars}>(), ... }`. This is how the C++ code effectively works (template instantiation). For LDA with A_B at order 2: N = 1 << 2 = 4 (2 variables, need 4 coefficients). The outer dispatch can handle orders 0-4 via explicit match arms.
+3. **Variable-Pair Loop Implementation with Const Generics** (RESOLVED)
+   - What we know: The eval loop needs `CTaylor<f64, N>` where N depends on the number of variables. Rust const generics don't support runtime-dependent N.
+   - Resolution: Use a match dispatcher on `n_vars` (number of input variables from VarType) to call monomorphized inner functions. CTaylor<f64, N> where N = 1 << n_vars provides first-order multilinear derivatives for n_vars variables. For higher derivative orders, the C++ xcfun uses a variable-pair loop: iterate over pairs (i,j) with i<=j, seeding each pair's CTaylor and accumulating. The output coefficients map to taylorlen(n_vars, order) entries. The dispatcher matches on n_vars: `match n_vars { 1 => eval_inner::<2>(...), 2 => eval_inner::<4>(...), ... }`. Within eval_inner, the variable-pair loop iterates over pairs and seeds CTaylor accordingly. This is bounded (n_vars <= 7, matching CTaylor's max N=128) and mechanical.
 
 ## Environment Availability
 
