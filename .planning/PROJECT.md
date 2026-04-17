@@ -12,12 +12,10 @@ Numerical accuracy: every functional must produce results matching C++ xcfun wit
 
 ### Validated
 
-(None yet -- ship to validate)
+- ✓ Core type system (`DensityVars<T>`, `EvalMode`, `VarType`, `FunctionalId`, `Dependency`, `XcError`) — Phase 1
+- ✓ Automatic differentiation engine (`CTaylor<T, N>`, `Num` trait, transcendentals, composition) — Phase 1
 
 ### Active
-
-- [ ] Core type system (`DensityVars<T>`, `EvalMode`, `VarType`, `FunctionalId`, `Dependency`, `XcError`)
-- [ ] Automatic differentiation engine (`CTaylor<T, N>`, `Num` trait, transcendentals, composition)
 - [ ] 5 LDA functionals (SlaterX, Vwn3C, Vwn5C, Pz81C, Pw92C)
 - [ ] ~38 GGA functionals (exchange + correlation, PBE/Becke/LYP families)
 - [ ] ~20 meta-GGA + kinetic functionals (TPSS, SCAN families, TfK, Tw, etc.)
@@ -87,4 +85,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-17 after initialization*
+*Last updated: 2026-04-18 after Phase 1 completion*
