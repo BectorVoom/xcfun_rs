@@ -5,7 +5,7 @@ edition.workspace = true
 description = "Automatic differentiation engine for xcfun_rs"
 
 [dependencies]
-# Zero external dependencies -- pure Rust AD engine
+libm = { workspace = true }
 
 [dev-dependencies]
 approx = { workspace = true }
