@@ -1,1 +1,2 @@
-//! XC functional implementations (Phase 2+)
+//! XC functional implementations.
+pub mod lda;
