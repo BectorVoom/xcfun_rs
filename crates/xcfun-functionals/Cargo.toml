@@ -1,0 +1,9 @@
+[package]
+name = "xcfun-functionals"
+version.workspace = true
+edition.workspace = true
+description = "Exchange-correlation functional implementations"
+
+[dependencies]
+xcfun-core = { path = "../xcfun-core" }
+xcfun-ad = { path = "../xcfun-ad" }

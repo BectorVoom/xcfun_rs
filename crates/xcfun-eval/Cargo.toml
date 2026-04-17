@@ -1,0 +1,9 @@
+[package]
+name = "xcfun-eval"
+version.workspace = true
+edition.workspace = true
+description = "Evaluation pipeline for exchange-correlation functionals"
+
+[dependencies]
+xcfun-core = { path = "../xcfun-core" }
+xcfun-ad = { path = "../xcfun-ad" }

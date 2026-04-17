@@ -1,0 +1,10 @@
+[package]
+name = "xcfun-gpu"
+version.workspace = true
+edition.workspace = true
+description = "GPU batch evaluation for exchange-correlation functionals"
+
+[dependencies]
+xcfun-core = { path = "../xcfun-core" }
+xcfun-ad = { path = "../xcfun-ad" }
+# cubecl dependencies added in Phase 6
