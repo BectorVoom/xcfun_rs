@@ -1,0 +1,11 @@
+[package]
+name = "xcfun-ad"
+version.workspace = true
+edition.workspace = true
+description = "Automatic differentiation engine for xcfun_rs"
+
+[dependencies]
+# Zero external dependencies -- pure Rust AD engine
+
+[dev-dependencies]
+approx = { workspace = true }
