@@ -161,6 +161,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AD-01 through AD-09 | Phase 1 | Pending |
 | LDA-01 through LDA-06 | Phase 2 | Pending |
 | EVAL-01 through EVAL-08 | Phase 2 | Pending |
+| VAL-01 through VAL-04 | Phase 2 | Pending |
 | GGA-01 through GGA-05 | Phase 3 | Pending |
 | MGGA-01 through MGGA-06 | Phase 4 | Pending |
 | HYB-01 through HYB-06 | Phase 5 | Pending |
@@ -168,13 +169,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FFI-01 through FFI-04 | Phase 7 | Pending |
 | PY-01 through PY-04 | Phase 7 | Pending |
 | PERF-01 through PERF-04 | Phase 8 | Pending |
-| VAL-01 through VAL-04 | Phase 2 | Pending |
 
 **Coverage:**
-- v1 requirements: 60 total
-- Mapped to phases: 60
+- v1 requirements: 70 total
+- Mapped to phases: 70
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-17*
-*Last updated: 2026-04-17 after initial definition*
+*Last updated: 2026-04-17 after roadmap creation*
