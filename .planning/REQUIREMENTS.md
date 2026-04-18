@@ -1,180 +1,216 @@
 # Requirements: xcfun_rs
 
-**Defined:** 2026-04-17
-**Core Value:** Numerical accuracy -- every functional must produce results matching C++ xcfun within 1e-12 relative error
+**Defined:** 2026-04-19
+**Core Value:** Every functional must produce numerical output matching C++ xcfun within relative error ≤ 1.0 × 10⁻¹², across all evaluation modes and derivative orders.
 
 ## v1 Requirements
 
-Requirements for initial release. Each maps to roadmap phases.
+### AD Engine
 
-### Core Types
+- [ ] **AD-01**: `CTaylor<T, const N: usize>` supports `N ∈ 0..=7` with `[T; 1 << N]` storage (no heap), bit-flag-indexed multilinear polynomial matching `xcfun-master/src/taylor/ctaylor.hpp`
+- [ ] **AD-02**: `Num` trait supplies `Add`, `Sub`, `Mul`, `Div`, `Neg`, `reciprocal`, `sqrt`, `exp`, `log`, `pow`, `powi`, `erf`, `asinh`, `atan`, with `ZERO` and `ONE` constants, implemented for `f64` and `CTaylor<f64, N>`
+- [ ] **AD-03**: `CTaylor::mul` accumulates coefficients in exactly the recursion order of `ctaylor_rec<T,Nvar>::multo` (verbatim port, not Rust-idiomatic rewrite)
+- [ ] **AD-04**: every `*_expand` function (`inv_expand`, `exp_expand`, `log_expand`, `pow_expand`, `sqrt_expand`, `erf_expand`, `gauss_expand`, …) from `xcfun-master/src/taylor/tmath.hpp` has a byte-equivalent Rust port
+- [ ] **AD-05**: `CTaylor` algebra passes `f64::to_bits` golden tests vs. the C++ reference for orders 0..=3 on a fixed-seed set of inputs
+- [ ] **AD-06**: AD engine property tests (ring axioms, exp/log round-trip, sqrt-squared invariance, Leibniz product rule) run ≥ 10 000 iterations per property without failure
 
-- [ ] **CORE-01**: DensityVars<T> struct with all 25 density-derived fields and from_input() for all 30 VarType variants
-- [ ] **CORE-02**: EvalMode enum (PartialDerivatives, Potential, Contracted) with mode validation
-- [ ] **CORE-03**: VarType enum (30 variants) with input_len(), provides(), is_spin_polarized() metadata
-- [ ] **CORE-04**: FunctionalId enum (78 variants) with from_name(), name(), description(), depends()
-- [ ] **CORE-05**: Dependency bitflags (DENSITY, GRADIENT, LAPLACIAN, KINETIC, JP)
-- [ ] **CORE-06**: XcError enum with thiserror derive and FFI error code mapping
-- [ ] **CORE-07**: Physical constants module (C_SLATER, CF, TINY_DENSITY, MAX_ORDER)
-- [ ] **CORE-08**: Functional trait definition (energy<T: Num>, depends, id, description, test_data)
+### Core Types & Registry
 
-### Automatic Differentiation
+- [ ] **CORE-01**: `Vars` enum exposes all 31 variants with discriminants matching `xcfun-master/api/xcfun.h` exactly
+- [ ] **CORE-02**: `Mode` enum exposes `Unset`, `PartialDerivatives`, `Potential`, `Contracted` with `#[repr(u32)]` matching the C ABI
+- [ ] **CORE-03**: `Dependency` is `#[repr(transparent)]` over `u8` via `bitflags` 2 and carries `DENSITY | GRADIENT | LAPLACIAN | KINETIC | JP` matching C header values
+- [ ] **CORE-04**: `XcError` is a `thiserror`-derived `Copy + Send + Sync` enum with `#[non_exhaustive]` and variants for `InvalidOrder`, `InvalidVars`, `InvalidMode`, `UnknownName`, `InputLengthMismatch`, `OutputLengthMismatch`, `NotConfigured`, `InvalidEncoding`, `Runtime`
+- [ ] **CORE-05**: `DensVars<T: Num>` populates all 29 raw + derived fields for each of the 31 `Vars` arms, porting `xcfun-master/src/densvars.hpp` with a helper-function-chain (no match-fallthrough)
+- [ ] **CORE-06**: `DensVars::regularize` modifies only `c[CNST]` (constant term) — higher-order coefficients preserved; enforced by unit test
+- [ ] **CORE-07**: `FUNCTIONAL_DESCRIPTORS` static array with 78 entries (one per `xcfun_functional_id`) stored in `.rodata`, no runtime initialisation
+- [ ] **CORE-08**: `ALIASES` static slice with 46 entries ported from `xcfun-master/src/functionals/aliases.cpp`
+- [ ] **CORE-09**: `VARS_TABLE` static array with 31 entries ported from `xcfun-master/src/xcint.cpp`
+- [ ] **CORE-10**: `xtask regen-registry` regenerates `registry/generated/*.rs` from `xcfun-master/` sources; `xtask regen-registry --check` runs in CI and blocks on drift
 
-- [ ] **AD-01**: CTaylor<T, N> struct with const generic N and bit-flag indexing
-- [ ] **AD-02**: All arithmetic operators (+, -, *, /) for CTaylor with recursive multiplication
-- [ ] **AD-03**: Transcendental functions (exp, log, pow, sqrt, cbrt, abs) with correct derivatives at all orders
-- [ ] **AD-04**: Trigonometric functions (sin, cos, atan, asin, acos) with correct derivatives
-- [ ] **AD-05**: Special functions (asinh, erf, sqrtx_asinh_sqrtx) with correct derivatives
-- [ ] **AD-06**: Num trait with implementations for f64 and CTaylor<f64, N>
-- [ ] **AD-07**: Taylor composition (chain rule) implementation
-- [ ] **AD-08**: taylorlen() function for output size calculation
-- [ ] **AD-09**: Numerical stability near zero, infinity, and with extreme coefficients
+### Functional Ports — LDA Tier
 
-### LDA Functionals
+- [ ] **LDA-01**: `XC_SLATERX` ported, registered, self-test passes
+- [ ] **LDA-02**: `XC_VWN3C` ported, registered, self-test passes
+- [ ] **LDA-03**: `XC_VWN5C` ported, registered, self-test passes
+- [ ] **LDA-04**: `XC_PW92C` ported, registered, self-test passes
+- [ ] **LDA-05**: `XC_PZ81C` ported, registered, self-test passes
+- [ ] **LDA-06**: `XC_LDAERFX` ported, registered, self-test passes
+- [ ] **LDA-07**: `XC_LDAERFC` ported, registered, self-test passes
+- [ ] **LDA-08**: `XC_LDAERFC_JT` ported, registered, self-test passes
+- [ ] **LDA-09**: `XC_TFK` ported, registered, self-test passes
+- [ ] **LDA-10**: `XC_TW` and `XC_VWK` ported, registered, self-tests pass
 
-- [ ] **LDA-01**: SlaterX (Slater exchange) matching C++ output within 1e-12
-- [ ] **LDA-02**: Vwn3C (VWN3 correlation) matching C++ output within 1e-12
-- [ ] **LDA-03**: Vwn5C (VWN5 correlation) matching C++ output within 1e-12
-- [ ] **LDA-04**: Pz81C (Perdew-Zunger correlation) matching C++ output within 1e-12
-- [ ] **LDA-05**: Pw92C (Perdew-Wang 1992 correlation) matching C++ output within 1e-12
-- [ ] **LDA-06**: LDA aliases (lda, svwn, svwn5, svwn3, vwn, vwn5, vwn3) produce correct compositions
+### Functional Ports — GGA Tier
 
-### Evaluation Pipeline
+- [ ] **GGA-01**: PBE family (`XC_PBEX`, `XC_PBEC`, `XC_REVPBEX`, `XC_RPBEX`, `XC_PBESOLX`, `XC_PBEINTX`, `XC_PBEINTC`, `XC_SPBEC`, `XC_PBELOCC`, `XC_ZVPBESOLC`, `XC_ZVPBEINTC`, `XC_VWN_PBEC`) ported, self-tests pass
+- [ ] **GGA-02**: Becke family (`XC_BECKEX`, `XC_BECKECORRX`, `XC_BECKESRX`, `XC_BECKECAMX`) ported, self-tests pass
+- [ ] **GGA-03**: Becke–Roussel (`XC_BRX`, `XC_BRC`, `XC_BRXC`) ported, self-tests pass
+- [ ] **GGA-04**: LYP correlation (`XC_LYPC`) ported, self-test passes
+- [ ] **GGA-05**: OPTX family (`XC_OPTX`, `XC_OPTXCORR`) ported, self-tests pass
+- [ ] **GGA-06**: PW86/PW91 (`XC_PW86X`, `XC_PW91X`, `XC_PW91C`, `XC_PW91K`) ported, self-tests pass
+- [ ] **GGA-07**: P86 correlation (`XC_P86C`, `XC_P86CORRC`) ported, self-tests pass
+- [ ] **GGA-08**: APBE (`XC_APBEX`, `XC_APBEC`) ported, self-tests pass
+- [ ] **GGA-09**: B97 family (`XC_B97X`, `XC_B97C`, `XC_B97_1X`, `XC_B97_1C`, `XC_B97_2X`, `XC_B97_2C`) ported, self-tests pass
+- [ ] **GGA-10**: `XC_KTX`, `XC_BTK`, `XC_LB94`, `XC_CSC` ported, self-tests pass
 
-- [ ] **EVAL-01**: XcFunctional object with new(), set(), eval_setup(), eval() lifecycle
-- [ ] **EVAL-02**: Partial derivatives mode (orders 0-6) producing correct taylorlen output
-- [ ] **EVAL-03**: Potential mode for LDA and GGA functionals (v_xc output)
-- [ ] **EVAL-04**: Contracted mode handling pre-expanded Taylor inputs
-- [ ] **EVAL-05**: Batch evaluation (evaluate_batch) for multi-point workloads
-- [ ] **EVAL-06**: FunctionalImpl enum dispatch for all 78 functionals
-- [ ] **EVAL-07**: Functional composition (alias expansion with weighted sums)
-- [ ] **EVAL-08**: Regularization at density < 1e-14 preserving derivative coefficients
+### Functional Ports — metaGGA Tier
 
-### GGA Functionals
+- [ ] **MGGA-01**: TPSS family (`XC_TPSSX`, `XC_TPSSC`, `XC_REVTPSSX`, `XC_REVTPSSC`, `XC_TPSSLOCC`) ported, self-tests pass
+- [ ] **MGGA-02**: SCAN family (`XC_SCANX`, `XC_SCANC`, `XC_RSCANX`, `XC_RSCANC`, `XC_RPPSCANX`, `XC_RPPSCANC`, `XC_R2SCANX`, `XC_R2SCANC`, `XC_R4SCANX`, `XC_R4SCANC`) ported, self-tests pass
+- [ ] **MGGA-03**: Minnesota M05 family (`XC_M05X`, `XC_M05C`, `XC_M05X2X`, `XC_M05X2C`) ported, self-tests pass
+- [ ] **MGGA-04**: Minnesota M06 family (`XC_M06X`, `XC_M06C`, `XC_M06LX`, `XC_M06LC`, `XC_M06HFX`, `XC_M06HFC`, `XC_M06X2X`, `XC_M06X2C`) ported, self-tests pass
+- [ ] **MGGA-05**: `XC_BLOCX` ported, self-test passes
 
-- [ ] **GGA-01**: ~22 GGA exchange functionals (PbeX, BeckeX, BeckeCorrX, BeckeSrX, BeckeCamX, Pw86X, Pw91X, RevPbeX, RPbeX, OptX, OptXCorr, PbeSolX, PbeIntX, BlocX, KtX, B97X, B97_1X, B97_2X, BrX, LdaErfX, LdaErfC, LdaErfC_JT) all within 1e-12
-- [ ] **GGA-02**: ~18 GGA correlation functionals (PbeC, LypC, P86C, P86CorrC, SPbeC, Vwn_PbeC, BrC, BrXC, Pw91C, B97C, B97_1C, B97_2C, CsC, APbeC, ZvPbeSolC, PbeIntC, PbeLocC, ZvPbeIntC) all within 1e-12
-- [ ] **GGA-03**: Helper function modules (pw91_like, specmath) shared across GGA functionals
-- [ ] **GGA-04**: GGA potential mode with gradient divergence handling
-- [ ] **GGA-05**: GGA aliases (blyp, pbe, bp86, bpw91, olyp, lyp, kt1, kt2, kt3, ldaerf, becke, slater, B88X, LDAX, PBEX, KT3X, OPTX)
+### Evaluation Modes
 
-### Meta-GGA and Kinetic Functionals
+- [ ] **MODE-01**: `Mode::PartialDerivatives` supports orders 0..=4 with output layout matching `xcfun-master/src/XCFunctional.cpp` lines 501-612
+- [ ] **MODE-02**: `Mode::Potential` supports GGA via the `CTaylor<f64, 2>` divergence construction and enforces `_2ND_TAYLOR` vars; rejects metaGGAs
+- [ ] **MODE-03**: `Mode::Contracted` supports orders 0..=6 with output layout matching the `DOEVAL` macro expansion in the C++ reference
+- [ ] **MODE-04**: `Functional::input_length` returns `VARS_TABLE[vars].len` as `usize`
+- [ ] **MODE-05**: `Functional::output_length` returns `taylor_len(input_len, order)` for `PartialDerivatives`, 2 or 3 for `Potential`, and `1 << order` for `Contracted` — matching the reference for every configuration
 
-- [ ] **MGGA-01**: TPSS family (TpssX, TpssC, RevTpssX, RevTpssC, TpssLocC) within 1e-12
-- [ ] **MGGA-02**: SCAN family (ScanX, ScanC, RScanX, RScanC, RppScanX, RppScanC, R2ScanX, R2ScanC, R4ScanX, R4ScanC) within 1e-12
-- [ ] **MGGA-03**: Kinetic energy functionals (TfK, Tw, VwK, Pw91K, BtK) within 1e-12
-- [ ] **MGGA-04**: Meta-GGA helper functions (SCAN enhancement factors, alpha parameter)
-- [ ] **MGGA-05**: Meta-GGA aliases (scan, rscan, rppscan, r2scan, r4scan, tfk, tw)
-- [ ] **MGGA-06**: Potential mode correctly rejects meta-GGA functionals
+### Aliases & Parameters
 
-### Hybrid Functionals and Aliases
+- [ ] **ALIAS-01**: All 46 aliases from `xcfun-master/src/functionals/aliases.cpp` are present and resolve to the same weight set as the C++ library (including the negative-weight `camcompx` canary)
+- [ ] **ALIAS-02**: Parameter `XC_EXX` settable, default 0.0
+- [ ] **ALIAS-03**: Parameter `XC_RANGESEP_MU` settable, default 0.4
+- [ ] **ALIAS-04**: Parameter `XC_CAM_ALPHA` settable, default 0.19
+- [ ] **ALIAS-05**: Parameter `XC_CAM_BETA` settable, default 0.46
+- [ ] **ALIAS-06**: `Functional::set(name, value)` recurses into aliases with weight multiplication, matches `XCFunctional.cpp` lines 369-405 byte-for-byte
 
-- [ ] **HYB-01**: M05/M06 family (M05X, M05X2X, M06X, M06X2X, M06LX, M06HfX, M05C, M05X2C, M06C, M06HfC, M06LC, M06X2C) within 1e-12
-- [ ] **HYB-02**: M06 helper functions (zet, gamma, h, fw, lsda_x)
-- [ ] **HYB-03**: Range-separated functional support (BeckeCamX with CAM parameters)
-- [ ] **HYB-04**: All 39+ aliases produce correct compositions (including b3lyp, pbe0, camb3lyp, m06, etc.)
-- [ ] **HYB-05**: EXX parameter handling (HF alias sets exx=1.0 with no DFT functionals)
-- [ ] **HYB-06**: Property-based tests pass (spin symmetry, zero density limit)
+### Rust API (native façade)
 
-### GPU Evaluation
+- [ ] **RS-01**: `Functional::new` returns a `Functional` with no active functionals, default parameter values, `vars = Unset`, `mode = Unset`, `order = -1`
+- [ ] **RS-02**: `Functional::set(&mut self, name: &str, value: f64) -> Result<(), XcError>` with case-insensitive name lookup
+- [ ] **RS-03**: `Functional::get(&self, name: &str) -> Result<f64, XcError>` for functionals and parameters (not aliases)
+- [ ] **RS-04**: `Functional::is_gga(&self) -> bool` and `is_metagga(&self) -> bool`
+- [ ] **RS-05**: `Functional::eval_setup(&mut self, vars: Vars, mode: Mode, order: u32) -> Result<(), XcError>` with all reference error branches
+- [ ] **RS-06**: `Functional::user_eval_setup(...)` forwards to `which_vars` + `which_mode` + `eval_setup`
+- [ ] **RS-07**: `Functional::eval(&self, density: &[f64], out: &mut [f64]) -> Result<(), XcError>` with zero heap allocation on success path
+- [ ] **RS-08**: `Functional::eval_vec(&self, density, density_pitch, out, out_pitch, nr_points) -> Result<(), XcError>` dispatches to `Batch<CpuRuntime>` when `nr_points ≥ 64`
+- [ ] **RS-09**: Free functions `version`, `splash`, `authors`, `self_test`, `is_compatible_library`, `which_vars`, `which_mode`, `enumerate_parameters`, `enumerate_aliases`, `describe_short`, `describe_long` exposed from `xcfun-rs` and behave identically to reference
+- [ ] **RS-10**: `Functional` is `Send + Sync`; no global mutable state
 
-- [ ] **GPU-01**: GpuEvaluator struct with cubecl runtime management
-- [ ] **GPU-02**: GPU kernels for energy evaluation (order 0) and first derivatives (order 1)
-- [ ] **GPU-03**: AoS to SoA transposition for GPU-friendly memory layout
-- [ ] **GPU-04**: GPU-resident buffer caching across repeated calls
-- [ ] **GPU-05**: Automatic CPU/GPU fallback based on batch size and hardware
-- [ ] **GPU-06**: GPU/CPU consistency for all functionals (< 1e-12 difference)
+### C ABI
 
-### C FFI
-
-- [ ] **FFI-01**: Complete C API matching xcfun.h (~20 functions: new, delete, set, get, eval_setup, eval, eval_vec, etc.)
-- [ ] **FFI-02**: Error code mapping (XC_EORDER, XC_EVARS, XC_EMODE, XC_EINTERNAL)
-- [ ] **FFI-03**: Header file generation via cbindgen
-- [ ] **FFI-04**: Memory safety (no UB across FFI boundary, proper panic catching)
+- [ ] **CAPI-01**: Every symbol declared in `xcfun-master/api/xcfun.h` has a matching `#[no_mangle] extern "C"` export in `xcfun-capi`
+- [ ] **CAPI-02**: `xcfun-capi/include/xcfun.h` is generated by `cbindgen` and a `headers-match` CI test asserts it equals `xcfun-master/api/xcfun.h` modulo whitespace/comments
+- [ ] **CAPI-03**: `xcfun_new` allocates a `Box<xcfun_t>`; `xcfun_delete` is NULL-safe
+- [ ] **CAPI-04**: Every C entry point is wrapped in a `c_entry!` macro that calls `std::panic::catch_unwind` and aborts on panic (matches reference `xcfun::die`)
+- [ ] **CAPI-05**: `XcError::as_c_code` maps variants to `1` (EORDER), `2` (EVARS), `4` (EMODE), `6` (EVARS|EMODE), `-1` (unknown name / other), and `0` on success
+- [ ] **CAPI-06**: `xcfun-capi` builds as both `cdylib` and `staticlib`
+- [ ] **CAPI-07**: `tests/c_abi.c` compiled against the staticlib and run by `cargo test -p xcfun-capi` verifies golden output on a fixed fixture
 
 ### Python Bindings
 
-- [ ] **PY-01**: XcFun Python class with set(), eval_setup(), eval() methods via PyO3
-- [ ] **PY-02**: NumPy array input/output for batch evaluation
-- [ ] **PY-03**: Enumeration of functionals and aliases from Python
-- [ ] **PY-04**: __repr__ and __str__ for debugging
+- [ ] **PY-01**: `xcfun-py` builds as a PyO3 0.28 extension module with `abi3-py310`
+- [ ] **PY-02**: `xcfun_rs.Functional` Python class exposes `set`, `get`, `is_gga`, `is_metagga`, `eval_setup`, `user_eval_setup`, `input_length`, `output_length`, `eval`, `eval_vec`
+- [ ] **PY-03**: `eval_vec` accepts a 2-D `numpy.ndarray[np.float64, order='C']` and returns a zero-copy 2-D `PyArray2<f64>`
+- [ ] **PY-04**: Free functions (`version`, `splash`, `describe_*`, `enumerate_*`, `which_*`, `self_test`, `is_compatible_library`) exposed at module level
+- [ ] **PY-05**: Rust `XcError` raises Python `XcfunError` exception
+- [ ] **PY-06**: `pip install xcfun_rs` wheel build succeeds on Linux/macOS/Windows and passes `pytest`
 
-### Performance
+### Kernel Layer (single-source CPU/GPU)
 
-- [ ] **PERF-01**: Criterion benchmarks for all functional categories
-- [ ] **PERF-02**: Performance within 1.2x of C++ xcfun for equivalent operations
-- [ ] **PERF-03**: GPU path shows measurable speedup for batch sizes > 10k points
-- [ ] **PERF-04**: No accuracy regressions after optimization (all tests still pass)
+- [ ] **KER-01**: Every functional has a `#[cube]` counterpart generic over `F: Float` whose body is the single source of truth (CPU routes via `CpuRuntime`; GPU via `CudaRuntime` / `WgpuRuntime`)
+- [ ] **KER-02**: `DensVarsDev<F, N>` mirrors `DensVars<T>` with identical field order and builder logic
+- [ ] **KER-03**: `CTaylorDev<F, N>` uses the same bit-flag indexing as `CTaylor<T, N>`
+- [ ] **KER-04**: `eval_batch_kernel<F: Float>` is a `#[cube(launch_unchecked)]` entry point with `#[comptime]` specialisation on `(vars, mode, order)` and runtime dispatch on `FunctionalId`
+- [ ] **KER-05**: Inside any `#[cube]` body, only other `#[cube]` functions and cubecl intrinsics are callable (no host Rust, no std)
+- [ ] **KER-06**: Tier-3 parity — 10k-point grid through `Batch<CpuRuntime>` matches scalar `Functional::eval` within 1e-13 relative error
 
-### Validation Infrastructure
+### GPU Backend (Batch lifecycle)
 
-- [ ] **VAL-01**: Reference test data extracted from C++ xcfun sources
-- [ ] **VAL-02**: test_all_functionals_against_reference() automated test
-- [ ] **VAL-03**: Accuracy reporting (max/mean relative error per functional)
-- [ ] **VAL-04**: Cross-validation against C++ xcfun output for all 78 functionals at orders 0-4
+- [ ] **GPU-01**: `Batch<'fun, R: cubecl::Runtime>` exposes `reserve`, `upload_density`, `launch`, `download_result`, `eval_vec_host`
+- [ ] **GPU-02**: `Backend` enum (`Cpu`, `Cuda`, `Wgpu`); `auto_backend()` selects CUDA if available, else Wgpu with f64, else CPU
+- [ ] **GPU-03**: `cubecl-cuda` enabled under feature `cuda`; Wgpu under `wgpu`; CPU always on
+- [ ] **GPU-04**: Device-buffer pool grows with powers-of-two; weights uploaded once per batch (generation-counter guarded)
+- [ ] **GPU-05**: On Wgpu, functionals with `Dependency::ERF` are routed to `Backend::Cpu` automatically
+- [ ] **GPU-06**: Wgpu without `SHADER_F64` returns `Err(XcError::Runtime)` at batch open; compile-time `size_of::<Scalar>() == 8` assertion
+- [ ] **GPU-07**: Tier-3 parity on CUDA — 10k-point grid within 1e-13 rel-err vs. CPU
+- [ ] **GPU-08**: Tier-3 parity on Wgpu — 10k-point grid (excluding range-separated functionals) within 1e-9 rel-err vs. CPU
+
+### Accuracy & Validation
+
+- [ ] **ACC-01**: Validation harness (`validation/` binary) links `xcfun-master/` via `cc` and evaluates every `(functional, vars, mode, order)` tuple the C++ library supports
+- [ ] **ACC-02**: For every tuple × every element of output array × every point in a 10 000-point seeded grid: `|rust - cpp| / max(|cpp|, 1.0) ≤ 1e-12` on CPU
+- [ ] **ACC-03**: Validation harness emits `validation/report.html` and `validation/report.jsonl`; any failing element blocks merge
+- [ ] **ACC-04**: Tier-1 self-tests run every `FUNCTIONAL_DESCRIPTORS[id].test_in / test_out` on `cargo test` in under 5 s
+- [ ] **ACC-05**: No compiler flag introduces reassociation: CI asserts `RUSTFLAGS` is empty and release profile contains `-Cllvm-args=-fp-contract=off`
+- [ ] **ACC-06**: Lint rule bans `mul_add` inside `xcfun-core/src/functionals/*.rs` (accumulation order must match C++)
+
+### Quality Gates (CI-enforced)
+
+- [ ] **QG-01**: `cargo xtask check-no-anyhow` passes (no library crate depends on `anyhow`)
+- [ ] **QG-02**: `cargo xtask check-boundaries` passes (module-boundary rules from design doc 05 enforced)
+- [ ] **QG-03**: `cargo-deny check licenses advisories bans` passes with MPL-2.0/MIT/Apache-2.0/BSD-3-Clause/ISC/Unicode-DFS-2016 allowlist
+- [ ] **QG-04**: `cargo clippy --workspace --all-features -- -D warnings` passes
+- [ ] **QG-05**: `cargo fmt --check` passes
+- [ ] **QG-06**: `cargo metadata` CI assertion verifies `cubecl` pinned at `=0.10.0-pre.3`
+- [ ] **QG-07**: Registry content-hash drift detection — `xtask regen-registry --check` fails CI if the generated file is stale
+- [ ] **QG-08**: Atomic commits: each phase commits its artifact immediately; no work batched across phases
 
 ## v2 Requirements
 
-Deferred to future release. Tracked but not in current roadmap.
+Deferred; tracked for future milestones.
 
-### Extended Testing
+### Performance & Observability
 
-- **V2-TEST-01**: Property-based testing with proptest for AD engine edge cases
-- **V2-TEST-02**: Fuzzing inputs to functional evaluation for robustness
-- **V2-TEST-03**: Miri testing for FFI memory safety validation
+- **PERF-01**: `Functional::eval_vec` on 100k GGA points within ±10% of C++ wall-clock on the same machine
+- **PERF-02**: CUDA kernel on 1M-point GGA grid > 10⁹ evaluations/second on A100
+- **PERF-03**: Stream-overlapped async GPU path for throughput-bound HPC workloads
+- **OBS-01**: Structured `tracing` spans at batch boundaries with per-kernel wall-clock metrics
+- **OBS-02**: Backend-qualified bench matrix (criterion) comparing CPU / CUDA / Wgpu across LDA / GGA / metaGGA
 
-### Extended Bindings
+### API Extensions
 
-- **V2-BIND-01**: Thin Fortran wrapper (xcfun.f90 equivalent)
-- **V2-BIND-02**: Wasm compilation target for browser-based DFT tools
+- **API-01**: Deprecated-symbol map covering pre-API-v2 aliases for migrating consumers
+- **API-02**: `Batch::launch_async` (cubecl-stream-backed) once `cubecl` stable release lands
+- **API-03**: Multi-point vectorisation (`Line<F>`) in the batch kernel for SIMD throughput
 
-### Extended GPU
+### Integrations
 
-- **V2-GPU-01**: GPU evaluation at derivative orders 2-4
-- **V2-GPU-02**: Multi-device GPU evaluation
-- **V2-GPU-03**: Metal and Vulkan backend validation
+- **INT-01**: PySCF drop-in via matching pyscf/dft/xcfun.py behaviour
+- **INT-02**: Psi4 plugin example linking the C ABI
+- **INT-03**: Dalton/ADF compatibility smoke test
 
 ## Out of Scope
 
-Explicitly excluded. Documented to prevent scope creep.
+Explicitly excluded; documented to prevent scope creep.
 
 | Feature | Reason |
 |---------|--------|
-| New functionals beyond C++ xcfun's 78 | Reimplementation, not extension. Users needing more use libxc |
-| Machine-learned XC functionals (ML-XC) | Different architecture (neural networks). libnxc exists |
-| Derivative orders > 6 | Matches C++ xcfun maximum. 2^7 = 128 coefficients per pair |
-| Web API / REST interface | Computational kernel, not a service |
-| GUI or visualization | Backend component; visualization belongs in calling app |
-| Direct Fortran bindings | C FFI via iso_c_binding is sufficient |
-| Symbolic differentiation / Maple codegen | Conflicts with xcfun's AD philosophy |
-| General-purpose AD library | xcfun-ad is domain-specialized |
-| Integration with specific DFT codes | Provide stable APIs; let codes integrate |
-| SIMD-explicit vectorization (initial) | Deferred to optimization phase |
+| Libxc-scale functional coverage (~400 functionals) | Scope explosion; xcfun_rs competes on derivative order (up to 6), not coverage — users pick Libxc for breadth |
+| Bit-identical output with C++ xcfun | Infeasible across libm / CUDA math / WGSL variants; 1e-12 relative tolerance is the stated contract |
+| `f32` numerical path | Cannot meet 1e-12 tolerance (f32 unit roundoff ≈ 6e-8) |
+| Extended precision (`f128`, `long double`) | Reference runs on `double`; no host consumer need |
+| Differentiation order > 6 | Reference fixes `XCFUN_MAX_ORDER = 6`; raising would require re-verifying the coefficient algebra |
+| Third-party AD frameworks (Enzyme, hyperdual, `ad` crate) | None replicate xcfun's bit-flag multilinear polynomial algebra; parity unprovable |
+| User-supplied Rust functionals with AD | Only the library's 78 built-in functionals are differentiated; plugin API would break AD-engine-as-private-surface contract |
+| VV10 non-local correlation | Separate library concern (gpu4pyscf / Libxc handle it) |
+| D3/D4 dispersion correction | Out of XC-functional scope; use `dftd4` in parallel |
+| ML-based functionals (Skala, libNXC) | Different dependency graph; users link alongside if needed |
+| Libxc-compatibility shim | Different product; forces naming/normalisation conflicts |
+| Distributed / multi-node evaluation | Density grids are local; host MPI layer owns distribution |
+| Stream-overlapped async GPU in v1 | < 20 % throughput gain for 3× API complexity; revisit in v2 |
+| Symbolic / rational output | No host consumer need |
+| Pre-API-v2 C headers | Target current xcfun ABI only |
+| `rayon` in library crates | Caller owns grid parallelism; library parallelism introduces non-determinism in active-functional accumulation order |
+| Runtime-loadable custom functionals | Breaks hermetic `cargo build` + precompiled kernel dispatch table |
 
 ## Traceability
 
-Which phases cover which requirements. Updated during roadmap creation.
+Updated during roadmap creation — initial state empty.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CORE-01 through CORE-08 | Phase 1 | Pending |
-| AD-01 through AD-09 | Phase 1 | Pending |
-| LDA-01 through LDA-06 | Phase 2 | Pending |
-| EVAL-01 through EVAL-08 | Phase 2 | Pending |
-| VAL-01 through VAL-04 | Phase 2 | Pending |
-| GGA-01 through GGA-05 | Phase 3 | Pending |
-| MGGA-01 through MGGA-06 | Phase 4 | Pending |
-| HYB-01 through HYB-06 | Phase 5 | Pending |
-| GPU-01 through GPU-06 | Phase 6 | Pending |
-| FFI-01 through FFI-04 | Phase 7 | Pending |
-| PY-01 through PY-04 | Phase 7 | Pending |
-| PERF-01 through PERF-04 | Phase 8 | Pending |
+| (populated by roadmapper) | — | Pending |
 
 **Coverage:**
-- v1 requirements: 70 total
-- Mapped to phases: 70
-- Unmapped: 0
+- v1 requirements: 88 total (to be confirmed)
+- Mapped to phases: 0
+- Unmapped: 88 ⚠️ (resolves after roadmap creation)
 
 ---
-*Requirements defined: 2026-04-17*
-*Last updated: 2026-04-17 after roadmap creation*
+*Requirements defined: 2026-04-19*
+*Last updated: 2026-04-19 after initial definition*
