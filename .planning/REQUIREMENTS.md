@@ -1,7 +1,7 @@
 # Requirements: xcfun_rs
 
 **Defined:** 2026-04-19
-**Core Value:** Every functional must produce numerical output matching C++ xcfun within relative error ≤ 1.0 × 10⁻¹², across all evaluation modes and derivative orders.
+**Core Value:** Every functional must produce numerical output matching C++ xcfun within relative error <= 1.0 x 10^-12, across all evaluation modes and derivative orders.
 
 ## v1 Requirements
 
@@ -10,9 +10,9 @@
 - [ ] **AD-01**: `CTaylor<T, const N: usize>` supports `N ∈ 0..=7` with `[T; 1 << N]` storage (no heap), bit-flag-indexed multilinear polynomial matching `xcfun-master/src/taylor/ctaylor.hpp`
 - [ ] **AD-02**: `Num` trait supplies `Add`, `Sub`, `Mul`, `Div`, `Neg`, `reciprocal`, `sqrt`, `exp`, `log`, `pow`, `powi`, `erf`, `asinh`, `atan`, with `ZERO` and `ONE` constants, implemented for `f64` and `CTaylor<f64, N>`
 - [ ] **AD-03**: `CTaylor::mul` accumulates coefficients in exactly the recursion order of `ctaylor_rec<T,Nvar>::multo` (verbatim port, not Rust-idiomatic rewrite)
-- [ ] **AD-04**: every `*_expand` function (`inv_expand`, `exp_expand`, `log_expand`, `pow_expand`, `sqrt_expand`, `erf_expand`, `gauss_expand`, …) from `xcfun-master/src/taylor/tmath.hpp` has a byte-equivalent Rust port
+- [ ] **AD-04**: every `*_expand` function (`inv_expand`, `exp_expand`, `log_expand`, `pow_expand`, `sqrt_expand`, `erf_expand`, `gauss_expand`, ...) from `xcfun-master/src/taylor/tmath.hpp` has a byte-equivalent Rust port
 - [ ] **AD-05**: `CTaylor` algebra passes `f64::to_bits` golden tests vs. the C++ reference for orders 0..=3 on a fixed-seed set of inputs
-- [ ] **AD-06**: AD engine property tests (ring axioms, exp/log round-trip, sqrt-squared invariance, Leibniz product rule) run ≥ 10 000 iterations per property without failure
+- [ ] **AD-06**: AD engine property tests (ring axioms, exp/log round-trip, sqrt-squared invariance, Leibniz product rule) run >= 10 000 iterations per property without failure
 
 ### Core Types & Registry
 
@@ -200,17 +200,130 @@ Explicitly excluded; documented to prevent scope creep.
 
 ## Traceability
 
-Updated during roadmap creation — initial state empty.
+Populated during roadmap creation (2026-04-19).
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated by roadmapper) | — | Pending |
+| AD-01 | Phase 1 | Pending |
+| AD-02 | Phase 1 | Pending |
+| AD-03 | Phase 1 | Pending |
+| AD-04 | Phase 1 | Pending |
+| AD-05 | Phase 1 | Pending |
+| AD-06 | Phase 1 | Pending |
+| CORE-01 | Phase 2 | Pending |
+| CORE-02 | Phase 2 | Pending |
+| CORE-03 | Phase 2 | Pending |
+| CORE-04 | Phase 2 | Pending |
+| CORE-05 | Phase 2 | Pending |
+| CORE-06 | Phase 2 | Pending |
+| CORE-07 | Phase 2 | Pending |
+| CORE-08 | Phase 2 | Pending |
+| CORE-09 | Phase 2 | Pending |
+| CORE-10 | Phase 0 | Pending |
+| LDA-01 | Phase 2 | Pending |
+| LDA-02 | Phase 2 | Pending |
+| LDA-03 | Phase 2 | Pending |
+| LDA-04 | Phase 2 | Pending |
+| LDA-05 | Phase 2 | Pending |
+| LDA-06 | Phase 2 | Pending |
+| LDA-07 | Phase 2 | Pending |
+| LDA-08 | Phase 2 | Pending |
+| LDA-09 | Phase 2 | Pending |
+| LDA-10 | Phase 2 | Pending |
+| GGA-01 | Phase 3 | Pending |
+| GGA-02 | Phase 3 | Pending |
+| GGA-03 | Phase 3 | Pending |
+| GGA-04 | Phase 3 | Pending |
+| GGA-05 | Phase 3 | Pending |
+| GGA-06 | Phase 3 | Pending |
+| GGA-07 | Phase 3 | Pending |
+| GGA-08 | Phase 3 | Pending |
+| GGA-09 | Phase 3 | Pending |
+| GGA-10 | Phase 3 | Pending |
+| MGGA-01 | Phase 4 | Pending |
+| MGGA-02 | Phase 4 | Pending |
+| MGGA-03 | Phase 4 | Pending |
+| MGGA-04 | Phase 4 | Pending |
+| MGGA-05 | Phase 4 | Pending |
+| MODE-01 | Phase 3 | Pending |
+| MODE-02 | Phase 3 | Pending |
+| MODE-03 | Phase 4 | Pending |
+| MODE-04 | Phase 2 | Pending |
+| MODE-05 | Phase 3 | Pending |
+| ALIAS-01 | Phase 4 | Pending |
+| ALIAS-02 | Phase 4 | Pending |
+| ALIAS-03 | Phase 4 | Pending |
+| ALIAS-04 | Phase 4 | Pending |
+| ALIAS-05 | Phase 4 | Pending |
+| ALIAS-06 | Phase 4 | Pending |
+| RS-01 | Phase 5 | Pending |
+| RS-02 | Phase 5 | Pending |
+| RS-03 | Phase 5 | Pending |
+| RS-04 | Phase 5 | Pending |
+| RS-05 | Phase 5 | Pending |
+| RS-06 | Phase 5 | Pending |
+| RS-07 | Phase 5 | Pending |
+| RS-08 | Phase 6 | Pending |
+| RS-09 | Phase 5 | Pending |
+| RS-10 | Phase 5 | Pending |
+| CAPI-01 | Phase 5 | Pending |
+| CAPI-02 | Phase 5 | Pending |
+| CAPI-03 | Phase 5 | Pending |
+| CAPI-04 | Phase 5 | Pending |
+| CAPI-05 | Phase 5 | Pending |
+| CAPI-06 | Phase 5 | Pending |
+| CAPI-07 | Phase 5 | Pending |
+| PY-01 | Phase 7 | Pending |
+| PY-02 | Phase 7 | Pending |
+| PY-03 | Phase 7 | Pending |
+| PY-04 | Phase 7 | Pending |
+| PY-05 | Phase 7 | Pending |
+| PY-06 | Phase 7 | Pending |
+| KER-01 | Phase 6 | Pending |
+| KER-02 | Phase 6 | Pending |
+| KER-03 | Phase 6 | Pending |
+| KER-04 | Phase 6 | Pending |
+| KER-05 | Phase 6 | Pending |
+| KER-06 | Phase 6 | Pending |
+| GPU-01 | Phase 6 | Pending |
+| GPU-02 | Phase 6 | Pending |
+| GPU-03 | Phase 6 | Pending |
+| GPU-04 | Phase 6 | Pending |
+| GPU-05 | Phase 6 | Pending |
+| GPU-06 | Phase 6 | Pending |
+| GPU-07 | Phase 6 | Pending |
+| GPU-08 | Phase 6 | Pending |
+| ACC-01 | Phase 2 | Pending |
+| ACC-02 | Phase 2 | Pending |
+| ACC-03 | Phase 2 | Pending |
+| ACC-04 | Phase 2 | Pending |
+| ACC-05 | Phase 0 | Pending |
+| ACC-06 | Phase 0 | Pending |
+| QG-01 | Phase 0 | Pending |
+| QG-02 | Phase 0 | Pending |
+| QG-03 | Phase 0 | Pending |
+| QG-04 | Phase 0 | Pending |
+| QG-05 | Phase 0 | Pending |
+| QG-06 | Phase 0 | Pending |
+| QG-07 | Phase 0 | Pending |
+| QG-08 | Phase 0 | Pending |
 
 **Coverage:**
-- v1 requirements: 88 total (to be confirmed)
-- Mapped to phases: 0
-- Unmapped: 88 ⚠️ (resolves after roadmap creation)
+- v1 requirements: 103 total (14 categories: AD, CORE, LDA, GGA, MGGA, MODE, ALIAS, RS, CAPI, PY, KER, GPU, ACC, QG)
+- Mapped to phases: 103
+- Unmapped: 0
+
+**Phase distribution:**
+- Phase 0 (Scaffolding): 11 requirements (CORE-10, ACC-05, ACC-06, QG-01..QG-08)
+- Phase 1 (AD Engine): 6 requirements (AD-01..AD-06)
+- Phase 2 (Core + LDA + Harness): 24 requirements (CORE-01..09, LDA-01..10, MODE-04, ACC-01..04)
+- Phase 3 (GGA + Potential): 13 requirements (GGA-01..10, MODE-01, MODE-02, MODE-05)
+- Phase 4 (metaGGA + Contracted + Aliases): 12 requirements (MGGA-01..05, MODE-03, ALIAS-01..06)
+- Phase 5 (Facade + C ABI): 16 requirements (RS-01..07, RS-09, RS-10, CAPI-01..07)
+- Phase 6 (Kernels + Batch + GPU): 15 requirements (RS-08, KER-01..06, GPU-01..08)
+- Phase 7 (Python + Release): 6 requirements (PY-01..06)
 
 ---
+
 *Requirements defined: 2026-04-19*
-*Last updated: 2026-04-19 after initial definition*
+*Last updated: 2026-04-19 after roadmap creation (traceability populated)*
