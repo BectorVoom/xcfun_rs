@@ -33,9 +33,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub mod ctaylor;
+pub mod expand;
 pub mod valid_n;
 
-// Wave 1 adds: pub mod ctaylor_rec; pub mod expand; pub mod tfuns;
+// Wave 1 adds: pub mod ctaylor_rec; pub mod tfuns;  (tfuns lands in Task 3 of 01-02)
 // Wave 2 adds: pub mod num; pub mod math;
 
 #[cfg(feature = "testing")]
