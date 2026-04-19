@@ -1,0 +1,22 @@
+[package]
+name = "xtask"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+description = "Internal build/fixture automation — not published"
+
+[[bin]]
+name = "xtask"
+path = "src/main.rs"
+
+[[bin]]
+name = "regen-ad-fixtures"
+path = "src/bin/regen_ad_fixtures.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+cc = { workspace = true }
+bincode = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

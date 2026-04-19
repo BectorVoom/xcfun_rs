@@ -1,15 +1,46 @@
 [workspace]
-members = ["crates/*"]
+# Phase 1 cubecl pivot scope: rebuild `xcfun-ad` as a cubecl-native crate.
+# Downstream crates (`xcfun-core`, `xcfun-eval`, `xcfun-functionals`, `xcfun-gpu`,
+# `xcfun-ffi`, `xcfun-python`) carry placeholder code from superseded planning
+# and are excluded until Phase 2+.
+members = ["crates/xcfun-ad", "xtask"]
+exclude = [
+    "crates/xcfun-core",
+    "crates/xcfun-eval",
+    "crates/xcfun-ffi",
+    "crates/xcfun-functionals",
+    "crates/xcfun-gpu",
+    "crates/xcfun-python",
+]
 resolver = "2"
 
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.85"
 
 [workspace.dependencies]
-thiserror = "2.0.18"
-bitflags = "2.11"
-approx = "0.5"
-anyhow = "1.0"
-tracing = "0.1"
-libm = "0.2"
+# Library-graph deps (allowed in any xcfun-* crate).
+thiserror = "=2.0.18"
+bitflags = "=2.11.1"
+approx = "=0.5.1"
+tracing = { version = "=0.1.44", default-features = false }
+
+# cubecl pivot — all three must move in lockstep (CLAUDE.md risk note).
+cubecl = "=0.10.0-pre.3"
+cubecl-cpu = "=0.10.0-pre.3"
+
+# App-boundary deps (xtask / benches / examples / dev-deps only).
+anyhow = "1.0.102"
+
+# Dev / test / bench / fixture.
+proptest = "=1.11.0"
+rstest = "=0.26.1"
+rand_xoshiro = "=0.8.0"
+criterion = { version = "=0.8.2", default-features = false, features = ["html_reports"] }
+bincode = "1.3"
+serde = { version = "=1.0", features = ["derive"] }
+serde_json = "=1.0.149"
+
+# xtask build helper.
+cc = { version = "^1.2.60", features = ["parallel"] }
