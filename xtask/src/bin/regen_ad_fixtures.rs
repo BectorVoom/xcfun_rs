@@ -226,15 +226,21 @@ fn main() -> Result<()> {
         "driver emitted zero records — something went wrong"
     );
 
-    // Partition: mul records vs expand records. We intentionally process only
-    // these two families — any other op silently skipped (Plan 06 extends).
+    // Partition: mul records vs expand records vs composed records.
+    //   - op == "mul"             → mul.bincode
+    //   - op ends with "_expand"  → expand.bincode
+    //   - op starts with "ctaylor_" → composed.bincode  (Plan 01-06)
+    // Any other op silently skipped (future plans can extend further).
     let mut mul_records: Vec<FixtureRecord> = Vec::new();
     let mut expand_records: Vec<FixtureRecord> = Vec::new();
+    let mut composed_records: Vec<FixtureRecord> = Vec::new();
     for rec in &records {
         if rec.op == "mul" {
             mul_records.push(rec.clone());
         } else if rec.op.ends_with("_expand") {
             expand_records.push(rec.clone());
+        } else if rec.op.starts_with("ctaylor_") {
+            composed_records.push(rec.clone());
         }
     }
 
@@ -257,11 +263,23 @@ fn main() -> Result<()> {
             })
         })
     });
+    composed_records.sort_by(|a, b| {
+        a.op.cmp(&b.op).then_with(|| {
+            a.n_var.cmp(&b.n_var).then_with(|| {
+                a.inputs
+                    .partial_cmp(&b.inputs)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+        })
+    });
 
     let mul_bytes = bincode::serialize(&mul_records).context("serialise mul records")?;
     let expand_bytes = bincode::serialize(&expand_records).context("serialise expand records")?;
+    let composed_bytes =
+        bincode::serialize(&composed_records).context("serialise composed records")?;
     fs::write(fixtures_dir.join("mul.bincode"), &mul_bytes)?;
     fs::write(fixtures_dir.join("expand.bincode"), &expand_bytes)?;
+    fs::write(fixtures_dir.join("composed.bincode"), &composed_bytes)?;
 
     // Manifest: per-op counts, content hash, driver_commit, timestamp.
     let mut per_op_counts: BTreeMap<String, usize> = BTreeMap::new();
@@ -282,11 +300,13 @@ fn main() -> Result<()> {
     )?;
 
     eprintln!(
-        "[regen-ad-fixtures] wrote {} mul records ({} bytes), {} expand records ({} bytes)",
+        "[regen-ad-fixtures] wrote {} mul records ({} bytes), {} expand records ({} bytes), {} composed records ({} bytes)",
         mul_records.len(),
         mul_bytes.len(),
         expand_records.len(),
-        expand_bytes.len()
+        expand_bytes.len(),
+        composed_records.len(),
+        composed_bytes.len()
     );
     eprintln!(
         "[regen-ad-fixtures] manifest sha256[..16] = {}",

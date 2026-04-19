@@ -138,6 +138,118 @@ static void emit_mul_record(const double * a, const double * b) {
     emit_record("mul", NVAR, inputs, coeffs);
 }
 
+// ---------------------------------------------------------------------------
+//  Composed CTaylor record emitters — one per op. Schema:
+//    op = "ctaylor_<name>"
+//    inputs[0..SIZE] = x.c[0..SIZE]
+//    inputs[SIZE]    = extra_arg (optional; for pow, powi)
+//    coeffs[0..SIZE] = y.c[0..SIZE]  where  y = op(x)
+// ---------------------------------------------------------------------------
+
+template <int NVAR>
+static void emit_ctaylor_reciprocal(const double * x_in) {
+    const int SIZE = 1 << NVAR;
+    ctaylor<double, NVAR> x;
+    for (int i = 0; i < SIZE; i++) x.c[i] = x_in[i];
+    // ctaylor_math.hpp: operator/(S, ctaylor) with S = 1 is the reciprocal.
+    ctaylor<double, NVAR> y = 1.0 / x;
+    std::vector<double> inputs(x_in, x_in + SIZE);
+    std::vector<double> coeffs(y.c, y.c + SIZE);
+    emit_record("ctaylor_reciprocal", NVAR, inputs, coeffs);
+}
+
+template <int NVAR>
+static void emit_ctaylor_sqrt(const double * x_in) {
+    const int SIZE = 1 << NVAR;
+    ctaylor<double, NVAR> x;
+    for (int i = 0; i < SIZE; i++) x.c[i] = x_in[i];
+    ctaylor<double, NVAR> y = sqrt(x);
+    std::vector<double> inputs(x_in, x_in + SIZE);
+    std::vector<double> coeffs(y.c, y.c + SIZE);
+    emit_record("ctaylor_sqrt", NVAR, inputs, coeffs);
+}
+
+template <int NVAR>
+static void emit_ctaylor_exp(const double * x_in) {
+    const int SIZE = 1 << NVAR;
+    ctaylor<double, NVAR> x;
+    for (int i = 0; i < SIZE; i++) x.c[i] = x_in[i];
+    ctaylor<double, NVAR> y = exp(x);
+    std::vector<double> inputs(x_in, x_in + SIZE);
+    std::vector<double> coeffs(y.c, y.c + SIZE);
+    emit_record("ctaylor_exp", NVAR, inputs, coeffs);
+}
+
+template <int NVAR>
+static void emit_ctaylor_log(const double * x_in) {
+    const int SIZE = 1 << NVAR;
+    ctaylor<double, NVAR> x;
+    for (int i = 0; i < SIZE; i++) x.c[i] = x_in[i];
+    ctaylor<double, NVAR> y = log(x);
+    std::vector<double> inputs(x_in, x_in + SIZE);
+    std::vector<double> coeffs(y.c, y.c + SIZE);
+    emit_record("ctaylor_log", NVAR, inputs, coeffs);
+}
+
+template <int NVAR>
+static void emit_ctaylor_pow(const double * x_in, double a) {
+    const int SIZE = 1 << NVAR;
+    ctaylor<double, NVAR> x;
+    for (int i = 0; i < SIZE; i++) x.c[i] = x_in[i];
+    // Explicitly select the real-exponent overload (ctaylor_math.hpp:120).
+    ctaylor<double, NVAR> y = pow(x, a);
+    std::vector<double> inputs(x_in, x_in + SIZE);
+    inputs.push_back(a);
+    std::vector<double> coeffs(y.c, y.c + SIZE);
+    emit_record("ctaylor_pow", NVAR, inputs, coeffs);
+}
+
+template <int NVAR>
+static void emit_ctaylor_erf(const double * x_in) {
+    const int SIZE = 1 << NVAR;
+    ctaylor<double, NVAR> x;
+    for (int i = 0; i < SIZE; i++) x.c[i] = x_in[i];
+    ctaylor<double, NVAR> y = erf(x);
+    std::vector<double> inputs(x_in, x_in + SIZE);
+    std::vector<double> coeffs(y.c, y.c + SIZE);
+    emit_record("ctaylor_erf", NVAR, inputs, coeffs);
+}
+
+template <int NVAR>
+static void emit_ctaylor_asinh(const double * x_in) {
+    const int SIZE = 1 << NVAR;
+    ctaylor<double, NVAR> x;
+    for (int i = 0; i < SIZE; i++) x.c[i] = x_in[i];
+    ctaylor<double, NVAR> y = asinh(x);
+    std::vector<double> inputs(x_in, x_in + SIZE);
+    std::vector<double> coeffs(y.c, y.c + SIZE);
+    emit_record("ctaylor_asinh", NVAR, inputs, coeffs);
+}
+
+template <int NVAR>
+static void emit_ctaylor_atan(const double * x_in) {
+    const int SIZE = 1 << NVAR;
+    ctaylor<double, NVAR> x;
+    for (int i = 0; i < SIZE; i++) x.c[i] = x_in[i];
+    ctaylor<double, NVAR> y = atan(x);
+    std::vector<double> inputs(x_in, x_in + SIZE);
+    std::vector<double> coeffs(y.c, y.c + SIZE);
+    emit_record("ctaylor_atan", NVAR, inputs, coeffs);
+}
+
+template <int NVAR>
+static void emit_ctaylor_powi(const double * x_in, int ie) {
+    const int SIZE = 1 << NVAR;
+    ctaylor<double, NVAR> x;
+    for (int i = 0; i < SIZE; i++) x.c[i] = x_in[i];
+    // Integer-exponent overload (ctaylor_math.hpp:165-178).
+    ctaylor<double, NVAR> y = pow(x, ie);
+    std::vector<double> inputs(x_in, x_in + SIZE);
+    inputs.push_back(static_cast<double>(ie));
+    std::vector<double> coeffs(y.c, y.c + SIZE);
+    emit_record("ctaylor_powi", NVAR, inputs, coeffs);
+}
+
 int main() {
     // -------------------------------------------------------------------
     //  *_expand records: 3 inputs × 7 orders × 8 fns = 168
@@ -211,8 +323,114 @@ int main() {
         }
     }
 
-    // NOTE: Plan 01-06 adds add/sub/neg/mul_assign/div records (5 more ops ×
-    // 50 seeds × 5 N = 1250), bringing total to 1668.
+    // -------------------------------------------------------------------
+    //  Composed CTaylor records (Plan 01-06).
+    //
+    //  Shape of every input x:
+    //    x.c[0] = x_cnst  (must be > 0 to satisfy sqrt/log/pow preconditions)
+    //    x.c[1] = x_var0  (only meaningful when NVAR >= 1)
+    //    x.c[i] = 0       for i >= 2 — keeps the input pattern simple and
+    //                     matches the Plan 01-06 PLAN.md input spec.
+    //
+    //  8 composed ops × 3 inputs × 4 n-values (0..=3) = 96 records.
+    //  plus ctaylor_pow records: 3 (x, a) pairs × 4 n = 12 (rolled into the
+    //  8-op loop below with pow_a taken from the extra_arg column).
+    //
+    //  7 exponents × 3 inputs × 4 n = 84 powi records.
+    //
+    //  Grand total composed = 96 + 84 = 180.
+    //  Final fixture count = 418 + 180 = 598.
+    // -------------------------------------------------------------------
+
+    struct ComposedInput { double x_cnst; double x_var0; double pow_a; };
+    const ComposedInput ci[] = {
+        {1.0, 0.5,  0.5},
+        {2.0, 1.0,  1.5},
+        {5.0, -0.1, 2.5},
+    };
+
+    // For each (nvar, input), call every composed op. nvar ∈ {0..=3}.
+    for (auto & input : ci) {
+        // nvar = 0 — SIZE = 1. No x_var0 slot.
+        {
+            double x[1] = {input.x_cnst};
+            emit_ctaylor_reciprocal<0>(x);
+            emit_ctaylor_sqrt<0>(x);
+            emit_ctaylor_exp<0>(x);
+            emit_ctaylor_log<0>(x);
+            emit_ctaylor_pow<0>(x, input.pow_a);
+            emit_ctaylor_erf<0>(x);
+            emit_ctaylor_asinh<0>(x);
+            emit_ctaylor_atan<0>(x);
+        }
+        // nvar = 1 — SIZE = 2.
+        {
+            double x[2] = {input.x_cnst, input.x_var0};
+            emit_ctaylor_reciprocal<1>(x);
+            emit_ctaylor_sqrt<1>(x);
+            emit_ctaylor_exp<1>(x);
+            emit_ctaylor_log<1>(x);
+            emit_ctaylor_pow<1>(x, input.pow_a);
+            emit_ctaylor_erf<1>(x);
+            emit_ctaylor_asinh<1>(x);
+            emit_ctaylor_atan<1>(x);
+        }
+        // nvar = 2 — SIZE = 4.
+        {
+            double x[4] = {input.x_cnst, input.x_var0, 0.0, 0.0};
+            emit_ctaylor_reciprocal<2>(x);
+            emit_ctaylor_sqrt<2>(x);
+            emit_ctaylor_exp<2>(x);
+            emit_ctaylor_log<2>(x);
+            emit_ctaylor_pow<2>(x, input.pow_a);
+            emit_ctaylor_erf<2>(x);
+            emit_ctaylor_asinh<2>(x);
+            emit_ctaylor_atan<2>(x);
+        }
+        // nvar = 3 — SIZE = 8.
+        {
+            double x[8] = {input.x_cnst, input.x_var0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+            emit_ctaylor_reciprocal<3>(x);
+            emit_ctaylor_sqrt<3>(x);
+            emit_ctaylor_exp<3>(x);
+            emit_ctaylor_log<3>(x);
+            emit_ctaylor_pow<3>(x, input.pow_a);
+            emit_ctaylor_erf<3>(x);
+            emit_ctaylor_asinh<3>(x);
+            emit_ctaylor_atan<3>(x);
+        }
+    }
+
+    // -------------------------------------------------------------------
+    //  ctaylor_powi records: 7 exponents × 3 inputs × 4 n = 84.
+    //
+    //  Exponents chosen to cover the fast-path (small positive), the
+    //  zero case, and two negative cases that delegate to ctaylor_pow.
+    //  x_cnst = 2 is non-zero so negative exponents are defined.
+    // -------------------------------------------------------------------
+
+    const int powi_exponents[] = {-2, -1, 0, 1, 2, 5, 10};
+    for (int ie_idx = 0; ie_idx < 7; ie_idx++) {
+        int ie = powi_exponents[ie_idx];
+        for (auto & input : ci) {
+            {
+                double x[1] = {input.x_cnst};
+                emit_ctaylor_powi<0>(x, ie);
+            }
+            {
+                double x[2] = {input.x_cnst, input.x_var0};
+                emit_ctaylor_powi<1>(x, ie);
+            }
+            {
+                double x[4] = {input.x_cnst, input.x_var0, 0.0, 0.0};
+                emit_ctaylor_powi<2>(x, ie);
+            }
+            {
+                double x[8] = {input.x_cnst, input.x_var0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+                emit_ctaylor_powi<3>(x, ie);
+            }
+        }
+    }
 
     return 0;
 }
