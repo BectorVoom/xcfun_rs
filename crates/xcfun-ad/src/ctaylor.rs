@@ -1,9 +1,9 @@
 //! `CTaylor<F, N>` — multilinear Taylor polynomial as a cubecl kernel-scope
 //! abstraction. Storage = `Array<F>` of length `1 << N`. Port of
 //! `xcfun-master/external/upstream/taylor/ctaylor.hpp:154-337` (struct body
-//! + element-wise operators). See CONTEXT.md D-04 for why this is **not** a
-//! `#[derive(CubeType)]` host struct — no `#[repr(C)]`, no `Copy`, no host
-//! `[F; 1 << N]` field.
+//! and element-wise operators). See CONTEXT.md D-04 for why this is
+//! **not** a `#[derive(CubeType)]` host struct — no `#[repr(C)]`, no
+//! `Copy`, no host `[F; 1 << N]` field.
 //!
 //! # Cubecl 0.10-pre.3 idiom notes
 //!

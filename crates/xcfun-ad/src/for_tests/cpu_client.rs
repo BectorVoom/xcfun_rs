@@ -26,7 +26,7 @@ static CPU_CLIENT: OnceLock<CpuClient> = OnceLock::new();
 /// the same underlying client (pointer equality). See CONTEXT.md D-17.
 pub fn cpu_client() -> &'static CpuClient {
     CPU_CLIENT.get_or_init(|| {
-        let device = CpuDevice::default();
+        let device = CpuDevice;
         CpuRuntime::client(&device)
     })
 }
