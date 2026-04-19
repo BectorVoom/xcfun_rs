@@ -54,7 +54,16 @@ The dependency DAG (per `ARCHITECTURE.md` section 7 and `SUMMARY.md` "Phase Orde
   3. Property tests (ring axioms, `exp`/`log` round-trip, `sqrt`-squared invariance, Leibniz product rule) each run >= 10 000 iterations with zero failures.
   4. `cargo bench -p xcfun-ad` publishes a baseline for `CTaylor::mul` at `N in {2,3,4,5,6}`.
   5. Every `*_expand` function from `xcfun-master/src/taylor/tmath.hpp` has a byte-equivalent Rust port with golden-coefficient tests at 3 inputs x 7 orders passing bit-for-bit.
-**Plans**: TBD
+**Plans**: 7 plans across 3 waves
+
+Plans:
+- [ ] 01-01-PLAN.md — Wave 0: workspace + crate scaffolding, ValidN<N> sealed trait, CTaylor struct + elementwise ops, .cargo/config.toml fp-contract=off [AD-01]
+- [ ] 01-02-PLAN.md — Wave 1: 8 *_expand scalar series ports (inv/exp/log/pow/sqrt/cbrt/gauss/erf) + tfuns helpers byte-for-byte from tmath.hpp [AD-04]
+- [ ] 01-03-PLAN.md — Wave 1: ctaylor_rec mul/multo/compose port incl. base cases N=0,1,2 + general N=3..=7 via split_at_mut [AD-03]
+- [ ] 01-04-PLAN.md — Wave 1: xtask regen-ad-fixtures + C++ driver + fixture format + ≥1668 committed records [AD-05]
+- [ ] 01-05-PLAN.md — Wave 2: Num trait (f64 + CTaylor<f64,N>) + 9 composed elementary fns + golden fixture integration tests [AD-02, AD-05]
+- [ ] 01-06-PLAN.md — Wave 2: proptest 11 properties × 10k iters (ring axioms + roundtrips + Leibniz) [AD-06]
+- [ ] 01-07-PLAN.md — Wave 2: criterion bench baselines for mul N={2..6} and composed exp/log/pow at N=4 [AD-03 baseline]
 
 ### Phase 2: Core Foundations + LDA Tier + Parity Harness
 **Goal**: A user can run `cargo xtask validate --backend cpu --order 2 --filter 'lda|slaterx|vwn|pw92c|pz81c|ldaerf|tfk|tw|vonw'` and see zero failures at 1e-12 relative error against the C++ reference.

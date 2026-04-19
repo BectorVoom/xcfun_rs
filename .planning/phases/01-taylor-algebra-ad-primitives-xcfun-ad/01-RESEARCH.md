@@ -1152,32 +1152,39 @@ Claims tagged `[ASSUMED]` in this research — planner/discuss-phase should conf
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> B6 revision: all 5 questions RESOLVED during planner revision pass (2026-04-19).
 
 1. **Should `cbrt` be included in Phase 1 even though AD-02 lists only 9 composed functions?**
    - What we know: D-09 lists `cbrt_expand` in the `*_expand` port set. Phase 2 LDA bodies will consume it (r_s formula).
    - What's unclear: whether the `Num` trait (AD-02) should carry a `cbrt` method in Phase 1 or only in Phase 2.
    - Recommendation: add `cbrt` to the `Num` trait in Phase 1 for consistency; the `*_expand` is already in scope. Label with comment noting it's not an AD-02-mandated method but a Phase-2 prep.
+   - **RESOLVED: No.** AD-02 (CONTEXT.md D-04) locks the 14-method Num trait: Add/Sub/Mul/Div/Neg + reciprocal, sqrt, exp, log, pow, powi, erf, asinh, atan + ZERO/ONE. `cbrt` stays in `expand/cbrt.rs` as a scalar-only helper for Phase 2+ consumption. No `Num::cbrt` method in Phase 1.
 
 2. **Does the existing Rust code in `crates/xcfun-ad/src/` get rewritten, or ported in place?**
    - What we know: 2912 LOC exists. `N` semantics differ from CONTEXT.md D-01.
    - What's unclear: whether the planner should treat existing code as the Phase 1 starting point (evolve) or as reference material (rewrite).
    - Recommendation: **rewrite**. The `N = array size` vs `N = nvar` divergence is load-bearing — attempting to evolve would leave confusing naming throughout the crate.
+   - **RESOLVED: Rewrite.** CONTEXT.md D-01 `N`-semantics divergence is load-bearing; evolving in place would propagate confusing naming throughout the crate. Plans 01-02 action blocks explicitly say "complete rewrite of existing file".
 
 3. **What's the `N_MAX = 7` justification?**
    - What we know: CONTEXT.md D-01 states `N in 0..=7`. REQUIREMENTS.md MODE-03 says `Contracted` supports orders 0..=6.
    - What's unclear: why 7 and not 6? design/02-data-structures.md:42 says "`XCFUN_MAX_ORDER = 6`, plus one additional bit for `XC_CONTRACTED` handling -> 7 bits max".
    - Recommendation: accept the explanation; port `N` up to 7 in Phase 1 for forward compatibility.
+   - **RESOLVED: XCFUN_MAX_ORDER=6 plus one XC_CONTRACTED bit per design/02 §1.** Accept `N ∈ 0..=7` for Phase 1; the 7th bit covers the `XC_CONTRACTED` handling explicitly called out in docs/design/02-data-structures.md:42.
 
 4. **Should `f64::mul_add` be explicitly lint-banned in `xcfun-ad`?**
    - What we know: D-20 says "functional-body `mul_add` lint is introduced in Phase 2".
    - What's unclear: whether `xcfun-ad/src/**` can use `mul_add` at all (answer is no, but should there be a Phase-1 lint or just a CI grep?).
    - Recommendation: Phase 1 CI asserts zero `fma`/`vfmadd` in the release object file (D-20). A `clippy::`-level lint ban can be deferred.
+   - **RESOLVED: Phase 1 uses `cargo asm` grep (D-20); Phase 2 adds a clippy-style ban.** No `mul_add` in `crates/xcfun-ad/src/ctaylor_rec/**` is enforced by grep in Plan 03 acceptance criteria; a full clippy lint is deferred to Phase 2 functional-body porting. The VALIDATION.md row `01-03-03 check-no-fma` was dropped during revision — the `cargo asm` grep becomes a CI job added at Phase 2 scope (see VALIDATION.md foot note).
 
 5. **Does `xcfun-ad` depend on `std` or `core`?**
    - What we know: D-14 says `default = ["std"]`. `core::ops` is fine; `std::f64::*` is needed for math on the default feature.
    - What's unclear: should intrinsic math routes through `num_traits::FloatCore` or directly to `std::f64::*` methods?
    - Recommendation: direct `std::f64::*` — CONTEXT.md D-05 rejects `num_traits::Float`.
+   - **RESOLVED: Direct `std::f64::*` when `feature="std"`; `libm::*` when `feature="libm"`; CONTEXT.md D-05 rejects `num_traits::Float`.** Plans 02/05 use the exact `cfg(feature = "std")` / `cfg(all(not(feature = "std"), feature = "libm"))` dispatch pattern throughout.
 
 ---
 
