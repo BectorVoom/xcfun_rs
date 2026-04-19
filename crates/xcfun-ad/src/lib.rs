@@ -13,9 +13,9 @@ pub mod ctaylor;
 pub mod ctaylor_rec;
 pub mod expand;
 pub mod index;
+pub mod tfuns;
 
 // Cubecl-bearing modules populated in later plans:
-//   Plan 01-04: tfuns + trans expansions (atan, gauss, erf, asinh)
 //   Plan 01-06: math
 
 #[cfg(feature = "testing")]
