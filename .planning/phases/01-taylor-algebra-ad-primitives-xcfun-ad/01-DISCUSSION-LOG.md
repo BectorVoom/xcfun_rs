@@ -1,171 +1,176 @@
-# Phase 1: Taylor Algebra & AD Primitives (`xcfun-ad`) - Discussion Log
+# Phase 1: Taylor Algebra & AD Primitives - Discussion Log (cubecl pivot)
 
 > **Audit trail only.** Do not use as input to planning, research, or execution agents.
 > Decisions are captured in `01-CONTEXT.md` — this log preserves the alternatives considered.
 
 **Date:** 2026-04-19
 **Phase:** 01-taylor-algebra-ad-primitives-xcfun-ad
-**Mode:** auto (all gray areas resolved with recommended defaults)
-**Areas discussed:** Storage & const-generic bounds, Num trait & numeric backbone, CTaylor::mul recursion, *_expand ports, Composed elementary functions, no_std story, Golden fixture workflow, Property tests & bench, FP hygiene, Testability seams
+**Areas discussed:** Numerical parity contract, CTaylor type design, Existing-work disposition, Phase 6 fate, Scalar-eval call pattern, `*_expand` representation, Property-test strategy, cubecl-cpu runtime lifetime, `F: Float` generic bound, GPU validation timing, Planning-doc update timing
+**Mode:** discuss (TUI prompts via AskUserQuestion)
+**Outcome:** Pivot from in-house hand-Rust `CTaylor` to cubecl-native `xcfun-ad`. 11 areas resolved, all user-selected to recommended option. Previous CONTEXT.md (12-decision auto-mode capture) superseded.
+
+**Pivot precondition:** User confirmed "C-confirmed — Yes, proceed with the full pivot" via prior conversational turn (rejecting Interpretations A/B/Reconsider) and answered the blocker question with "still Taylor polynomial AD, just expressed in `#[cube]` form, validated on cubecl-cpu, GPU after support." This discussion-phase locks the implementation choices that fall out of that decision.
+
+**Supersedes:** 2026-04-19 AM auto-mode log (10 hand-Rust gray areas resolved with recommended defaults). All 10 prior decisions VOID under the cubecl pivot.
 
 ---
 
-## Storage & const-generic bounds
+## Numerical parity contract
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| `Assert<{N<=7}>: True` (nightly `generic_const_exprs`) | Compile-time bound via const-generic assertion trick | |
-| Sealed `ValidN<N>` marker trait, impls for N ∈ 0..=7 | Stable Rust, no nightly features; explicit trait bound | ✓ |
-| Runtime `debug_assert!` | Only catches bad N at test time; no compile-time guarantee | |
+| 1e-12 strict | Keep PROJECT.md core value. Verify cubecl-cpu preserves operation order. Pivot fails fast if 1e-12 unachievable. | ✓ |
+| 1e-9 relaxed | Accept cubecl reordering. Easier to ship; PROJECT.md Core Value statement changes. | |
+| Hybrid 1e-12 / 1e-9 | Tight on orders 0–2, loose on 3–6. Two parity gates in CI. | |
+| Defer to researcher | Researcher surveys cubecl reordering behavior first. | |
 
-**Auto-selected:** Sealed trait — stable-Rust compatible, keeps the crate off nightly.
-**Notes:** `Assert<{N<=7}>: True` is ergonomically similar but requires `#![feature(generic_const_exprs)]`. Not worth the nightly dependency for a stable library crate.
+**User's choice:** 1e-12 strict
+**Notes:** Locks D-01 through D-03. Pivot accepts the risk of failing at the fixture-gate rather than silently widening tolerance.
 
 ---
 
-## Num trait & numeric backbone
+## CTaylor type design
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Custom `Num` trait | Narrow surface matching what functionals actually need | ✓ |
-| `num-traits::Float` blanket | Brings `is_nan`, `classify`, `floor`, etc. — meaningless on polynomials | |
-| `simba::scalar::Field` | Overkill, adds algebraic-structure deps | |
+| `#[derive(CubeType)]` host struct + `#[cube]` free fns | Host Rust struct holds `[F; 1<<N]`; ops are `#[cube] fn`. | |
+| Pure `#[cube]` type with cubecl `Array<F>` storage | No host struct. Storage is `Array<F>` allocated in kernel scope. Single source of truth. | ✓ |
+| Two parallel types: host `CTaylor` + device `CTaylorDev` | Doubles maintenance; weakens single-source rationale. | |
+| Defer — researcher prototypes both | Compile-test both options before deciding. | |
 
-**Auto-selected:** Custom `Num`. Locked by design D2 in `docs/design/12-design-decisions.md`.
+**User's choice:** Pure `#[cube]` type with cubecl `Array<F>` storage
+**Notes:** Locks D-04 through D-08. Eliminates the planned Phase 6 `CTaylorDev` type — Phase 1's `CTaylor` already runs on any cubecl runtime.
 
 ---
 
-## CTaylor::mul recursion structure
+## Existing-work disposition
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Verbatim port of `ctaylor_rec::multo` | Line-for-line recursion on highest bit; preserves accumulation order for 1e-12 parity | ✓ |
-| Flat triple-loop | Idiomatic Rust but breaks parity at order ≥ 2 (Pitfall P3) | |
-| SIMD-aware reassociated form | Faster but catastrophic for parity | |
+| Revert all 01-* commits, replan from scratch | `git revert f07611c c7a3f46 2db557c`, drop crate src tree, rebuild on cubecl. | ✓ |
+| Keep crate scaffolding, rewrite source files | Save half-day plumbing. Risks inconsistent toolchain config. | |
+| Keep both — port hand-Rust as validation oracle | Doubles codebase, locks hand-Rust into long-term maintenance. | |
 
-**Auto-selected:** Verbatim port. Non-negotiable per PITFALLS.md P3 and design D1.
+**User's choice:** Revert all 01-* commits, replan from scratch
+**Notes:** Locks D-21, D-22. Wave 0 of new plan must include the `git revert` task as first action. Reverts are non-destructive (new commits, original history preserved). 01-01-SUMMARY.md kept with "SUPERSEDED BY CUBECL PIVOT" header.
 
 ---
 
-## *_expand scalar series ports
+## Phase 6 fate
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Line-by-line port with upstream line-range comments | Cross-reference target for code review; body = textual port | ✓ |
-| Re-expressed via closed-form identities | Avoids the recursion; introduces new rounding ordering — violates algorithmic identity | |
-| Generated from a DSL | Too much meta, not enough parity safety | |
+| Keep Phase 6, narrow scope | Per-functional `#[cube]` bodies move to Phases 2–4; Phase 6 owns batch lifecycle, CUDA, Wgpu. | ✓ |
+| Delete Phase 6, fold into Phases 2–4 | Each tier ships CPU + CUDA + Wgpu. Roadmap shrinks to 6 phases. Bigger per-phase scope. | |
+| Defer — decide later | Discuss-phase scope is Phase 1 only. | |
 
-**Auto-selected:** Line-by-line port. Matches design D1/12 and PITFALLS.md P9.
+**User's choice:** Keep Phase 6, narrow scope
+**Notes:** Locks D-23, D-24. ROADMAP.md Phase 6 "Goal" and Phases 2–4 Success Criteria need editorial updates per D-27.
 
 ---
 
-## Preconditions: `assert!` vs `debug_assert!`
+## Scalar-eval call pattern
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| `assert!` (always-on) | Runs in release, catches silent-NaN on malformed inputs (P10) | ✓ |
-| `debug_assert!` (dev-only) | Cheap in release but silent NaN possible — PITFALLS.md P10 | |
+| Every scalar eval launches a 1-thread kernel | `eval(point)` calls `eval_vec(&[point])`. ~10 μs overhead. Single source of truth. | ✓ |
+| Bypass cubecl for scalar — keep Rust scalar interpreter | Microsecond-fast scalar, but two `CTaylor::mul` impls to keep bit-identical. | |
+| Caller-side accumulator that flushes when full | Stateful API. Bad fit for numerical library. | |
 
-**Auto-selected:** `assert!`. Explicit recommendation in PITFALLS.md P10.
+**User's choice:** Every scalar eval launches a 1-thread kernel
+**Notes:** Locks D-15, D-16. Test/property-test design must account for kernel-launch overhead — addressed by D-18's batch-per-property pattern.
 
 ---
 
-## no_std story
+## `*_expand` representation
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Features: `std` (default) + `libm` (alternative backend) | no_std-capable without blocking Phase 1; kernel crate can opt out later | ✓ |
-| `std` only | Simpler but locks `xcfun-ad` to std forever | |
-| Always `libm` | Tiny ULP differences vs `std::f64` — complicates fixture matching | |
+| Port each as `#[cube] fn` writing into cubecl `Array<F, 8>` | Algorithmic identity end-to-end on cubecl. Mirrors `tmath.hpp` line-for-line. | ✓ |
+| Keep as host `#[inline] fn` writing `&mut [f64; 8]`, `#[cube]` calls via comptime | Only runs on host f64. Breaks once Phase 6 enables CUDA/Wgpu. | |
+| Defer to researcher | Researcher prototypes one `*_expand` first. | |
 
-**Auto-selected:** `std` default + `libm` optional. Gets `no_std` on the table without forcing it in Phase 1.
+**User's choice:** Port each as `#[cube] fn` writing into cubecl `Array<F, 8>`
+**Notes:** Locks D-12 through D-14. Composed elementary fns (`reciprocal`, `sqrt`, `exp`, `log`, `pow`, `powi`, `erf`, `asinh`, `atan`) follow the same pattern.
 
 ---
 
-## Golden fixture generation
+## Property-test strategy
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Pre-generated `.bincode` fixtures + `xtask regen-ad-fixtures` | Hermetic `cargo build`; maintainers regenerate on xcfun-master bumps | ✓ |
-| `build.rs` compiles C++ at build time | Breaks hermetic `cargo build`; forces every consumer to have a C++ toolchain | |
-| Hand-coded fixtures | Too brittle; drifts from upstream | |
-| Property tests only, no fixtures | Doesn't catch ULP-level regressions that fixed-input fixtures expose | |
+| Batch each property into one kernel call of 10,000 inputs | proptest generates 10k upfront, single kernel evaluates all. ~100 ms total. | ✓ |
+| Reduce iteration count to 1,000 | 10× fewer iterations. Easier to write; weaker statistical coverage. | |
+| Keep 10k and accept multi-second wall-clock | Simplest; cargo test slows. | |
 
-**Auto-selected:** Pre-generated fixtures. Lock in hermetic builds.
+**User's choice:** Batch each property into one kernel call of 10,000 inputs
+**Notes:** Locks D-18. Preserves the original ≥10 000 iteration count from the design strategy without paying 10,000× kernel-launch overhead.
 
 ---
 
-## Fixture format
+## cubecl-cpu runtime lifetime in tests
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| `bincode` records + JSON manifest | Small, fast to load, JSON debuggable | ✓ |
-| JSON-only | Human-readable but bloated (~3–5× size) | |
-| `.hex.txt` of `f64::to_bits` | Max debuggability, largest size | |
+| `OnceLock<CpuClient>` in `xcfun-ad::for_tests`, shared across threads | Init once per binary. Matches cubecl idiom. Minimal overhead. | ✓ |
+| Per-test fresh client | Cleaner isolation; pays init cost (~100 ms) per test. | |
+| Defer to researcher | Researcher checks tracel-ai/cubecl examples. | |
 
-**Auto-selected:** `bincode` + JSON manifest. Size budget ≤ 1 MB total.
+**User's choice:** `OnceLock<CpuClient>` in `xcfun-ad::for_tests`, shared across threads
+**Notes:** Locks D-17. Helper module also exposes `raw_eval_scalar<F>` per D-16.
 
 ---
 
-## Property tests & bench baseline
+## `F: Float` generic bound
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| `proptest` 1.11, ≥ 10 000 iters per property; criterion bench baseline (no gate) | Matches REQUIREMENTS.md AD-06 and the stack pin | ✓ |
-| `quickcheck` | Smaller ecosystem, less rich shrinking | |
-| Manual `#[test]` matrix | Insufficient for ring-axiom coverage | |
+| Generic over `F: Float` | All `#[cube] fn` take `<F: Float>`. f64 today, f32 reachable for Phase 6 spikes. | ✓ |
+| Hardcode f64 | Simpler signatures; forks the source for Phase 6 Wgpu research. | |
+| Generic but lock test runner to f64 only | Public API generic; `cargo test` only runs f64. Middle ground. | |
 
-**Auto-selected:** `proptest` 1.11 with 10k+ iterations.
+**User's choice:** Generic over `F: Float`
+**Notes:** Locks D-09 through D-11. f32 ban moves UPSTREAM to `xcfun-rs::Functional` (not the AD crate's responsibility).
 
 ---
 
-## Scratch buffer for expansions
+## GPU validation timing
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| `[T; 8]` stack array (N_MAX + 1 = 8) | Fixed size, stack-only, correct for every N ≤ 7 | ✓ |
-| `[T; N+1]` per-call sized | Requires `generic_const_exprs` (nightly) | |
-| `Vec<T>` allocation | Violates no-heap rule | |
+| Defer to Phase 6 — unchanged from current roadmap | Phase 1 cubecl-cpu only. CUDA + Wgpu in Phase 6. Matches "(gpu after support)". | ✓ |
+| Phase 1 also smoke-tests CUDA when `--features cuda` | Single "cubecl runs on CUDA" smoke test. Catches catastrophic regressions. | |
+| Decide at Phase 6 planning | Note as deferred. | |
 
-**Auto-selected:** `[T; 8]`. Matches the `N ≤ 7` invariant.
+**User's choice:** Defer to Phase 6 — unchanged from current roadmap
+**Notes:** Locks D-25, D-26. `xcfun-ad` exposes only the `cpu` feature; CUDA/Wgpu features live in Phase 6 backend crates.
 
 ---
 
-## Testability seam exposure
+## Planning-doc update timing
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| `pub mod for_tests` behind `feature = "testing"` | Downstream dev-deps opt-in; no surface in default build | ✓ |
-| Public from day one | Surface creep | |
-| Private, tests inside crate only | Downstream functional parity tests can't reach low-level helpers | |
+| Now, before plan-phase runs | Rewrite STATE.md decisions, ROADMAP.md Phase 1 + Phase 6, REQUIREMENTS.md AD-01..06 immediately. Stale docs would mislead the planner. | ✓ |
+| Let plan-phase do it as part of replanning | Planner reads conflicting locked decisions; risks confused questions. | |
+| Defer — rewrite during plan-phase verification loop | Reactive; risks double work. | |
 
-**Auto-selected:** `feature = "testing"`.
-
----
-
-## FP hygiene enforcement
-
-| Option | Description | Selected |
-|--------|-------------|----------|
-| `-fp-contract=off` in `.cargo/config.toml` (Phase 0) + `cargo asm` CI spot-check of `CTaylor::mul` | Belt-and-suspenders against unsanctioned FMA emission | ✓ |
-| Empty `RUSTFLAGS` only | Doesn't prevent LLVM contracting inside optimisation passes | |
-| Function-level `#[target_feature(enable = "nofma")]` | Non-portable, not actually a target feature | |
-
-**Auto-selected:** `-fp-contract=off` + `cargo asm` grep.
+**User's choice:** Now, before plan-phase runs
+**Notes:** Locks D-27, D-28. STATE.md, ROADMAP.md, REQUIREMENTS.md updated as part of this discuss-phase commit. `docs/design/06,07,12-*.md` follow-on rewrites become planner tasks (D-28).
 
 ---
 
 ## Claude's Discretion
 
-No areas left fully open — every gray area in the agenda was resolved with a recommended default in auto mode. Planning agents inherit the full decision set and should not re-ask.
+- Module layout for `*_expand` (one mod or one mod per fn)
+- Internal `cpu_client()` naming and exact module path
+- Criterion bench directory layout
+- Error variant names for kernel-launch failures in tests
 
 ## Deferred Ideas
 
-- SIMD vectorisation of `CTaylor::mul` — v2.
-- Nested `CTaylor<CTaylor<f64, M>, N>` — no downstream need.
-- Pure-polynomial no_std (without libm) — feasible but complex; no consumer.
-- Per-op bench regression gate — v2 (PERF-01).
-
----
-
-*Auto-mode completion: 12 decisions, 0 free-form corrections.*
+- f32 instantiation (kept generic, exercised only in Phase 6 spikes)
+- SIMD inside `CTaylor::mul` (cubecl-cpu vectorizes via MLIR; revisit if benches show headroom)
+- Nested `CTaylor<CTaylor<F, M>, N>` (not required)
+- Hand-Rust CTaylor as redundant oracle (explicitly rejected per D-21)
+- Criterion regression gate (v2 — PERF-01)

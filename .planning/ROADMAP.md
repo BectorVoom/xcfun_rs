@@ -43,27 +43,29 @@ The dependency DAG (per `ARCHITECTURE.md` section 7 and `SUMMARY.md` "Phase Orde
   5. `config.hpp` has been read; the `pw92c-legacy-constants` Cargo feature is defined with the documented default matching the vendored `xcfun-master/`.
 **Plans**: TBD
 
-### Phase 1: Taylor Algebra & AD Primitives (`xcfun-ad`)
-**Goal**: A stack-only, bit-flag-indexed multilinear-polynomial AD engine whose arithmetic matches C++ `ctaylor.hpp` at `f64::to_bits` fidelity on orders 0..=3.
+### Phase 1: Taylor Algebra & AD Primitives (`xcfun-ad`, cubecl-native)
+**Goal**: A cubecl-native AD engine: `CTaylor<F, N>` as a pure `#[cube]` type backed by cubecl `Array<F>` storage, every arithmetic operation and every `*_expand` scalar series function written as `#[cube] fn` generic over `F: Float`, validated on `cubecl-cpu` (`CpuRuntime`) against the C++ xcfun reference at **1e-12 strict relative error**. Single source of truth — no parallel hand-Rust scalar implementation.
 **Depends on**: Phase 0
-**Research flag**: Yes (per SUMMARY.md "Research Flags" - `ctaylor.hpp`/`tmath.hpp` recursion patterns and C++ golden test driver plan)
+**Research flag**: Yes (per SUMMARY.md "Research Flags" — `ctaylor.hpp`/`tmath.hpp` recursion patterns AND cubecl 0.10-pre.3 `#[cube]` type + `Array<F>` constraints, FMA suppression on cubecl-cpu's MLIR JIT, `OnceLock<CpuClient>` test pattern, batch-per-property kernel pattern for 10k-iter proptests)
 **Requirements**: AD-01, AD-02, AD-03, AD-04, AD-05, AD-06
+**Locked context**: `.planning/phases/01-taylor-algebra-ad-primitives-xcfun-ad/01-CONTEXT.md` (cubecl pivot, 28 decisions, 2026-04-19 PM rewrite)
 **Success Criteria** (what must be TRUE):
-  1. `CTaylor<T, const N: usize>` for `N in 0..=7` compiles with `[T; 1 << N]` storage and zero heap allocation on any operation (verified by `clippy::box_default` + `needless_collect` denials).
-  2. For a fixed-seed input set at orders 0..=3, `CTaylor::<f64, N>` addition, subtraction, multiplication, `reciprocal`, `sqrt`, `exp`, `log`, `pow`, `powi`, `erf`, `asinh`, `atan` all produce coefficient arrays matching a C++ test driver at `f64::to_bits` equality.
-  3. Property tests (ring axioms, `exp`/`log` round-trip, `sqrt`-squared invariance, Leibniz product rule) each run >= 10 000 iterations with zero failures.
-  4. `cargo bench -p xcfun-ad` publishes a baseline for `CTaylor::mul` at `N in {2,3,4,5,6}`.
-  5. Every `*_expand` function from `xcfun-master/src/taylor/tmath.hpp` has a byte-equivalent Rust port with golden-coefficient tests at 3 inputs x 7 orders passing bit-for-bit.
-**Plans**: 7 plans across 3 waves
+  1. `CTaylor<F: Float, const N: u32>` compiles as a pure `#[cube]` type for `N in 0..=7` with `Array<F>` storage of length `1 << N`, verified by passing `cargo test -p xcfun-ad --features cpu` exercising every `N` via `cubecl-cpu`.
+  2. Every arithmetic operation (`+`, `-`, `*`, `/`, neg) and every composed elementary function (`reciprocal`, `sqrt`, `exp`, `log`, `pow`, `powi`, `erf`, `asinh`, `atan`) is implemented as `#[cube] fn` generic over `F: Float`. For `F = f64`, every op produces coefficient arrays matching the C++ test driver at relative error ≤ 1e-12 on a fixed-seed input set at orders 0..=3.
+  3. Every `*_expand` from `xcfun-master/external/upstream/taylor/tmath.hpp` (`inv_expand`, `exp_expand`, `log_expand`, `pow_expand`, `sqrt_expand`, `cbrt_expand`, `gauss_expand`, `erf_expand`) has a `#[cube] fn` port writing into a length-8 `Array<F>`, with golden-coefficient parity at ≤ 1e-12 vs the C++ driver across 3 inputs × 7 orders.
+  4. Property tests (ring axioms, `exp`/`log` round-trip, `sqrt`-squared invariance, Leibniz product rule, ≥ 11 properties) run ≥ 10 000 iterations per property using the **batch-per-property kernel pattern** (proptest generates 10k inputs upfront, single kernel evaluates all, results aggregated host-side) with zero failures.
+  5. `cargo bench -p xcfun-ad` publishes a baseline for the `CTaylor::mul`-equivalent `#[cube]` kernel at `N in {2,3,4,5,6}` and composed `exp`/`log`/`pow` at `N = 4`, measured at batch sizes {1, 64, 1024} so kernel-launch-amortized cost is visible.
+  6. CI evidence (asm spot-check or equivalent) confirms cubecl-cpu's MLIR lowering does **not** introduce FMA or operation reordering inside `CTaylor::mul` on the f64 path. If reordering is detected and unavoidable, plan-phase MUST escalate via `PLANNING INCONCLUSIVE` rather than silently widen tolerance (per CONTEXT.md D-03).
+**Plans**: All prior 01-* plans VOID under cubecl pivot. Replan from scratch via `/gsd:plan-phase 1`.
 
-Plans:
-- [x] 01-01-PLAN.md — Wave 0: workspace + crate scaffolding, ValidN<N, SIZE> sealed trait (two-const-generic stable-Rust deviation — see 01-01-SUMMARY.md D-Exec-01), CTaylor struct + elementwise ops, .cargo/config.toml fp-contract=off [AD-01] ✅ 2026-04-19
-- [ ] 01-02-PLAN.md — Wave 1: 8 *_expand scalar series ports (inv/exp/log/pow/sqrt/cbrt/gauss/erf) + tfuns helpers byte-for-byte from tmath.hpp [AD-04]
-- [ ] 01-03-PLAN.md — Wave 1: ctaylor_rec mul/multo/compose port incl. base cases N=0,1,2 + general N=3..=7 via split_at_mut [AD-03]
-- [ ] 01-04-PLAN.md — Wave 1: xtask regen-ad-fixtures + C++ driver + fixture format + ≥1668 committed records [AD-05]
-- [ ] 01-05-PLAN.md — Wave 2: Num trait (f64 + CTaylor<f64,N>) + 9 composed elementary fns + golden fixture integration tests [AD-02, AD-05]
-- [ ] 01-06-PLAN.md — Wave 2: proptest 11 properties × 10k iters (ring axioms + roundtrips + Leibniz) [AD-06]
-- [ ] 01-07-PLAN.md — Wave 2: criterion bench baselines for mul N={2..6} and composed exp/log/pow at N=4 [AD-03 baseline]
+Pre-pivot plans (VOID — to be reverted by Wave 0 of new plan, retained in git history):
+- ~~01-01-PLAN.md — Wave 0 hand-Rust scaffolding (commits f07611c, c7a3f46) [SUPERSEDED]~~
+- ~~01-02-PLAN.md — Wave 1 hand-Rust `*_expand` ports (commit 2db557c, partial) [SUPERSEDED]~~
+- ~~01-03-PLAN.md — Wave 1 hand-Rust `ctaylor_rec` mul/multo/compose port [SUPERSEDED]~~
+- ~~01-04-PLAN.md — Wave 1 fixture generator [INTENT RETAINED, replanned for cubecl validation]~~
+- ~~01-05-PLAN.md — Wave 2 `Num` trait + composed fns [SUPERSEDED — `Num` retired in favour of cubecl `Float`]~~
+- ~~01-06-PLAN.md — Wave 2 proptest 11 props × 10k iters [INTENT RETAINED, now batch-per-property kernel]~~
+- ~~01-07-PLAN.md — Wave 2 criterion bench baselines [INTENT RETAINED, now kernel-launch-amortized at batch sizes {1,64,1024}]~~
 
 ### Phase 2: Core Foundations + LDA Tier + Parity Harness
 **Goal**: A user can run `cargo xtask validate --backend cpu --order 2 --filter 'lda|slaterx|vwn|pw92c|pz81c|ldaerf|tfk|tw|vonw'` and see zero failures at 1e-12 relative error against the C++ reference.
@@ -117,13 +119,14 @@ Plans:
   5. `XcError::as_c_code` returns `1` (EORDER), `2` (EVARS), `4` (EMODE), `6` (EVARS|EMODE), `-1` (UnknownName/other), and `0` on success, verified by unit test.
 **Plans**: TBD
 
-### Phase 6: Kernels (`xcfun-kernels`) + CPU Batch + CUDA + Wgpu Backends
-**Goal**: A single `#[cube]` source per functional evaluates correctly on CPU (1e-13 vs scalar), CUDA (1e-13 vs CPU), and Wgpu (1e-9 vs CPU with `erf` auto-fallback); `Functional::eval_vec` auto-dispatches to `Batch<CpuRuntime>` at `nr_points >= 64`.
+### Phase 6: GPU Backends + Batch Lifecycle (`xcfun-kernels` / `xcfun-gpu`)
+**Goal**: CUDA and Wgpu cubecl runtimes enabled; `Functional::eval_vec` auto-dispatches between `CpuRuntime`, `CudaRuntime`, and `WgpuRuntime` per `auto_backend()`; tier-3 parity at 1e-13 (CUDA vs CPU) and 1e-9 (Wgpu vs CPU with `erf` auto-fallback). Per-functional `#[cube]` kernel bodies already exist (landed in Phases 2–4 atop `xcfun-ad`'s cubecl-native `CTaylor`); Phase 6 adds the GPU runtimes, buffer pools, dispatch heuristic, and batch lifecycle on top.
 **Depends on**: Phase 5
-**Research flag**: Yes (per SUMMARY.md - shared-spec option (a) verification, `#[cube]` recursive `CTaylor` multiply on `CpuRuntime`, kernel dispatch table codegen vs proc-macro for CPU batch; cubecl 0.10-pre.3 runtime-feature API, buffer-pool growth, `auto_backend` fallback matrix for GPU)
+**Research flag**: Yes (per SUMMARY.md — `cubecl 0.10-pre.3` runtime-feature API for `auto_backend`, buffer-pool growth strategy, `Wgpu::Features::SHADER_F64` runtime probe, `erf` fallback matrix; per-functional `#[cube]` body design is no longer a Phase 6 concern — it's resolved in Phases 2–4)
 **Requirements**: RS-08, KER-01, KER-02, KER-03, KER-04, KER-05, KER-06, GPU-01, GPU-02, GPU-03, GPU-04, GPU-05, GPU-06, GPU-07, GPU-08
+**Note (post-cubecl-pivot)**: Pre-pivot, this phase was scoped as "port 78 functional bodies to `#[cube]` AND wire GPU runtimes". After the cubecl pivot (see Phase 1 CONTEXT.md D-23), per-functional `#[cube]` bodies move forward into Phases 2–4 (where each functional tier ships cubecl-native from day one). Phase 6's residual scope is the GPU-runtime + batch-lifecycle layer. The pre-pivot `CTaylorDev<F, N>` device type is eliminated — `xcfun-ad`'s `CTaylor<F, N>` already runs on any cubecl runtime.
 **Success Criteria** (what must be TRUE):
-  1. Every one of the 78 functionals has a `#[cube]` counterpart generic over `F: Float` whose body is the single source of truth (no host/device duplication); `DensVarsDev<F, N>` and `CTaylorDev<F, N>` mirror their host counterparts with identical field order and bit-flag indexing.
+  1. Every one of the 78 functionals has a `#[cube]` body generic over `F: Float` (already landed in Phases 2–4 atop `xcfun-ad`); Phase 6 verifies that the same source compiles unchanged for `CudaRuntime` and `WgpuRuntime`.
   2. Tier-3 parity: `Functional::eval_vec` on a 10 000-point grid via `Batch<CpuRuntime>` matches the scalar `Functional::eval` loop within 1e-13 relative error; CI asserts this on every PR.
   3. `Functional::eval_vec` dispatches to `Batch<CpuRuntime>` when `nr_points >= 64`; `Backend::Cpu` is always available; `Backend::Cuda` compiles behind `--features cuda` and `Backend::Wgpu` behind `--features wgpu`; `auto_backend()` selects CUDA when available, else Wgpu with `SHADER_F64`, else CPU.
   4. Tier-3 parity on CUDA: 10 000-point grid matches CPU within 1e-13 relative error; tier-3 parity on Wgpu: 10 000-point grid excluding functionals with `Dependency::ERF` matches CPU within 1e-9 relative error.
