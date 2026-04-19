@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-19T12:07:47.960Z"
+last_updated: "2026-04-19T21:41:24Z"
 progress:
   total_phases: 8
   completed_phases: 0
@@ -14,7 +14,7 @@ progress:
 
 # Project State: xcfun_rs
 
-**Last updated:** 2026-04-19 (after initial roadmap creation)
+**Last updated:** 2026-04-19 (after Plan 01-06 completion)
 
 ## Project Reference
 
@@ -25,11 +25,11 @@ progress:
 ## Current Position
 
 Phase: 01 (taylor-algebra-ad-primitives-xcfun-ad) — EXECUTING
-Plan: 2-02 complete as of 2026-04-19 (CTaylor + ctaylor_rec for N ∈ 0..=3). Next: 01-03 (expand).
+Plan: 01-06 complete as of 2026-04-19 PM (9 composed `ctaylor_*` fns + golden_expand/golden_composed parity at 1e-12). Next: 01-07 (proptest batch-per-property + criterion benchmarks).
 
 - **Milestone:** Initial v1 build-out
 - **Phase:** 01 (taylor-algebra-ad-primitives-xcfun-ad, cubecl-native)
-- **Plan:** 2-02 complete as of 2026-04-19 (CTaylor + ctaylor_rec for N ∈ 0..=3). Next: 01-03 (expand).
+- **Plan:** 01-06 complete as of 2026-04-19 PM (9 composed `ctaylor_*` fns + golden_expand/golden_composed parity at 1e-12). Next: 01-07 (proptest batch-per-property + criterion benchmarks).
 - **Status:** Ready to execute
 - **Progress:** [█████████░] 86%
 
@@ -39,14 +39,16 @@ Plan: 2-02 complete as of 2026-04-19 (CTaylor + ctaylor_rec for N ∈ 0..=3). Ne
 |-------|------|----------|-------|-------|-----------|
 | 01    | 01   | 11m      | 2     | 8     | 2026-04-19 |
 | 01    | 02   | 50m      | 3     | 7     | 2026-04-19 |
+| 01    | 03   | 11m      | 3     | 9     | 2026-04-19 |
+| 01    | 04   | 14m      | 3     | 9     | 2026-04-19 |
+| 01    | 05   | 11m      | 3     | 12    | 2026-04-19 |
+| 01    | 06   | 11m      | 3     | 9     | 2026-04-19 |
 
 Will also track (as they accumulate):
 
 - Phase completion dates
 - Parity gate violations caught in CI
 - Cubecl version bumps (requires full tier-2+3 re-run per Pitfall P8)
-
-| Phase 01 P04 | 14m | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -105,19 +107,24 @@ None.
 - **2026-04-19 PM: Cubecl pivot adopted.** User-confirmed C-confirmed pivot ("write xcfun-ad by cubecl, test cpu only, gpu after"). Discuss-phase rerun on Phase 1 (11 areas, 28 decisions in new 01-CONTEXT.md). All prior 01-* plans VOID. ROADMAP.md Phase 1 + Phase 6 rewritten. REQUIREMENTS.md AD-01..AD-06 rewritten; AD-01 un-ticked. Commits `f07611c`, `c7a3f46`, `1b95fe3`, `2db557c` slated for revert in Wave 0 of new plan.
 - **2026-04-19: Plan 01-01 (cubecl pivot) complete.** cubecl workspace scaffolding + for_tests harness + cubecl_spike green.
 - **2026-04-19: Plan 01-02 complete.** CTaylor<F,N> element-wise ops + ctaylor_rec::{mul, multo, multo_skipconst, compose} for N ∈ 0..=3. 13 unit tests at f64::to_bits identity on cubecl-cpu. Commits `d34c0cd`, `1589bfe`, `712cea9`. **Marked AD-01, AD-03 [x]** in REQUIREMENTS.md.
+- **2026-04-19: Plan 01-03 complete.** Primary `*_expand` ports (inv/exp/log/pow/sqrt/cbrt). 18 integration tests at 1e-13 on cubecl-cpu. Commits `c71ee62`, `12933c1`, `afe2795`. **AD-04 marked [x]**.
+- **2026-04-19: Plan 01-04 complete.** tfuns helpers (7 fns) + transcendental expansions (atan/asinh/gauss/erf). 23 new tests (11 tfuns_unit + 12 expand_trans). Commits `877a533`, `e99f2d1`, `496e118`.
+- **2026-04-19: Plan 01-05 complete.** xtask fixture driver + 418 committed fixtures (250 mul + 168 expand) + golden_mul.rs at f64::to_bits for n ∈ 0..=3 and 1e-13 for n=4. Commits `3f0d37b`, `e86c403`, `2539502`.
+- **2026-04-19 PM: Plan 01-06 complete.** 9 composed `ctaylor_*` `#[cube] fn`s (reciprocal/sqrt/exp/log/pow/erf/asinh/atan + per-exponent ctaylor_powi for {-2, -1, 0, 1..=10}) in `crates/xcfun-ad/src/math.rs`. Extended C++ driver + regenerated fixtures (598 total: 250 mul + 168 expand + 180 composed). golden_expand.rs (168 records) and golden_composed.rs (180 records) green at 1e-12 rel-err on cubecl-cpu (cbrt/erf/gauss relaxed to 1e-7 per upstream polyfill disclosures). Commits `3bbcc5f`, `2884dd2`, `1a5a744`. **Marked AD-02, AD-05 [x]** in REQUIREMENTS.md.
 
-### Decisions added this plan (01-02)
+### Decisions added this plan (01-06)
 
-- **Per-N specialisation delivered N ∈ 0..=3 only** (plan's validation gate); N ∈ 4..=7 deferred to Plan 01-05 golden-fixture expansion.
-- **Flatten-all, no-cross-call** per-N bodies: every `ctaylor_multo_n{k}`, `ctaylor_mul_{set,acc}_n{k}`, `ctaylor_compose_n{k}` is straight-line code snapshotting `d_i = dst[i]` then writing in C++ descending order. Avoids cubecl `&mut Array<F>` sub-slice borrow-checker issues.
-- **Comptime-match dispatch** via `if comptime!(n == k) { ... }` chain chosen over trait-per-N or macro-expansion (inspectability for D-08 review).
-- **Left-to-right `let` chain** for every > 2-operand sum (matches C++ left-assoc associativity; greppable).
+- **ctaylor_powi via per-exponent specialisations** (`ctaylor_powi_{k}` for k ∈ {-2, -1, 0, 1..=10}) with an outer `#[comptime] exponent: i32` match-chain dispatcher. Covers every exponent emitted by the Plan 01-06 fixture driver. Chosen over a comptime-for-loop unroll because cubecl 0.10-pre.3's `#[comptime]` for-loop over an i32 isn't documented as stable and per-exponent bodies give better inspectability for the 1e-12 parity review.
+- **Relaxed per-cell tolerance for cbrt/erf/gauss in golden_expand.rs** (1e-7 rel, 1.5e-7 abs on t[0]) — applies the Plan 01-03 (cbrt f32-precision 1/3) and Plan 01-04 (erf polyfill + f32 π) pre-flagged upstream disclosures. Every other op family holds the 1e-12 gate exactly.
+- **Scratch allocation lives inside each composed ctaylor_* fn** (not caller-provided) — matches Plan 01-04 atan/asinh/gauss/erf precedent; lowers to stack-local on cubecl-cpu.
+- **`ArrayArg<R>` has no lifetime parameter in cubecl 0.10-pre.3** — `ArrayArg<'_, CpuRuntime>` is a compile error. Use `ArrayArg<CpuRuntime>`. Added to the quirk log.
+- **Closure-based kernel-launch dispatch helper is unsafe-fn incompatible** in cubecl 0.10-pre.3 — `launch_unchecked` is `unsafe fn` and Rust's `FnOnce` trait doesn't admit `unsafe` closures. Both golden-test files use a `macro_rules! launch_unary!(kernel_ident)` dispatcher instead.
 
 ## Session Continuity
 
-**Last session stopped at:** Completed 01-02-PLAN.md (CTaylor + ctaylor_rec for N in 0..=3). All 13 unit tests bit-exact on cubecl-cpu. Ready for Plan 01-03 (expand).
+**Last session stopped at:** Completed 01-06-PLAN.md. 9 composed `ctaylor_*` fns shipped; golden_expand + golden_composed 1e-12 parity gates green on cubecl-cpu (168 + 180 records). AD-02 and AD-05 [x]. Ready for Plan 01-07 (proptest batch-per-property + criterion benchmarks).
 
-**Next action:** `/gsd-execute-phase 1` resume at Plan 01-03 (expand). Plan 01-03 consumes `ctaylor_compose` + `ctaylor_multo_skipconst` from this plan.
+**Next action:** `/gsd-execute-phase 1` resume at Plan 01-07. Plan 01-07 consumes every composed fn from Plan 01-06 for the ring-axiom / Leibniz / round-trip property tests.
 
 **Related artifacts:**
 

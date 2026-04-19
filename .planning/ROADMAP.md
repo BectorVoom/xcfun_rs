@@ -63,7 +63,7 @@ The dependency DAG (per `ARCHITECTURE.md` section 7 and `SUMMARY.md` "Phase Orde
 - [x] 01-03-PLAN.md — Wave 2 (parallel with 01-05): expand/{inv, exp, log, pow, sqrt, cbrt} — primary scalar series (AD-04)
 - [x] 01-04-PLAN.md — Wave 3: tfuns helpers + expand/{atan, gauss, erf, asinh} — transcendentals (AD-04)
 - [x] 01-05-PLAN.md — Wave 2 (parallel with 01-03): xtask fixture generator + committed fixtures + golden_mul test (AD-03, AD-05)
-- [ ] 01-06-PLAN.md — Wave 4: math.rs composed ops + extended fixtures + golden_expand/composed (AD-02, AD-05)
+- [x] 01-06-PLAN.md — Wave 4: math.rs composed ops + extended fixtures + golden_expand/composed (AD-02, AD-05)
 - [ ] 01-07-PLAN.md — Wave 5: proptest batch-per-property + criterion benchmarks + phase sign-off (AD-03, AD-06)
 
 Pre-pivot plans (VOID — reverted by Wave 0 of the new plan, retained in git history):
