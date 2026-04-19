@@ -1,3 +1,5 @@
+> **⚠ SUPERSEDED 2026-04-19 PM by cubecl pivot — see `01-CONTEXT.md` for current decisions. Research content below retained for historical context only. The pre-pivot hand-Rust `CTaylor<T, const N: usize>` design, `Num` trait, `ValidN` sealed trait, and 10-11 `*_expand` module split described below are VOID; Phase 1 executors MUST read `01-CONTEXT.md` (28 cubecl-pivot decisions) instead.**
+
 # Phase 1: Taylor Algebra & AD Primitives (`xcfun-ad`) - Research
 
 **Researched:** 2026-04-19

@@ -2,7 +2,7 @@
 phase: 1
 slug: taylor-algebra-ad-primitives-xcfun-ad
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-04-19
 revised: 2026-04-19
@@ -99,14 +99,14 @@ revised: 2026-04-19
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify (verified above)
-- [ ] Wave 0 covers all MISSING references (Cargo.toml, lib.rs, .cargo/config.toml, tests/, benches/, fixtures/, xtask/)
-- [ ] No watch-mode flags in CI (`cargo watch` is local-only; CI uses single-shot `cargo test`)
-- [ ] Feedback latency < 12s (quick run empirically ≤ 10 s on `cargo test -p xcfun-ad --lib`)
-- [ ] `nyquist_compliant: true` set in frontmatter (flip when planner confirms every task in the final PLAN.md files has `<automated>` or is on the manual-only list above)
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify (verified above)
+- [x] Wave 0 covers all MISSING references (Cargo.toml, lib.rs, .cargo/config.toml, tests/, benches/, fixtures/, xtask/)
+- [x] No watch-mode flags in CI (`cargo watch` is local-only; CI uses single-shot `cargo test`)
+- [x] Feedback latency < 12s (quick run empirically ≤ 10 s on `cargo test -p xcfun-ad --lib`)
+- [x] `nyquist_compliant: true` set in frontmatter (verified 2026-04-19 PM: every Phase 1 task across plans 01-01..01-07 has an `<automated>` verify block or is listed in the manual-only table above)
 
-**Approval:** pending
+**Approval:** approved by planner-revision 2026-04-19 PM
 
 ---
 
