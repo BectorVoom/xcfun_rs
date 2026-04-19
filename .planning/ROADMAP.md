@@ -58,8 +58,8 @@ The dependency DAG (per `ARCHITECTURE.md` section 7 and `SUMMARY.md` "Phase Orde
   6. CI evidence (asm spot-check or equivalent) confirms cubecl-cpu's MLIR lowering does **not** introduce FMA or operation reordering inside `CTaylor::mul` on the f64 path. If reordering is detected and unavoidable, plan-phase MUST escalate via `PLANNING INCONCLUSIVE` rather than silently widen tolerance (per CONTEXT.md D-03).
 **Plans**: 7 plans across 6 waves (granularity standard; parallelization enabled — Wave 2 runs plans 03 + 05 in parallel).
 
-- [ ] 01-01-PLAN.md — Wave 0: revert pre-pivot commits + workspace/xtask scaffold + cubecl-cpu spike + for_tests harness (AD-01 substrate)
-- [ ] 01-02-PLAN.md — Wave 1: CTaylor + ctaylor_rec{mul, multo, compose} — load-bearing recursion (AD-01, AD-03)
+- [x] 01-01-PLAN.md — Wave 0: revert pre-pivot commits + workspace/xtask scaffold + cubecl-cpu spike + for_tests harness (AD-01 substrate)
+- [x] 01-02-PLAN.md — Wave 1: CTaylor + ctaylor_rec{mul, multo, compose} — load-bearing recursion (AD-01, AD-03)
 - [ ] 01-03-PLAN.md — Wave 2 (parallel with 01-05): expand/{inv, exp, log, pow, sqrt, cbrt} — primary scalar series (AD-04)
 - [ ] 01-04-PLAN.md — Wave 3: tfuns helpers + expand/{atan, gauss, erf, asinh} — transcendentals (AD-04)
 - [ ] 01-05-PLAN.md — Wave 2 (parallel with 01-03): xtask fixture generator + committed fixtures + golden_mul test (AD-03, AD-05)

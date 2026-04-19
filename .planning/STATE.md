@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-19T08:38:53.654Z"
+last_updated: "2026-04-19T11:21:16.450Z"
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 7
-  completed_plans: 0
-  percent: 0
+  completed_plans: 3
+  percent: 43
 ---
 
 # Project State: xcfun_rs
@@ -25,19 +25,20 @@ progress:
 ## Current Position
 
 Phase: 01 (taylor-algebra-ad-primitives-xcfun-ad) — EXECUTING
-Plan: 1 of 7
+Plan: 3 of 7 (next: 01-03 — expand)
 
 - **Milestone:** Initial v1 build-out
-- **Phase:** 01 (taylor-algebra-ad-primitives-xcfun-ad, cubecl-native) — REPLAN PENDING
-- **Plan:** Pre-pivot 01-01 (hand-Rust scaffolding) is in git history but VOID per cubecl pivot. Plans 01-02..01-07 never executed — also VOID. New plans TBD via plan-phase.
+- **Phase:** 01 (taylor-algebra-ad-primitives-xcfun-ad, cubecl-native)
+- **Plan:** 01-02 complete as of 2026-04-19 (CTaylor + ctaylor_rec for N ∈ 0..=3). Next: 01-03 (expand).
 - **Status:** Executing Phase 01
-- **Progress:** [░░░░░░░░░░] 0% (pre-pivot 01-01 commits will be reverted by Wave 0 of new plan)
+- **Progress:** [████░░░░░░] 43%
 
 ## Performance Metrics
 
 | Phase | Plan | Duration | Tasks | Files | Completed |
 |-------|------|----------|-------|-------|-----------|
 | 01    | 01   | 11m      | 2     | 8     | 2026-04-19 |
+| 01    | 02   | 50m      | 3     | 7     | 2026-04-19 |
 
 Will also track (as they accumulate):
 
@@ -100,12 +101,21 @@ None.
 - 2026-04-19 AM: Plan 01-01 complete (hand-Rust Wave 0 scaffolding). Commits: `f07611c`, `c7a3f46`. **Marked AD-01 [x]** in REQUIREMENTS.md.
 - 2026-04-19 AM: Plan 01-02 partial (hand-Rust inv/exp/log expansions). Commit: `2db557c`. WIP files: `crates/xcfun-ad/src/expand/{pow,sqrt}.rs` (untracked).
 - **2026-04-19 PM: Cubecl pivot adopted.** User-confirmed C-confirmed pivot ("write xcfun-ad by cubecl, test cpu only, gpu after"). Discuss-phase rerun on Phase 1 (11 areas, 28 decisions in new 01-CONTEXT.md). All prior 01-* plans VOID. ROADMAP.md Phase 1 + Phase 6 rewritten. REQUIREMENTS.md AD-01..AD-06 rewritten; AD-01 un-ticked. Commits `f07611c`, `c7a3f46`, `1b95fe3`, `2db557c` slated for revert in Wave 0 of new plan.
+- **2026-04-19: Plan 01-01 (cubecl pivot) complete.** cubecl workspace scaffolding + for_tests harness + cubecl_spike green.
+- **2026-04-19: Plan 01-02 complete.** CTaylor<F,N> element-wise ops + ctaylor_rec::{mul, multo, multo_skipconst, compose} for N ∈ 0..=3. 13 unit tests at f64::to_bits identity on cubecl-cpu. Commits `d34c0cd`, `1589bfe`, `712cea9`. **Marked AD-01, AD-03 [x]** in REQUIREMENTS.md.
+
+### Decisions added this plan (01-02)
+
+- **Per-N specialisation delivered N ∈ 0..=3 only** (plan's validation gate); N ∈ 4..=7 deferred to Plan 01-05 golden-fixture expansion.
+- **Flatten-all, no-cross-call** per-N bodies: every `ctaylor_multo_n{k}`, `ctaylor_mul_{set,acc}_n{k}`, `ctaylor_compose_n{k}` is straight-line code snapshotting `d_i = dst[i]` then writing in C++ descending order. Avoids cubecl `&mut Array<F>` sub-slice borrow-checker issues.
+- **Comptime-match dispatch** via `if comptime!(n == k) { ... }` chain chosen over trait-per-N or macro-expansion (inspectability for D-08 review).
+- **Left-to-right `let` chain** for every > 2-operand sum (matches C++ left-assoc associativity; greppable).
 
 ## Session Continuity
 
-**Last session stopped at:** Phase 1 cubecl pivot — discuss-phase rewrite complete; planning artifacts (CONTEXT.md, DISCUSSION-LOG.md, ROADMAP.md, REQUIREMENTS.md, STATE.md) updated to reflect cubecl-native AD direction.
+**Last session stopped at:** Completed 01-02-PLAN.md (CTaylor + ctaylor_rec for N in 0..=3). All 13 unit tests bit-exact on cubecl-cpu. Ready for Plan 01-03 (expand).
 
-**Next action:** `/gsd:plan-phase 1` to create new plans for cubecl-native `xcfun-ad`. Wave 0 of the new plan must include git revert of pre-pivot commits + cleanup of `crates/xcfun-ad/src/` (per CONTEXT.md D-21).
+**Next action:** `/gsd-execute-phase 1` resume at Plan 01-03 (expand). Plan 01-03 consumes `ctaylor_compose` + `ctaylor_multo_skipconst` from this plan.
 
 **Related artifacts:**
 
