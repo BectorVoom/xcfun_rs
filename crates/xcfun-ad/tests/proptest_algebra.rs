@@ -80,8 +80,8 @@ fn empty_buffer(client: &xcfun_ad::for_tests::CpuClient, len: usize) -> cubecl::
 
 #[cube(launch_unchecked)]
 fn commutativity_add_kernel(
-    a: &Array<f64>,     // length K*2 — flattened (a0, a1) per iter
-    b: &Array<f64>,     // length K*2
+    a: &Array<f64>,        // length K*2 — flattened (a0, a1) per iter
+    b: &Array<f64>,        // length K*2
     diff: &mut Array<f64>, // length K*2 — (a+b) - (b+a)
 ) {
     let i = ABSOLUTE_POS;
@@ -136,9 +136,12 @@ fn commutativity_add() {
     let diff = f64::from_bytes(&bytes);
     for (i, d) in diff.iter().enumerate() {
         assert_eq!(
-            *d, 0.0_f64,
+            *d,
+            0.0_f64,
             "commutativity_add iter={} coef={} diff={}",
-            i / 2, i % 2, d
+            i / 2,
+            i % 2,
+            d
         );
     }
 }
@@ -148,11 +151,7 @@ fn commutativity_add() {
 // -----------------------------------------------------------------------------
 
 #[cube(launch_unchecked)]
-fn commutativity_mul_kernel(
-    a: &Array<f64>,
-    b: &Array<f64>,
-    diff: &mut Array<f64>,
-) {
+fn commutativity_mul_kernel(a: &Array<f64>, b: &Array<f64>, diff: &mut Array<f64>) {
     let i = ABSOLUTE_POS;
     if i < diff.len() / 2 {
         let i0 = i * 2;
@@ -210,9 +209,12 @@ fn commutativity_mul() {
     let diff = f64::from_bytes(&bytes);
     for (i, d) in diff.iter().enumerate() {
         assert_eq!(
-            *d, 0.0_f64,
+            *d,
+            0.0_f64,
             "commutativity_mul iter={} coef={} diff={}",
-            i / 2, i % 2, d
+            i / 2,
+            i % 2,
+            d
         );
     }
 }
@@ -222,12 +224,7 @@ fn commutativity_mul() {
 // -----------------------------------------------------------------------------
 
 #[cube(launch_unchecked)]
-fn associativity_add_kernel(
-    a: &Array<f64>,
-    b: &Array<f64>,
-    c: &Array<f64>,
-    diff: &mut Array<f64>,
-) {
+fn associativity_add_kernel(a: &Array<f64>, b: &Array<f64>, c: &Array<f64>, diff: &mut Array<f64>) {
     let i = ABSOLUTE_POS;
     if i < diff.len() {
         let lhs = (a[i] + b[i]) + c[i];
@@ -239,11 +236,7 @@ fn associativity_add_kernel(
 #[test]
 fn associativity_add() {
     let iters = iter_count();
-    let strategy = (
-        -1e6_f64..1e6,
-        -1e6_f64..1e6,
-        -1e6_f64..1e6,
-    );
+    let strategy = (-1e6_f64..1e6, -1e6_f64..1e6, -1e6_f64..1e6);
     let inputs = generate(strategy, iters);
     let client = cpu_client();
 
@@ -281,7 +274,12 @@ fn associativity_add() {
         assert!(
             d.abs() <= tol,
             "associativity_add iter={} diff={:.3e} tol={:.3e} a={} b={} c={}",
-            i, d, tol, ai, bi, ci
+            i,
+            d,
+            tol,
+            ai,
+            bi,
+            ci
         );
     }
 }
@@ -291,12 +289,7 @@ fn associativity_add() {
 // -----------------------------------------------------------------------------
 
 #[cube(launch_unchecked)]
-fn distributivity_kernel(
-    a: &Array<f64>,
-    b: &Array<f64>,
-    c: &Array<f64>,
-    diff: &mut Array<f64>,
-) {
+fn distributivity_kernel(a: &Array<f64>, b: &Array<f64>, c: &Array<f64>, diff: &mut Array<f64>) {
     let i = ABSOLUTE_POS;
     if i < diff.len() {
         let lhs = a[i] * (b[i] + c[i]);
@@ -308,11 +301,7 @@ fn distributivity_kernel(
 #[test]
 fn distributivity() {
     let iters = iter_count();
-    let strategy = (
-        -100.0_f64..100.0,
-        -100.0_f64..100.0,
-        -100.0_f64..100.0,
-    );
+    let strategy = (-100.0_f64..100.0, -100.0_f64..100.0, -100.0_f64..100.0);
     let inputs = generate(strategy, iters);
     let client = cpu_client();
 
@@ -349,7 +338,12 @@ fn distributivity() {
         assert!(
             d.abs() <= tol,
             "distributivity iter={} diff={:.3e} tol={:.3e} a={} b={} c={}",
-            i, d, tol, ai, bi, ci
+            i,
+            d,
+            tol,
+            ai,
+            bi,
+            ci
         );
     }
 }
@@ -359,10 +353,7 @@ fn distributivity() {
 // -----------------------------------------------------------------------------
 
 #[cube(launch_unchecked)]
-fn additive_inverse_kernel(
-    a: &Array<f64>,
-    out: &mut Array<f64>,
-) {
+fn additive_inverse_kernel(a: &Array<f64>, out: &mut Array<f64>) {
     let i = ABSOLUTE_POS;
     if i < out.len() / 2 {
         let i0 = i * 2;
@@ -403,9 +394,12 @@ fn additive_inverse() {
     let out = f64::from_bytes(&bytes);
     for (i, v) in out.iter().enumerate() {
         assert_eq!(
-            *v, 0.0_f64,
+            *v,
+            0.0_f64,
             "additive_inverse iter={} coef={} got={}",
-            i / 2, i % 2, v
+            i / 2,
+            i % 2,
+            v
         );
     }
 }
@@ -415,10 +409,7 @@ fn additive_inverse() {
 // -----------------------------------------------------------------------------
 
 #[cube(launch_unchecked)]
-fn multiplicative_identity_kernel(
-    a: &Array<f64>,
-    out: &mut Array<f64>,
-) {
+fn multiplicative_identity_kernel(a: &Array<f64>, out: &mut Array<f64>) {
     let i = ABSOLUTE_POS;
     if i < out.len() / 2 {
         let i0 = i * 2;
@@ -469,9 +460,12 @@ fn multiplicative_identity() {
     let diff = f64::from_bytes(&bytes);
     for (i, d) in diff.iter().enumerate() {
         assert_eq!(
-            *d, 0.0_f64,
+            *d,
+            0.0_f64,
             "multiplicative_identity iter={} coef={} diff={}",
-            i / 2, i % 2, d
+            i / 2,
+            i % 2,
+            d
         );
     }
 }
@@ -481,10 +475,7 @@ fn multiplicative_identity() {
 // -----------------------------------------------------------------------------
 
 #[cube(launch_unchecked)]
-fn exp_log_roundtrip_kernel(
-    x: &Array<f64>,
-    out: &mut Array<f64>,
-) {
+fn exp_log_roundtrip_kernel(x: &Array<f64>, out: &mut Array<f64>) {
     let i = ABSOLUTE_POS;
     if i < out.len() {
         // log(exp(x)) ≈ x at the scalar level (constant coefficient only).
@@ -525,7 +516,10 @@ fn exp_log_roundtrip() {
         assert!(
             rel < 1e-13,
             "exp_log_roundtrip iter={} x={} log(exp(x))={} rel={:.3e}",
-            i, x, g, rel
+            i,
+            x,
+            g,
+            rel
         );
     }
 }
@@ -535,10 +529,7 @@ fn exp_log_roundtrip() {
 // -----------------------------------------------------------------------------
 
 #[cube(launch_unchecked)]
-fn sqrt_squared_kernel(
-    x: &Array<f64>,
-    out: &mut Array<f64>,
-) {
+fn sqrt_squared_kernel(x: &Array<f64>, out: &mut Array<f64>) {
     let i = ABSOLUTE_POS;
     if i < out.len() {
         let s = x[i].sqrt();
@@ -575,7 +566,10 @@ fn sqrt_squared() {
         assert!(
             rel < 1e-13,
             "sqrt_squared iter={} x={} (sqrt*sqrt)={} rel={:.3e}",
-            i, x, g, rel
+            i,
+            x,
+            g,
+            rel
         );
     }
 }
@@ -586,7 +580,7 @@ fn sqrt_squared() {
 
 #[cube(launch_unchecked)]
 fn pow_inverse_kernel(
-    xa: &Array<f64>, // length K*2 — (x, a) per iter
+    xa: &Array<f64>,      // length K*2 — (x, a) per iter
     out: &mut Array<f64>, // length K — x^a * x^(-a)
 ) {
     let i = ABSOLUTE_POS;
@@ -603,8 +597,8 @@ fn pow_inverse_kernel(
 fn pow_inverse() {
     let iters = iter_count();
     let strategy = (
-        0.1_f64..100.0,     // x > 0
-        -5.0_f64..5.0,      // exponent a (bounded to keep intermediate range tame)
+        0.1_f64..100.0, // x > 0
+        -5.0_f64..5.0,  // exponent a (bounded to keep intermediate range tame)
     );
     let inputs = generate(strategy, iters);
     let client = cpu_client();
@@ -636,7 +630,11 @@ fn pow_inverse() {
         assert!(
             rel < 1e-13,
             "pow_inverse iter={} x={} a={} got={} rel={:.3e}",
-            i, x, a, g, rel
+            i,
+            x,
+            a,
+            g,
+            rel
         );
     }
 }
@@ -649,11 +647,7 @@ fn pow_inverse() {
 // -----------------------------------------------------------------------------
 
 #[cube(launch_unchecked)]
-fn leibniz_var0_kernel(
-    a: &Array<f64>,
-    b: &Array<f64>,
-    diff: &mut Array<f64>,
-) {
+fn leibniz_var0_kernel(a: &Array<f64>, b: &Array<f64>, diff: &mut Array<f64>) {
     let i = ABSOLUTE_POS;
     if i < diff.len() {
         let i0 = i * 2;

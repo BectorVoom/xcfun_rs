@@ -23,7 +23,7 @@
 //!   - `compose_n4_log/{1,64,1024}`
 //!   - `compose_n4_pow/{1,64,1024}`
 
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use cubecl::prelude::*;
 use cubecl_cpu::CpuRuntime;
 use std::hint::black_box;
@@ -43,12 +43,7 @@ fn kernel_log<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
 }
 
 #[cube(launch_unchecked)]
-fn kernel_pow<F: Float>(
-    x: &Array<F>,
-    aa: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn kernel_pow<F: Float>(x: &Array<F>, aa: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_pow::<F>(x, aa[0], out, n);
 }
 

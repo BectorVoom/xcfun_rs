@@ -30,21 +30,37 @@
 //!   1 — build or IO error (bails via anyhow)
 //!   2 — FAIL: forbidden mnemonic detected (D-03 escalation)
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
 const FORBIDDEN_MNEMONICS: &[&str] = &[
     // x86-64 fused multiply-add family (SSE/AVX scalar + packed double)
-    "vfmadd132pd", "vfmadd213pd", "vfmadd231pd",
-    "vfmadd132sd", "vfmadd213sd", "vfmadd231sd",
-    "vfmsub132pd", "vfmsub213pd", "vfmsub231pd",
-    "vfmsub132sd", "vfmsub213sd", "vfmsub231sd",
-    "vfnmadd132pd", "vfnmadd213pd", "vfnmadd231pd",
-    "vfnmadd132sd", "vfnmadd213sd", "vfnmadd231sd",
-    "vfnmsub132pd", "vfnmsub213pd", "vfnmsub231pd",
-    "vfnmsub132sd", "vfnmsub213sd", "vfnmsub231sd",
+    "vfmadd132pd",
+    "vfmadd213pd",
+    "vfmadd231pd",
+    "vfmadd132sd",
+    "vfmadd213sd",
+    "vfmadd231sd",
+    "vfmsub132pd",
+    "vfmsub213pd",
+    "vfmsub231pd",
+    "vfmsub132sd",
+    "vfmsub213sd",
+    "vfmsub231sd",
+    "vfnmadd132pd",
+    "vfnmadd213pd",
+    "vfnmadd231pd",
+    "vfnmadd132sd",
+    "vfnmadd213sd",
+    "vfnmadd231sd",
+    "vfnmsub132pd",
+    "vfnmsub213pd",
+    "vfnmsub231pd",
+    "vfnmsub132sd",
+    "vfnmsub213sd",
+    "vfnmsub231sd",
     // aarch64 + generic spellings
     "fmadd",
     "fmsub",
@@ -52,12 +68,12 @@ const FORBIDDEN_MNEMONICS: &[&str] = &[
     "fnmsub",
     // LLVM-intrinsic-style (belt-and-suspenders — should never appear after
     // lowering, but grep for them anyway)
-    "fma213", "fma231",
+    "fma213",
+    "fma231",
 ];
 
 fn project_root() -> Result<PathBuf> {
-    let manifest = std::env::var("CARGO_MANIFEST_DIR")
-        .context("CARGO_MANIFEST_DIR not set")?;
+    let manifest = std::env::var("CARGO_MANIFEST_DIR").context("CARGO_MANIFEST_DIR not set")?;
     let xtask_dir = PathBuf::from(manifest);
     let root = xtask_dir
         .parent()
@@ -78,10 +94,12 @@ fn main() -> Result<()> {
         .current_dir(&root)
         .args([
             "rustc",
-            "-p", "xcfun-ad",
+            "-p",
+            "xcfun-ad",
             "--release",
             "--lib",
-            "--features", "cpu",
+            "--features",
+            "cpu",
             "--",
             "--emit=asm",
         ])
@@ -97,8 +115,8 @@ fn main() -> Result<()> {
     // Step 2: find all xcfun_ad-*.s files under target/release/deps/
     let deps_dir = root.join("target/release/deps");
     let mut asm_files: Vec<PathBuf> = Vec::new();
-    for entry in fs::read_dir(&deps_dir)
-        .with_context(|| format!("read_dir {}", deps_dir.display()))?
+    for entry in
+        fs::read_dir(&deps_dir).with_context(|| format!("read_dir {}", deps_dir.display()))?
     {
         let entry = entry?;
         let path = entry.path();
@@ -119,16 +137,13 @@ fn main() -> Result<()> {
             deps_dir.display()
         );
     }
-    println!(
-        "check-no-fma: scanning {} asm file(s)",
-        asm_files.len()
-    );
+    println!("check-no-fma: scanning {} asm file(s)", asm_files.len());
 
     // Step 3..5: parse each .s file, find ctaylor_mul symbols, grep bodies
     let mut violations: Vec<String> = Vec::new();
     for path in &asm_files {
-        let contents = fs::read_to_string(path)
-            .with_context(|| format!("read {}", path.display()))?;
+        let contents =
+            fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
         scan_asm_file(
             &contents,
             path.display().to_string().as_str(),
@@ -138,9 +153,7 @@ fn main() -> Result<()> {
 
     // Step 6: fail or pass
     if !violations.is_empty() {
-        eprintln!(
-            "\ncheck-no-fma: FAIL — FMA mnemonics found on ctaylor_mul path:"
-        );
+        eprintln!("\ncheck-no-fma: FAIL — FMA mnemonics found on ctaylor_mul path:");
         for v in &violations {
             eprintln!("  {}", v);
         }

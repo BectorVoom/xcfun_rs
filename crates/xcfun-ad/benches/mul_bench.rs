@@ -29,7 +29,7 @@
 //! adopted after observing that cubecl-cpu 0.10-pre.3 raises CallError on
 //! `CubeDim::new_1d(large)` with a single cube (MLIR JIT resource budget).
 
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use cubecl::prelude::*;
 use cubecl_cpu::CpuRuntime;
 use std::hint::black_box;
@@ -140,12 +140,7 @@ fn kernel_mul_n3(a: &Array<f64>, b: &Array<f64>, out: &mut Array<f64>) {
 use xcfun_ad::ctaylor_rec::mul::ctaylor_mul;
 
 #[cube(launch_unchecked)]
-fn kernel_mul_single<F: Float>(
-    a: &Array<F>,
-    b: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn kernel_mul_single<F: Float>(a: &Array<F>, b: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_mul::<F>(a, b, out, n);
 }
 
