@@ -7,7 +7,7 @@
 
 ### AD Engine
 
-- [ ] **AD-01**: `CTaylor<T, const N: usize>` supports `N ∈ 0..=7` with `[T; 1 << N]` storage (no heap), bit-flag-indexed multilinear polynomial matching `xcfun-master/src/taylor/ctaylor.hpp`
+- [x] **AD-01**: `CTaylor<T, const N: usize>` supports `N ∈ 0..=7` with `[T; 1 << N]` storage (no heap), bit-flag-indexed multilinear polynomial matching `xcfun-master/src/taylor/ctaylor.hpp`
 - [ ] **AD-02**: `Num` trait supplies `Add`, `Sub`, `Mul`, `Div`, `Neg`, `reciprocal`, `sqrt`, `exp`, `log`, `pow`, `powi`, `erf`, `asinh`, `atan`, with `ZERO` and `ONE` constants, implemented for `f64` and `CTaylor<f64, N>`
 - [ ] **AD-03**: `CTaylor::mul` accumulates coefficients in exactly the recursion order of `ctaylor_rec<T,Nvar>::multo` (verbatim port, not Rust-idiomatic rewrite)
 - [ ] **AD-04**: every `*_expand` function (`inv_expand`, `exp_expand`, `log_expand`, `pow_expand`, `sqrt_expand`, `erf_expand`, `gauss_expand`, ...) from `xcfun-master/src/taylor/tmath.hpp` has a byte-equivalent Rust port
@@ -204,7 +204,7 @@ Populated during roadmap creation (2026-04-19).
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AD-01 | Phase 1 | Pending |
+| AD-01 | Phase 1 | Complete |
 | AD-02 | Phase 1 | Pending |
 | AD-03 | Phase 1 | Pending |
 | AD-04 | Phase 1 | Pending |

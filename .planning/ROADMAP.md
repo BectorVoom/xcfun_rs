@@ -57,7 +57,7 @@ The dependency DAG (per `ARCHITECTURE.md` section 7 and `SUMMARY.md` "Phase Orde
 **Plans**: 7 plans across 3 waves
 
 Plans:
-- [ ] 01-01-PLAN.md — Wave 0: workspace + crate scaffolding, ValidN<N> sealed trait, CTaylor struct + elementwise ops, .cargo/config.toml fp-contract=off [AD-01]
+- [x] 01-01-PLAN.md — Wave 0: workspace + crate scaffolding, ValidN<N, SIZE> sealed trait (two-const-generic stable-Rust deviation — see 01-01-SUMMARY.md D-Exec-01), CTaylor struct + elementwise ops, .cargo/config.toml fp-contract=off [AD-01] ✅ 2026-04-19
 - [ ] 01-02-PLAN.md — Wave 1: 8 *_expand scalar series ports (inv/exp/log/pow/sqrt/cbrt/gauss/erf) + tfuns helpers byte-for-byte from tmath.hpp [AD-04]
 - [ ] 01-03-PLAN.md — Wave 1: ctaylor_rec mul/multo/compose port incl. base cases N=0,1,2 + general N=3..=7 via split_at_mut [AD-03]
 - [ ] 01-04-PLAN.md — Wave 1: xtask regen-ad-fixtures + C++ driver + fixture format + ≥1668 committed records [AD-05]
@@ -148,7 +148,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 0. Workspace Scaffolding & CI Foundations | 0/0 | Not started | - |
-| 1. Taylor Algebra & AD Primitives | 0/0 | Not started | - |
+| 1. Taylor Algebra & AD Primitives | 1/7 | In Progress | - |
 | 2. Core Foundations + LDA Tier + Parity Harness | 0/0 | Not started | - |
 | 3. GGA Tier + `Mode::Potential` | 0/0 | Not started | - |
 | 4. metaGGA Tier + `Mode::Contracted` + Aliases | 0/0 | Not started | - |

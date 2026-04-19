@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-19T01:57:47.948Z"
+last_updated: "2026-04-19T02:18:15.030Z"
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 7
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 14
 ---
 
 # Project State: xcfun_rs
@@ -20,19 +20,26 @@ progress:
 
 **Core Value:** Every functional must produce numerical output matching C++ xcfun within relative error <= 1.0e-12, across all evaluation modes and derivative orders.
 
-**Current focus:** Roadmap created. Awaiting Phase 0 planning via `/gsd-plan-phase 0`.
+**Current focus:** Phase 01 — taylor-algebra-ad-primitives-xcfun-ad
 
 ## Current Position
 
+Phase: 01 (taylor-algebra-ad-primitives-xcfun-ad) — EXECUTING
+Plan: 2 of 7 (Wave 0 complete; Wave 1 next)
+
 - **Milestone:** Initial v1 build-out
-- **Phase:** 0 (not yet started - planning pending)
-- **Plan:** none
-- **Status:** Ready to execute
-- **Progress:** `[........] 0/8 phases complete`
+- **Phase:** 01 (taylor-algebra-ad-primitives-xcfun-ad) — EXECUTING
+- **Plan:** 01-01 complete; 01-02 (Wave 1 `*_expand` ports) next
+- **Status:** Executing Phase 01 Wave 1
+- **Progress:** [█░░░░░░░░░] 14% (1/7 plans)
 
 ## Performance Metrics
 
-Not yet populated. Will track:
+| Phase | Plan | Duration | Tasks | Files | Completed |
+|-------|------|----------|-------|-------|-----------|
+| 01    | 01   | 11m      | 2     | 8     | 2026-04-19 |
+
+Will also track (as they accumulate):
 
 - Phase completion dates
 - Parity gate violations caught in CI
@@ -41,6 +48,10 @@ Not yet populated. Will track:
 ## Accumulated Context
 
 ### Decisions (from initialization)
+
+- **D-Exec-01 (Plan 01-01)** `CTaylor<T, const N, const SIZE>` uses two const generics tied by sealed `ValidN<N, SIZE>` — the plan's `[T; 1 << N]` single-const-generic form is not expressible on stable Rust 1.85 (E0799); CLAUDE.md forbids nightly. Ergonomics preserved via `ct::N0..N7` type aliases.
+- **D-Exec-02 (Plan 01-01)** `.cargo/config.toml` duplicates `-Cllvm-args=-fp-contract=off` under `[target.'cfg(all())']` (Rule 3 fix) so any developer-level `~/.cargo/config.toml` `[target.*]` rustflags can't override the 1e-12 guard.
+- **D-Exec-03 (Plan 01-01)** Workspace `members` scoped to `crates/xcfun-ad` for Phase 1 duration; downstream crates (`xcfun-core`, `xcfun-eval`, `xcfun-ffi`, `xcfun-functionals`, `xcfun-gpu`, `xcfun-python`) re-admitted at Phase 2 start on top of the new xcfun-ad API.
 
 - **D1** Algorithmic-identity port of `CTaylor` (verbatim, not Rust-idiomatic rewrite) — forced by the 1e-12 parity contract
 - **D2** Custom `Num` trait, not `num-traits::Float` — `Float` carries irrelevant IEEE-754 semantics for Taylor polynomials
@@ -83,10 +94,13 @@ None.
 - 2026-04-19: `PROJECT.md` and `REQUIREMENTS.md` defined (103 v1 requirements)
 - 2026-04-19: `ROADMAP.md` created (7 phases, 100% requirement coverage)
 - 2026-04-19: `STATE.md` initialized
+- 2026-04-19: Plan 01-01 complete (Wave 0 scaffolding: `CTaylor<T, N, SIZE>` + `ValidN<N, SIZE>` sealed trait + `.cargo/config.toml` fp-contract guard + bench stubs + workspace dev-deps pinned). AD-01 (storage half) ✅. Commits: `f07611c`, `c7a3f46`.
 
 ## Session Continuity
 
-**Next action:** `/gsd-plan-phase 0` (or `/gsd-research-phase 0` first if research is wanted — Phase 0 is flagged as not needing research, standard scaffolding)
+**Last session stopped at:** Completed 01-01-PLAN.md (Wave 0 scaffolding: CTaylor struct shape + ValidN sealed trait + fp-contract guard). Wave 1 next: 01-02 `*_expand` ports.
+
+**Next action:** `/gsd-execute-phase 01` to continue with Plan 01-02 (`*_expand` scalar series ports from `xcfun-master/external/upstream/taylor/tmath.hpp`) — or individually `/gsd-execute-plan 01-02`.
 
 **Related artifacts:**
 
