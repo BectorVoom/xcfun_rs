@@ -28,7 +28,9 @@ criterion = { workspace = true }
 [[bench]]
 name = "mul_bench"
 harness = false
+required-features = ["testing"]
 
 [[bench]]
 name = "compose_bench"
 harness = false
+required-features = ["testing"]
