@@ -56,16 +56,24 @@ The dependency DAG (per `ARCHITECTURE.md` section 7 and `SUMMARY.md` "Phase Orde
   4. Property tests (ring axioms, `exp`/`log` round-trip, `sqrt`-squared invariance, Leibniz product rule, ≥ 11 properties) run ≥ 10 000 iterations per property using the **batch-per-property kernel pattern** (proptest generates 10k inputs upfront, single kernel evaluates all, results aggregated host-side) with zero failures.
   5. `cargo bench -p xcfun-ad` publishes a baseline for the `CTaylor::mul`-equivalent `#[cube]` kernel at `N in {2,3,4,5,6}` and composed `exp`/`log`/`pow` at `N = 4`, measured at batch sizes {1, 64, 1024} so kernel-launch-amortized cost is visible.
   6. CI evidence (asm spot-check or equivalent) confirms cubecl-cpu's MLIR lowering does **not** introduce FMA or operation reordering inside `CTaylor::mul` on the f64 path. If reordering is detected and unavoidable, plan-phase MUST escalate via `PLANNING INCONCLUSIVE` rather than silently widen tolerance (per CONTEXT.md D-03).
-**Plans**: All prior 01-* plans VOID under cubecl pivot. Replan from scratch via `/gsd:plan-phase 1`.
+**Plans**: 7 plans across 6 waves (granularity standard; parallelization enabled — Wave 2 runs plans 03 + 05 in parallel).
 
-Pre-pivot plans (VOID — to be reverted by Wave 0 of new plan, retained in git history):
-- ~~01-01-PLAN.md — Wave 0 hand-Rust scaffolding (commits f07611c, c7a3f46) [SUPERSEDED]~~
-- ~~01-02-PLAN.md — Wave 1 hand-Rust `*_expand` ports (commit 2db557c, partial) [SUPERSEDED]~~
-- ~~01-03-PLAN.md — Wave 1 hand-Rust `ctaylor_rec` mul/multo/compose port [SUPERSEDED]~~
-- ~~01-04-PLAN.md — Wave 1 fixture generator [INTENT RETAINED, replanned for cubecl validation]~~
-- ~~01-05-PLAN.md — Wave 2 `Num` trait + composed fns [SUPERSEDED — `Num` retired in favour of cubecl `Float`]~~
-- ~~01-06-PLAN.md — Wave 2 proptest 11 props × 10k iters [INTENT RETAINED, now batch-per-property kernel]~~
-- ~~01-07-PLAN.md — Wave 2 criterion bench baselines [INTENT RETAINED, now kernel-launch-amortized at batch sizes {1,64,1024}]~~
+- [ ] 01-01-PLAN.md — Wave 0: revert pre-pivot commits + workspace/xtask scaffold + cubecl-cpu spike + for_tests harness (AD-01 substrate)
+- [ ] 01-02-PLAN.md — Wave 1: CTaylor + ctaylor_rec{mul, multo, compose} — load-bearing recursion (AD-01, AD-03)
+- [ ] 01-03-PLAN.md — Wave 2 (parallel with 01-05): expand/{inv, exp, log, pow, sqrt, cbrt} — primary scalar series (AD-04)
+- [ ] 01-04-PLAN.md — Wave 3: tfuns helpers + expand/{atan, gauss, erf, asinh} — transcendentals (AD-04)
+- [ ] 01-05-PLAN.md — Wave 2 (parallel with 01-03): xtask fixture generator + committed fixtures + golden_mul test (AD-03, AD-05)
+- [ ] 01-06-PLAN.md — Wave 4: math.rs composed ops + extended fixtures + golden_expand/composed (AD-02, AD-05)
+- [ ] 01-07-PLAN.md — Wave 5: proptest batch-per-property + criterion benchmarks + phase sign-off (AD-03, AD-06)
+
+Pre-pivot plans (VOID — reverted by Wave 0 of the new plan, retained in git history):
+- ~~pre-pivot 01-01 — Wave 0 hand-Rust scaffolding (commits f07611c, c7a3f46) [SUPERSEDED]~~
+- ~~pre-pivot 01-02 — Wave 1 hand-Rust `*_expand` ports (commit 2db557c, partial) [SUPERSEDED]~~
+- ~~pre-pivot 01-03 — Wave 1 hand-Rust `ctaylor_rec` mul/multo/compose port [SUPERSEDED]~~
+- ~~pre-pivot 01-04 — Wave 1 fixture generator [INTENT RETAINED, replanned for cubecl validation]~~
+- ~~pre-pivot 01-05 — Wave 2 `Num` trait + composed fns [SUPERSEDED — `Num` retired in favour of cubecl `Float`]~~
+- ~~pre-pivot 01-06 — Wave 2 proptest 11 props × 10k iters [INTENT RETAINED, now batch-per-property kernel]~~
+- ~~pre-pivot 01-07 — Wave 2 criterion bench baselines [INTENT RETAINED, now kernel-launch-amortized at batch sizes {1,64,1024}]~~
 
 ### Phase 2: Core Foundations + LDA Tier + Parity Harness
 **Goal**: A user can run `cargo xtask validate --backend cpu --order 2 --filter 'lda|slaterx|vwn|pw92c|pz81c|ldaerf|tfk|tw|vonw'` and see zero failures at 1e-12 relative error against the C++ reference.
@@ -151,7 +159,7 @@ Pre-pivot plans (VOID — to be reverted by Wave 0 of new plan, retained in git 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 0. Workspace Scaffolding & CI Foundations | 0/0 | Not started | - |
-| 1. Taylor Algebra & AD Primitives | 1/7 | In Progress | - |
+| 1. Taylor Algebra & AD Primitives | 0/7 | Not started (cubecl pivot) | - |
 | 2. Core Foundations + LDA Tier + Parity Harness | 0/0 | Not started | - |
 | 3. GGA Tier + `Mode::Potential` | 0/0 | Not started | - |
 | 4. metaGGA Tier + `Mode::Contracted` + Aliases | 0/0 | Not started | - |
