@@ -1,3 +1,5 @@
+> **SUPERSEDED BY CUBECL PIVOT (2026-04-19 PM).** This summary records the pre-pivot hand-Rust Wave 0 (commit c7a3f46) which was reverted by Plan 01-01-PLAN.md Task 1 on 2026-04-19. Retained as historical record per CONTEXT.md D-22. The cubecl-native rewrite is planned in `01-01-PLAN.md` through `01-07-PLAN.md`.
+
 ---
 phase: 01-taylor-algebra-ad-primitives-xcfun-ad
 plan: 01

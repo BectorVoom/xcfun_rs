@@ -1,23 +1,5 @@
 [workspace]
-# Phase 1 scope: only `xcfun-ad` is actively rebuilt in Plans 01-01..01-07.
-# Downstream crates (`xcfun-core`, `xcfun-eval`, `xcfun-functionals`, `xcfun-gpu`,
-# `xcfun-ffi`, `xcfun-python`) carry placeholder code from superseded planning
-# work (`.planning/phases/01-core-types-ad-engine/`, deleted). They will be
-# rewritten from Phase 2 onward on top of the new `xcfun-ad` API
-# (`ValidN<N>` sealed trait, `CTaylor<T, const N: usize>` with `[T; 1 << N]`
-# storage, `Num` trait landed in Plan 01-05). Exclude them from workspace
-# membership for the duration of Phase 1 so `cargo build --workspace` stays
-# green while the AD core is being rewritten. This is a Rule 3 deviation from
-# the plan's stated `files_modified` — recorded in 01-01-SUMMARY.md.
-members = ["crates/xcfun-ad"]
-exclude = [
-    "crates/xcfun-core",
-    "crates/xcfun-eval",
-    "crates/xcfun-ffi",
-    "crates/xcfun-functionals",
-    "crates/xcfun-gpu",
-    "crates/xcfun-python",
-]
+members = ["crates/*"]
 resolver = "2"
 
 [workspace.package]
@@ -31,11 +13,3 @@ approx = "0.5"
 anyhow = "1.0"
 tracing = "0.1"
 libm = "0.2"
-proptest = "=1.11.0"
-rstest = "=0.26.1"
-rand_xoshiro = "=0.8.0"
-criterion = { version = "=0.8.2", default-features = false, features = ["html_reports"] }
-bincode = "1.3"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0.149"
-cc = { version = "^1.2.60", features = ["parallel"] }
