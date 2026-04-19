@@ -353,17 +353,243 @@ pub(crate) fn ctaylor_mul_set_n3<F: Float>(
     dst[7] = dst[7] + c3;
 }
 
+/// N=4 mul_set — expanded from `ctaylor.hpp:49-52` applied one more level:
+///   mul_set_n3(dst[0..8],  x[0..8],  y[0..8])   → sets   dst[0..=7]
+///   mul_set_n3(dst[8..16], x[8..16], y[0..8])   → sets   dst[8..=15]
+///   mul_acc_n3(dst[8..16], x[0..8],  y[8..16])  → adds to dst[8..=15]
+///
+/// Each sub-call is in turn the flattened n=3 body (itself a flattening of
+/// the n=2 recursion). The three sub-bodies are concatenated here in the
+/// C++ left-to-right traversal order: first the `mul_set_n3` on the lower
+/// half, then the `mul_set_n3` on the upper half (dst indices 8..=15),
+/// then the `mul_acc_n3` adding onto dst indices 8..=15. Preserves the
+/// C++ operation order at the 1e-12 parity gate (D-08). Added in Plan
+/// 01-05 to unblock the n_var=4 golden-fixture gate (relative-error
+/// tolerance 1e-13, not bit-exact).
+#[cube]
+pub(crate) fn ctaylor_mul_set_n4<F: Float>(
+    dst: &mut Array<F>,
+    x: &Array<F>,
+    y: &Array<F>,
+) {
+    // =========================================================================
+    //  Part 1: mul_set_n3(dst[0..8], x[0..8], y[0..8]) — coeffs dst[0..=7]
+    //    (verbatim copy of ctaylor_mul_set_n3 body)
+    // =========================================================================
+
+    // mul_set_n2 on lower-quarter (x[0..4] * y[0..4]) → dst[0..=3]
+    dst[0] = x[0] * y[0];
+
+    let a10 = x[0] * y[1];
+    let a11 = x[1] * y[0];
+    dst[1] = a10 + a11;
+
+    let a20 = x[0] * y[2];
+    let a21 = x[2] * y[0];
+    dst[2] = a20 + a21;
+
+    let a30 = x[0] * y[3];
+    let a31 = x[3] * y[0];
+    let a32 = x[1] * y[2];
+    let a33 = x[2] * y[1];
+    let as1 = a30 + a31;
+    let as2 = as1 + a32;
+    dst[3] = as2 + a33;
+
+    // mul_set_n2 on next-quarter (x[4..8] * y[0..4]) → dst[4..=7]
+    dst[4] = x[4] * y[0];
+
+    let b10 = x[4] * y[1];
+    let b11 = x[5] * y[0];
+    dst[5] = b10 + b11;
+
+    let b20 = x[4] * y[2];
+    let b21 = x[6] * y[0];
+    dst[6] = b20 + b21;
+
+    let b30 = x[4] * y[3];
+    let b31 = x[7] * y[0];
+    let b32 = x[5] * y[2];
+    let b33 = x[6] * y[1];
+    let bs1 = b30 + b31;
+    let bs2 = bs1 + b32;
+    dst[7] = bs2 + b33;
+
+    // mul_acc_n2 (x[0..4] * y[4..8]) added onto dst[4..=7]
+    let c0 = x[0] * y[4];
+    dst[4] = dst[4] + c0;
+
+    let c10 = x[0] * y[5];
+    let c11 = x[1] * y[4];
+    let c1 = c10 + c11;
+    dst[5] = dst[5] + c1;
+
+    let c20 = x[0] * y[6];
+    let c21 = x[2] * y[4];
+    let c2 = c20 + c21;
+    dst[6] = dst[6] + c2;
+
+    let c30 = x[0] * y[7];
+    let c31 = x[3] * y[4];
+    let c32 = x[1] * y[6];
+    let c33 = x[2] * y[5];
+    let cs1 = c30 + c31;
+    let cs2 = cs1 + c32;
+    let c3 = cs2 + c33;
+    dst[7] = dst[7] + c3;
+
+    // =========================================================================
+    //  Part 2: mul_set_n3(dst[8..16], x[8..16], y[0..8]) — coeffs dst[8..=15]
+    //    (mul_set_n3 body with x → x[8..16], y → y[0..8], dst → dst[8..16])
+    // =========================================================================
+
+    // mul_set_n2 on dst[8..=11] (x[8..=11] * y[0..=3])
+    dst[8] = x[8] * y[0];
+
+    let d10 = x[8] * y[1];
+    let d11 = x[9] * y[0];
+    dst[9] = d10 + d11;
+
+    let d20 = x[8] * y[2];
+    let d21 = x[10] * y[0];
+    dst[10] = d20 + d21;
+
+    let d30 = x[8] * y[3];
+    let d31 = x[11] * y[0];
+    let d32 = x[9] * y[2];
+    let d33 = x[10] * y[1];
+    let ds1 = d30 + d31;
+    let ds2 = ds1 + d32;
+    dst[11] = ds2 + d33;
+
+    // mul_set_n2 on dst[12..=15] (x[12..=15] * y[0..=3])
+    dst[12] = x[12] * y[0];
+
+    let e10 = x[12] * y[1];
+    let e11 = x[13] * y[0];
+    dst[13] = e10 + e11;
+
+    let e20 = x[12] * y[2];
+    let e21 = x[14] * y[0];
+    dst[14] = e20 + e21;
+
+    let e30 = x[12] * y[3];
+    let e31 = x[15] * y[0];
+    let e32 = x[13] * y[2];
+    let e33 = x[14] * y[1];
+    let es1 = e30 + e31;
+    let es2 = es1 + e32;
+    dst[15] = es2 + e33;
+
+    // mul_acc_n2 (x[8..=11] * y[4..=7]) onto dst[12..=15]
+    let f0 = x[8] * y[4];
+    dst[12] = dst[12] + f0;
+
+    let f10 = x[8] * y[5];
+    let f11 = x[9] * y[4];
+    let f1 = f10 + f11;
+    dst[13] = dst[13] + f1;
+
+    let f20 = x[8] * y[6];
+    let f21 = x[10] * y[4];
+    let f2 = f20 + f21;
+    dst[14] = dst[14] + f2;
+
+    let f30 = x[8] * y[7];
+    let f31 = x[11] * y[4];
+    let f32 = x[9] * y[6];
+    let f33 = x[10] * y[5];
+    let fs1 = f30 + f31;
+    let fs2 = fs1 + f32;
+    let f3 = fs2 + f33;
+    dst[15] = dst[15] + f3;
+
+    // =========================================================================
+    //  Part 3: mul_acc_n3(dst[8..16], x[0..8], y[8..16]) — adds to dst[8..=15]
+    //    (mul_acc_n3 body with x → x[0..8], y → y[8..16], dst → dst[8..16])
+    // =========================================================================
+
+    // mul_acc_n2(dst[8..=11], x[0..=3], y[8..=11])
+    // dst[8] += x[0] * y[8]
+    let g0 = x[0] * y[8];
+    dst[8] = dst[8] + g0;
+    // dst[9] += x[0]*y[9] + x[1]*y[8]
+    let g10 = x[0] * y[9];
+    let g11 = x[1] * y[8];
+    let g1 = g10 + g11;
+    dst[9] = dst[9] + g1;
+    // dst[10] += x[0]*y[10] + x[2]*y[8]
+    let g20 = x[0] * y[10];
+    let g21 = x[2] * y[8];
+    let g2 = g20 + g21;
+    dst[10] = dst[10] + g2;
+    // dst[11] += x[0]*y[11] + x[3]*y[8] + x[1]*y[10] + x[2]*y[9]
+    let g30 = x[0] * y[11];
+    let g31 = x[3] * y[8];
+    let g32 = x[1] * y[10];
+    let g33 = x[2] * y[9];
+    let gs1 = g30 + g31;
+    let gs2 = gs1 + g32;
+    let g3 = gs2 + g33;
+    dst[11] = dst[11] + g3;
+
+    // mul_acc_n2(dst[12..=15], x[4..=7], y[8..=11])
+    let h0 = x[4] * y[8];
+    dst[12] = dst[12] + h0;
+
+    let h10 = x[4] * y[9];
+    let h11 = x[5] * y[8];
+    let h1 = h10 + h11;
+    dst[13] = dst[13] + h1;
+
+    let h20 = x[4] * y[10];
+    let h21 = x[6] * y[8];
+    let h2 = h20 + h21;
+    dst[14] = dst[14] + h2;
+
+    let h30 = x[4] * y[11];
+    let h31 = x[7] * y[8];
+    let h32 = x[5] * y[10];
+    let h33 = x[6] * y[9];
+    let hs1 = h30 + h31;
+    let hs2 = hs1 + h32;
+    let h3 = hs2 + h33;
+    dst[15] = dst[15] + h3;
+
+    // mul_acc_n2(dst[12..=15], x[0..=3], y[12..=15])
+    let i0 = x[0] * y[12];
+    dst[12] = dst[12] + i0;
+
+    let i10 = x[0] * y[13];
+    let i11 = x[1] * y[12];
+    let i1 = i10 + i11;
+    dst[13] = dst[13] + i1;
+
+    let i20 = x[0] * y[14];
+    let i21 = x[2] * y[12];
+    let i2 = i20 + i21;
+    dst[14] = dst[14] + i2;
+
+    let i30 = x[0] * y[15];
+    let i31 = x[3] * y[12];
+    let i32 = x[1] * y[14];
+    let i33 = x[2] * y[13];
+    let is1 = i30 + i31;
+    let is2 = is1 + i32;
+    let i3 = is2 + i33;
+    dst[15] = dst[15] + i3;
+}
+
 // ---------------------------------------------------------------------------
 //  Outer dispatch
 // ---------------------------------------------------------------------------
 
-/// Outer dispatch for `dst = x * y` across N ∈ {0, 1, 2, 3}.
+/// Outer dispatch for `dst = x * y` across N ∈ {0, 1, 2, 3, 4}.
 ///
-/// Plan 01-02 ships N ≤ 3 per the validation mandate (f64::to_bits identity
-/// for N ∈ 0..=3); N ∈ 4..=7 are reserved for a follow-on plan with its
-/// own golden-fixture gate. The `#[comptime] n` match form with only 4
-/// arms is deliberate — it keeps the N ≤ 3 contract testable and the
-/// generated code free of unreachable arms.
+/// Plan 01-02 shipped N ≤ 3 per its validation mandate (f64::to_bits
+/// identity for N ∈ 0..=3). Plan 01-05 extends to N = 4 (relative-error
+/// tolerance 1e-13, not bit-exact) so the mul golden-fixture gate covers
+/// the full range emitted by the fixture driver. N ∈ 5..=7 still deferred.
 #[cube]
 pub fn ctaylor_mul<F: Float>(
     a: &Array<F>,
@@ -379,5 +605,7 @@ pub fn ctaylor_mul<F: Float>(
         ctaylor_mul_set_n2::<F>(out, a, b);
     } else if comptime!(n == 3) {
         ctaylor_mul_set_n3::<F>(out, a, b);
+    } else if comptime!(n == 4) {
+        ctaylor_mul_set_n4::<F>(out, a, b);
     }
 }

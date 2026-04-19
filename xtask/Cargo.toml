@@ -20,3 +20,9 @@ cc = { workspace = true }
 bincode = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+# Plan 01-05 adds local (not-yet-in-workspace) deps needed by the
+# regen-ad-fixtures binary: SHA-256 hashing of xcfun-master header sources for
+# drift detection, timestamp for the fixture manifest. These live at the xtask
+# (app-boundary) layer only — no library crate depends on them.
+sha2 = "0.10"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
