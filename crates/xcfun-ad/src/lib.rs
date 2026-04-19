@@ -9,10 +9,11 @@
 //! for the 28 locked design decisions driving this crate.
 #![forbid(unsafe_code)]
 
+pub mod ctaylor;
+pub mod ctaylor_rec;
 pub mod index;
 
-// Cubecl-bearing modules are populated in later plans:
-//   Plan 01-02: ctaylor, ctaylor_rec
+// Cubecl-bearing modules populated in later plans:
 //   Plan 01-03/04: expand, tfuns
 //   Plan 01-06: math
 
