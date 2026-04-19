@@ -14,6 +14,10 @@ path = "src/main.rs"
 name = "regen-ad-fixtures"
 path = "src/bin/regen_ad_fixtures.rs"
 
+[[bin]]
+name = "check-no-fma"
+path = "src/bin/check_no_fma.rs"
+
 [dependencies]
 anyhow = { workspace = true }
 cc = { workspace = true }
@@ -26,3 +30,6 @@ serde_json = { workspace = true }
 # (app-boundary) layer only — no library crate depends on them.
 sha2 = "0.10"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+# Plan 01-07 Task 3 — `check-no-fma` xtask demangles asm symbol labels to
+# detect FMA mnemonics in `ctaylor_mul*` function bodies.
+rustc-demangle = "0.1"

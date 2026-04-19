@@ -4422,6 +4422,7 @@ dependencies = [
  "bincode",
  "cc",
  "chrono",
+ "rustc-demangle",
  "serde",
  "serde_json",
  "sha2",
