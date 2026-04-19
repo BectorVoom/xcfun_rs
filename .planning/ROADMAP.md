@@ -20,7 +20,7 @@ The dependency DAG (per `ARCHITECTURE.md` section 7 and `SUMMARY.md` "Phase Orde
 ## Phases
 
 - [ ] **Phase 0: Workspace Scaffolding & CI Foundations** - Workspace, crate skeletons, CI gates blocking P1/P8/P12/P13 before any functional code exists
-- [ ] **Phase 1: Taylor Algebra & AD Primitives (`xcfun-ad`)** - `CTaylor<T, N>`, `Num` trait, every `*_expand` function, bit-equivalence with C++ on orders 0..=3
+- [x] **Phase 1: Taylor Algebra & AD Primitives (`xcfun-ad`)** - `CTaylor<T, N>`, `Num` trait, every `*_expand` function, bit-equivalence with C++ on orders 0..=3
 - [ ] **Phase 2: Core Foundations + LDA Tier + Parity Harness** - `xcfun-core` scaffolding (vars/mode/error/densvars/registry) + 11 LDA functionals + tier-2 validation harness at 1e-12 on CPU
 - [ ] **Phase 3: GGA Tier + `Mode::Potential`** - 45 GGA functionals + `Mode::Potential` via `CTaylor<f64, 2>` divergence construction
 - [ ] **Phase 4: metaGGA Tier + `Mode::Contracted` + Aliases** - 15 metaGGA functionals + orders 0..=6 for `Contracted` + 46 aliases with multiplicative weight composition
@@ -64,7 +64,7 @@ The dependency DAG (per `ARCHITECTURE.md` section 7 and `SUMMARY.md` "Phase Orde
 - [x] 01-04-PLAN.md — Wave 3: tfuns helpers + expand/{atan, gauss, erf, asinh} — transcendentals (AD-04)
 - [x] 01-05-PLAN.md — Wave 2 (parallel with 01-03): xtask fixture generator + committed fixtures + golden_mul test (AD-03, AD-05)
 - [x] 01-06-PLAN.md — Wave 4: math.rs composed ops + extended fixtures + golden_expand/composed (AD-02, AD-05)
-- [ ] 01-07-PLAN.md — Wave 5: proptest batch-per-property + criterion benchmarks + phase sign-off (AD-03, AD-06)
+- [x] 01-07-PLAN.md — Wave 5: proptest batch-per-property + criterion benchmarks + phase sign-off (AD-03, AD-06)
 
 Pre-pivot plans (VOID — reverted by Wave 0 of the new plan, retained in git history):
 - ~~pre-pivot 01-01 — Wave 0 hand-Rust scaffolding (commits f07611c, c7a3f46) [SUPERSEDED]~~
@@ -159,7 +159,7 @@ Pre-pivot plans (VOID — reverted by Wave 0 of the new plan, retained in git hi
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 0. Workspace Scaffolding & CI Foundations | 0/0 | Not started | - |
-| 1. Taylor Algebra & AD Primitives | 0/7 | Not started (cubecl pivot) | - |
+| 1. Taylor Algebra & AD Primitives | 7/7 | Complete | 2026-04-19 |
 | 2. Core Foundations + LDA Tier + Parity Harness | 0/0 | Not started | - |
 | 3. GGA Tier + `Mode::Potential` | 0/0 | Not started | - |
 | 4. metaGGA Tier + `Mode::Contracted` + Aliases | 0/0 | Not started | - |

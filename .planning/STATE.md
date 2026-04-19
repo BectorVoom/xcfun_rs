@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-19T21:41:24Z"
+last_updated: "2026-04-19T22:08:17Z"
 progress:
   total_phases: 8
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 7
-  completed_plans: 6
-  percent: 86
+  completed_plans: 7
+  percent: 100
 ---
 
 # Project State: xcfun_rs
 
-**Last updated:** 2026-04-19 (after Plan 01-06 completion)
+**Last updated:** 2026-04-19 (after Plan 01-07 completion — Phase 1 signed off)
 
 ## Project Reference
 
@@ -24,14 +24,14 @@ progress:
 
 ## Current Position
 
-Phase: 01 (taylor-algebra-ad-primitives-xcfun-ad) — EXECUTING
-Plan: 01-06 complete as of 2026-04-19 PM (9 composed `ctaylor_*` fns + golden_expand/golden_composed parity at 1e-12). Next: 01-07 (proptest batch-per-property + criterion benchmarks).
+Phase: 01 (taylor-algebra-ad-primitives-xcfun-ad) — **COMPLETE (2026-04-19 PM)**
+Plan: 01-07 complete as of 2026-04-19 PM. 11 proptest batch-per-property tests × 10k iters + criterion baselines at 24 (N, batch) points + `xtask check-no-fma` asm gate for ROADMAP Phase 1 SC #6 + D-28 docs/design/ updates. **Phase 1 is shippable.** Next: Phase 2 planning (`/gsd-plan-phase 2`).
 
 - **Milestone:** Initial v1 build-out
-- **Phase:** 01 (taylor-algebra-ad-primitives-xcfun-ad, cubecl-native)
-- **Plan:** 01-06 complete as of 2026-04-19 PM (9 composed `ctaylor_*` fns + golden_expand/golden_composed parity at 1e-12). Next: 01-07 (proptest batch-per-property + criterion benchmarks).
-- **Status:** Ready to execute
-- **Progress:** [█████████░] 86%
+- **Phase:** 01 (taylor-algebra-ad-primitives-xcfun-ad, cubecl-native) — **COMPLETE**
+- **Plan:** 01-07 complete as of 2026-04-19 PM. Next: Phase 2 planning.
+- **Status:** Phase 1 done; ready for Phase 2 planning
+- **Progress:** [██████████] 100% (7/7 Phase 1 plans complete)
 
 ## Performance Metrics
 
@@ -43,6 +43,7 @@ Plan: 01-06 complete as of 2026-04-19 PM (9 composed `ctaylor_*` fns + golden_ex
 | 01    | 04   | 14m      | 3     | 9     | 2026-04-19 |
 | 01    | 05   | 11m      | 3     | 12    | 2026-04-19 |
 | 01    | 06   | 11m      | 3     | 9     | 2026-04-19 |
+| 01    | 07   | 17m      | 5     | 11    | 2026-04-19 |
 
 Will also track (as they accumulate):
 
@@ -111,6 +112,15 @@ None.
 - **2026-04-19: Plan 01-04 complete.** tfuns helpers (7 fns) + transcendental expansions (atan/asinh/gauss/erf). 23 new tests (11 tfuns_unit + 12 expand_trans). Commits `877a533`, `e99f2d1`, `496e118`.
 - **2026-04-19: Plan 01-05 complete.** xtask fixture driver + 418 committed fixtures (250 mul + 168 expand) + golden_mul.rs at f64::to_bits for n ∈ 0..=3 and 1e-13 for n=4. Commits `3f0d37b`, `e86c403`, `2539502`.
 - **2026-04-19 PM: Plan 01-06 complete.** 9 composed `ctaylor_*` `#[cube] fn`s (reciprocal/sqrt/exp/log/pow/erf/asinh/atan + per-exponent ctaylor_powi for {-2, -1, 0, 1..=10}) in `crates/xcfun-ad/src/math.rs`. Extended C++ driver + regenerated fixtures (598 total: 250 mul + 168 expand + 180 composed). golden_expand.rs (168 records) and golden_composed.rs (180 records) green at 1e-12 rel-err on cubecl-cpu (cbrt/erf/gauss relaxed to 1e-7 per upstream polyfill disclosures). Commits `3bbcc5f`, `2884dd2`, `1a5a744`. **Marked AD-02, AD-05 [x]** in REQUIREMENTS.md.
+- **2026-04-19 PM: Plan 01-07 complete — Phase 1 signed off.** 11 proptest batch-per-property tests at 110 000 aggregate iters (`tests/proptest_algebra.rs`), criterion baselines at 24 (N, batch) points for mul + composed exp/log/pow, xtask `check-no-fma` asm gate (ROADMAP Phase 1 SC #6 actively enforced, PASS on current build), D-28 docs/design/{06,07,12} updates with SUPERSEDED banners on D1/D2/D4. Commits `3514217`, `a3e4c3f`, `2882b58`, `3a6927e`, `db792bf`. **Marked AD-04, AD-06 [x]** in REQUIREMENTS.md; AD-01 traceability row synced. ROADMAP Phase 1 marked `[x]` (7/7 plans complete).
+
+### Decisions added this plan (01-07)
+
+- **Batch-per-property launch geometry** — `CubeCount::Static(iters, 1, 1)` × `CubeDim::new_1d(1)`, not the plan's suggested `CubeCount::Static(1,1,1)` × `CubeDim::new_1d(iters)`. cubecl-cpu 0.10-pre.3 raises `CallError` on the single-cube shape at iters = 10 000 (MLIR JIT per-cube resource budget exhaustion). Many-cubes-one-unit spreads the dispatch and keeps `ABSOLUTE_POS` uniqueness. Applied to all 11 proptest kernels.
+- **N ∈ {4, 5, 6} bench fallback** — cubecl 0.10-pre.3 has no zero-copy `Array<F>` sub-slicing. Full inline at N ≥ 4 would cost 15 kB+ per kernel. Ship inline for N ∈ {2, 3} (real cross-batch amortization) and single-kernel-per-element for N ∈ {4, 5, 6} via `xcfun_ad::ctaylor_rec::mul::ctaylor_mul` (launch-amortization-only signal). Documented in bench header.
+- **cubecl `Float::ln()` vs `Float::log(base)`** — cubecl 0.10-pre.3 `Float::log` takes a base as second arg; the natural log is `.ln()`. Phase-2+ functional ports must use `.ln()` for log-base-e. Added to the quirk log.
+- **`required-features = ["testing"]` on `[[bench]]` entries** — benches that use `for_tests::cpu_client()` must carry this, or `cargo bench` fails with unresolved-import on `xcfun_ad::for_tests`.
+- **Pre-existing cargo-fmt drift is deferred** — Plan 07 fmt only the 4 new files; ~84 workspace-wide diffs from earlier plans are logged to `.planning/phases/01-taylor-algebra-ad-primitives-xcfun-ad/deferred-items.md` for a dedicated `chore(fmt)` commit before Phase 2.
 
 ### Decisions added this plan (01-06)
 
@@ -122,9 +132,9 @@ None.
 
 ## Session Continuity
 
-**Last session stopped at:** Completed 01-06-PLAN.md. 9 composed `ctaylor_*` fns shipped; golden_expand + golden_composed 1e-12 parity gates green on cubecl-cpu (168 + 180 records). AD-02 and AD-05 [x]. Ready for Plan 01-07 (proptest batch-per-property + criterion benchmarks).
+**Last session stopped at:** Completed 01-07-PLAN.md. Phase 1 signed off: 11 proptest batch-per-property tests at 110 000 aggregate iters; criterion baselines at 24 (N, batch) points; `xtask check-no-fma` asm-gate PASS; D-28 docs updates on 06/07/12. All 6 AD requirements (AD-01..AD-06) marked [x]. ROADMAP Phase 1 marked 7/7 plans complete.
 
-**Next action:** `/gsd-execute-phase 1` resume at Plan 01-07. Plan 01-07 consumes every composed fn from Plan 01-06 for the ring-axiom / Leibniz / round-trip property tests.
+**Next action:** `/gsd-plan-phase 2` to begin Phase 2 (Core Foundations + LDA Tier + Parity Harness). The cubecl-native `xcfun-ad` crate is the dependency surface Phase 2 will consume via `#[cube] fn` imports; per ROADMAP, Phase 2 will add `xcfun-core`'s Vars / Mode / Dependency / XcError, `DensVars::build`, the 11 LDA functionals, and the tier-2 validation harness.
 
 **Related artifacts:**
 
