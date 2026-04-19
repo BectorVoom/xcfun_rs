@@ -1,0 +1,17 @@
+{
+  "xcfun_version_git_sha": "8ec452fd8d40d11c5ce251f5efcf2c16c2e3605fa5de253edbdb080df613eeee",
+  "generated_at": "2026-04-19T11:30:05.620343647+00:00",
+  "per_op_counts": {
+    "cbrt_expand": 21,
+    "erf_expand": 21,
+    "exp_expand": 21,
+    "gauss_expand": 21,
+    "inv_expand": 21,
+    "log_expand": 21,
+    "mul": 250,
+    "pow_expand": 21,
+    "sqrt_expand": 21
+  },
+  "total_records": 418,
+  "driver_commit": "3f0d37be68a7c0ac39fd060bd946f1f259f65bba"
+}
