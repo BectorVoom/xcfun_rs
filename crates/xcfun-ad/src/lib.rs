@@ -13,10 +13,8 @@ pub mod ctaylor;
 pub mod ctaylor_rec;
 pub mod expand;
 pub mod index;
+pub mod math;
 pub mod tfuns;
-
-// Cubecl-bearing modules populated in later plans:
-//   Plan 01-06: math
 
 #[cfg(feature = "testing")]
 pub mod for_tests;
