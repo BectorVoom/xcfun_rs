@@ -31,8 +31,10 @@
 //! - There is no `F::cbrt` — cbrt is implemented as `x.powf(1/3)` with
 //!   a documented 1–2 ULP drift vs. C++ `std::cbrt` on cubecl-cpu.
 
+pub mod cbrt;
 pub mod exp;
 pub mod inv;
 pub mod log;
-// Task 2 adds: `pow`, `sqrt`, `cbrt`.
+pub mod pow;
+pub mod sqrt;
 // Plan 01-04 adds: `atan`, `gauss`, `erf`, `asinh` (alongside `tfuns`).
