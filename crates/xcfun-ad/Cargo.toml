@@ -4,8 +4,29 @@ version.workspace = true
 edition.workspace = true
 description = "Automatic differentiation engine for xcfun_rs"
 
+[features]
+default = ["std"]
+std = []
+libm = ["dep:libm"]
+testing = []
+
 [dependencies]
-libm = { workspace = true }
+libm = { workspace = true, optional = true }
 
 [dev-dependencies]
 approx = { workspace = true }
+proptest = { workspace = true }
+rstest = { workspace = true }
+rand_xoshiro = { workspace = true }
+bincode = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+criterion = { workspace = true }
+
+[[bench]]
+name = "mul_bench"
+harness = false
+
+[[bench]]
+name = "compose_bench"
+harness = false

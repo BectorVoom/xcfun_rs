@@ -1,0 +1,25 @@
+# W13 revision: `[build]` applies `-Cllvm-args=-fp-contract=off` to ALL cargo profiles
+# (debug, test, bench, release). D-21 only requires the flag on release — `[build]` is a
+# SUPERSET of D-21's floor (applies stricter; no release-only behaviour is relaxed).
+# Simpler than `[target.'cfg(all())']`, identical effect on `cargo build --release`,
+# and keeps debug/test builds numerically consistent with release — a useful property
+# for the 1e-12 parity contract when developers run tests locally.
+# Applies to all profiles; D-21 release-only is a minimum bar not a ceiling.
+#
+# Rule 3 deviation (Plan 01-01 SUMMARY): we also set the flag under
+# `[target.'cfg(all())']` because cargo's precedence rules let any `[target.*]`
+# rustflags in a higher-priority config (e.g. a developer's `~/.cargo/config.toml`
+# with `[target.'cfg(target_os = "linux")']`) fully override `[build] rustflags`
+# — cargo does NOT merge them. Duplicating into `[target.'cfg(all())']` here
+# wins at the same precedence tier as user-level target-specific sections, so
+# the 1e-12 parity guard survives on machines with a user-level cargo config.
+
+[build]
+rustflags = [
+    "-Cllvm-args=-fp-contract=off",
+]
+
+[target.'cfg(all())']
+rustflags = [
+    "-Cllvm-args=-fp-contract=off",
+]
