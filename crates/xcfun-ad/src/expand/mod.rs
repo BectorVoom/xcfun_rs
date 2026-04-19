@@ -40,4 +40,5 @@ pub mod sqrt;
 // Plan 01-04 — transcendental expansions using `tfuns` helpers.
 pub mod asinh;
 pub mod atan;
-// `gauss` and `erf` land in Task 3 of Plan 01-04.
+pub mod erf;
+pub mod gauss;
