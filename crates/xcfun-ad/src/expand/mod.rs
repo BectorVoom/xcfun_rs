@@ -37,4 +37,7 @@ pub mod inv;
 pub mod log;
 pub mod pow;
 pub mod sqrt;
-// Plan 01-04 adds: `atan`, `gauss`, `erf`, `asinh` (alongside `tfuns`).
+// Plan 01-04 — transcendental expansions using `tfuns` helpers.
+pub mod asinh;
+pub mod atan;
+// `gauss` and `erf` land in Task 3 of Plan 01-04.
