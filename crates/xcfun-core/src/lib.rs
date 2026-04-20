@@ -14,12 +14,14 @@ pub mod constants;
 pub mod enums;
 pub mod error;
 pub mod functional_id;
+pub mod registry;
 pub mod traits;
 
 pub use constants::*;
 pub use enums::{Mode, Vars};
 pub use error::XcError;
 pub use functional_id::FunctionalId;
+pub use registry::{ALIASES, Alias, FUNCTIONAL_DESCRIPTORS, FunctionalDescriptor, VARS_TABLE, VarsRow};
 pub use traits::Dependency;
 
 /// Number of elements in a multivariate Taylor expansion.
