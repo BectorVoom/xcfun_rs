@@ -14,9 +14,7 @@
 //! - CORE-05 + Pitfall P5 (no fallthrough; explicit helper-function chains)
 
 use cubecl::prelude::*;
-use xcfun_ad::ctaylor::{
-    ctaylor_add, ctaylor_from_scalar, ctaylor_scalar_mul, ctaylor_sub, ctaylor_zero,
-};
+use xcfun_ad::ctaylor::{ctaylor_add, ctaylor_scalar_mul, ctaylor_sub, ctaylor_zero};
 use xcfun_ad::ctaylor_rec::mul::ctaylor_mul;
 use xcfun_ad::math::{ctaylor_pow, ctaylor_reciprocal};
 
@@ -99,16 +97,24 @@ pub fn build_densvars<F: Float>(
     ctaylor_scalar_mul::<F>(&out.n_m13, F::new(RS_PREFACTOR_F32), &mut out.r_s, n);
 }
 
-/// `XC_A_B` variant arm — populates `a`, `b`, `n`, `s` from input `[a, b]`.
-/// 1:1 port of `xcfun-master/src/densvars.hpp:65-72`:
+/// `XC_A_B` variant arm — populates `a`, `b`, `n`, `s` from a pre-seeded
+/// flat CTaylor coefficient input of length `2 * (1 << n)`.
 ///
-/// ```cpp
-/// case XC_A_B:
-///     a = d[0]; regularize(a);
-///     b = d[1]; regularize(b);
-///     n = a + b; s = a - b;
-///     break;
-/// ```
+/// **Plan 02-04 Wave-1B-14a amendment:** input layout changed from 2 scalars
+/// `[a_scalar, b_scalar]` to a flat pre-seeded CTaylor coefficient block:
+/// - `input[0..(1<<n)]`         = coefficients of `a` (CTaylor<F, n>)
+/// - `input[(1<<n)..(2*(1<<n))]` = coefficients of `b` (CTaylor<F, n>)
+///
+/// Host-side `Functional::eval` packs the derivative-seed markers (VAR0=1 on
+/// input slot i, VAR1=1 on input slot j) into the flat input BEFORE launch,
+/// so the kernel receives pre-seeded Taylor polynomials. This is required for
+/// computing partial derivatives via the single-launch Taylor-series approach
+/// (RESEARCH §"Mode::PartialDerivatives Output Layout").
+///
+/// 1:1 port of `xcfun-master/src/densvars.hpp:65-72` — the original scalar
+/// `a = d[0]` is generalised to a Taylor-coefficient copy (preserving all
+/// seeded derivative markers). `regularize` still clamps only `a[CNST]`
+/// (CORE-06 + D-22), so the derivative coefficients are preserved.
 ///
 /// Used by 8 LDAs: SLATERX, VWN3C, VWN5C, PW92C, PZ81C, LDAERFX, LDAERFC, TFK.
 /// Pitfall PHASE2-D: TW + VWK use XC_A_B_GAA_GAB_GBB (Plan 02-05 Wave-1C-1), NOT this arm.
@@ -118,12 +124,23 @@ pub fn build_xc_a_b<F: Float>(
     out: &mut DensVarsDev<F>,
     #[comptime] n: u32,
 ) {
-    // a = d[0]; regularize(a);
-    ctaylor_from_scalar::<F>(input[0], &mut out.a, n);
+    let size = comptime!((1_u32 << n) as usize);
+
+    // Copy pre-seeded coefficients of `a` from input[0..size] into out.a.
+    #[unroll]
+    for i in 0..size {
+        out.a[i] = input[i];
+    }
+    // regularize(a) — clamps out.a[CNST] to >= TINY_DENSITY; derivative coeffs unchanged.
     regularize::<F>(&mut out.a, n);
-    // b = d[1]; regularize(b);
-    ctaylor_from_scalar::<F>(input[1], &mut out.b, n);
+
+    // Copy pre-seeded coefficients of `b` from input[size..2*size] into out.b.
+    #[unroll]
+    for i in 0..size {
+        out.b[i] = input[size + i];
+    }
     regularize::<F>(&mut out.b, n);
+
     // n = a + b; s = a - b;
     ctaylor_add::<F>(&out.a, &out.b, &mut out.n, n);
     ctaylor_sub::<F>(&out.a, &out.b, &mut out.s, n);

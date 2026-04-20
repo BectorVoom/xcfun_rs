@@ -8,7 +8,11 @@
 //!
 //! See `.planning/phases/02-core-foundations-lda-tier-parity-harness/02-CONTEXT.md`
 //! for the 25 locked design decisions (D-01..D-25) driving this crate.
-#![forbid(unsafe_code)]
+// `forbid(unsafe_code)` in non-test builds; tests/launch paths need `unsafe`
+// to call cubecl's `launch_unchecked`, so we downgrade to `deny` and locally
+// `#[allow(unsafe_code)]` the specific launch call sites.
+#![cfg_attr(not(feature = "testing"), forbid(unsafe_code))]
+#![cfg_attr(feature = "testing", deny(unsafe_code))]
 
 pub mod density_vars;
 pub mod dispatch;
