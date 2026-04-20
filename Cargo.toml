@@ -25,6 +25,7 @@ thiserror = "=2.0.18"
 bitflags = "=2.11.1"
 approx = "=0.5.1"
 tracing = { version = "=0.1.44", default-features = false }
+tracing-subscriber = { version = "=0.3.23", features = ["fmt"] }
 
 # cubecl pivot — all three must move in lockstep (CLAUDE.md risk note).
 cubecl = "=0.10.0-pre.3"
