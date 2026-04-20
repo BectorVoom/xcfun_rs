@@ -10,5 +10,7 @@
 //! for the 25 locked design decisions (D-01..D-25) driving this crate.
 #![forbid(unsafe_code)]
 
+pub mod density_vars;
+
 #[cfg(feature = "testing")]
 pub mod for_tests;
