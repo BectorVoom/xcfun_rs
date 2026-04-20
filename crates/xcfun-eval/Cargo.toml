@@ -2,8 +2,23 @@
 name = "xcfun-eval"
 version.workspace = true
 edition.workspace = true
-description = "Evaluation pipeline for exchange-correlation functionals"
+rust-version.workspace = true
+description = "cubecl launcher + functional bodies for xcfun_rs"
+license = "MPL-2.0"
+
+[features]
+default = ["cpu"]
+cpu = ["dep:cubecl-cpu"]
+testing = []
 
 [dependencies]
 xcfun-core = { path = "../xcfun-core" }
 xcfun-ad = { path = "../xcfun-ad" }
+cubecl = { workspace = true }
+cubecl-cpu = { workspace = true, optional = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+xcfun-ad = { path = "../xcfun-ad", features = ["testing"] }
+approx = { workspace = true }
+rstest = { workspace = true }

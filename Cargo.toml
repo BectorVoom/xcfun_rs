@@ -2,9 +2,8 @@
 # Phase 2: xcfun-core re-included (Plan 02-01 Wave-0f). xcfun-eval added in
 # Plan 02-03 Wave-1B-1; validation added in Plan 02-06 Wave-2-1. Other crates
 # remain excluded (Phase 4+/5+/7+).
-members = ["crates/xcfun-ad", "crates/xcfun-core", "xtask"]
+members = ["crates/xcfun-ad", "crates/xcfun-core", "crates/xcfun-eval", "xtask"]
 exclude = [
-    "crates/xcfun-eval",
     "crates/xcfun-ffi",
     "crates/xcfun-functionals",
     "crates/xcfun-gpu",
