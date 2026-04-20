@@ -1,12 +1,15 @@
-//! xcfun-core: Core types and traits for xcfun_rs.
+//! xcfun-core: Core types and registry tables for xcfun_rs.
 //!
 //! Provides the type system that all downstream crates depend on:
-//! - `DensityVars<T>` -- density variable container
 //! - `EvalMode`, `VarType` -- evaluation mode and variable specification
+//!   (renamed to `Mode`, `Vars` in Wave-0d)
 //! - `FunctionalId` -- functional identifiers
 //! - `Dependency` -- dependency bitflags
 //! - `XcError` -- error types
-//! - `Functional` trait -- core functional interface
+//!
+//! The cubecl-native functional bodies + `DensVarsDev` live in `xcfun-eval`
+//! (Phase 2 D-04). This crate is cubecl-free.
+#![forbid(unsafe_code)]
 
 pub mod constants;
 pub mod enums;
@@ -20,9 +23,6 @@ pub use enums::{EvalMode, VarType};
 pub use error::XcError;
 pub use functional_id::FunctionalId;
 pub use traits::{Dependency, Functional, TestData};
-
-// Re-export Num from xcfun-ad for convenience (per D-02)
-pub use xcfun_ad::Num;
 
 /// Number of elements in a multivariate Taylor expansion.
 /// Computes C(n_vars + order, order) iteratively.
