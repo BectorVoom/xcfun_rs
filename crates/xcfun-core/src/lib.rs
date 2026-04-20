@@ -14,14 +14,13 @@ pub mod constants;
 pub mod enums;
 pub mod error;
 pub mod functional_id;
-pub mod test_data;
 pub mod traits;
 
 pub use constants::*;
 pub use enums::{Mode, Vars};
 pub use error::XcError;
 pub use functional_id::FunctionalId;
-pub use traits::{Dependency, Functional, TestData};
+pub use traits::Dependency;
 
 /// Number of elements in a multivariate Taylor expansion.
 /// Computes C(n_vars + order, order) iteratively.

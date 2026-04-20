@@ -5,9 +5,9 @@ edition.workspace = true
 description = "Core types and traits for xcfun_rs"
 
 [dependencies]
-xcfun-ad = { path = "../xcfun-ad" }
 thiserror = { workspace = true }
 bitflags = { workspace = true }
 
 [dev-dependencies]
 approx = { workspace = true }
+static_assertions = "1.1"
