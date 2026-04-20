@@ -11,6 +11,11 @@
 #![forbid(unsafe_code)]
 
 pub mod density_vars;
+pub mod dispatch;
+pub mod functional;
+pub mod functionals;
 
 #[cfg(feature = "testing")]
 pub mod for_tests;
+
+pub use functional::Functional;
