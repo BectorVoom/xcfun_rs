@@ -1,6 +1,6 @@
 //! Error types for xcfun-core.
 
-use crate::enums::{EvalMode, VarType};
+use crate::enums::{Mode, Vars};
 use crate::traits::Dependency;
 
 /// Errors returned by xcfun library operations.
@@ -9,19 +9,19 @@ pub enum XcError {
     #[error("invalid derivative order {order} for mode {mode:?} with {n_vars} input variables")]
     InvalidOrder {
         order: u32,
-        mode: EvalMode,
+        mode: Mode,
         n_vars: usize,
     },
 
     #[error("variable type {vars:?} does not provide required dependencies {required:?}")]
     InsufficientVars {
-        vars: VarType,
+        vars: Vars,
         required: Dependency,
     },
 
     #[error("mode {mode:?} is not supported for functionals with dependencies {depends:?}")]
     UnsupportedMode {
-        mode: EvalMode,
+        mode: Mode,
         depends: Dependency,
     },
 
@@ -58,7 +58,7 @@ mod tests {
     fn invalid_order_display() {
         let err = XcError::InvalidOrder {
             order: 5,
-            mode: EvalMode::PartialDerivatives,
+            mode: Mode::PartialDerivatives,
             n_vars: 2,
         };
         let msg = format!("{err}");
@@ -77,7 +77,7 @@ mod tests {
         assert_eq!(
             XcError::InvalidOrder {
                 order: 5,
-                mode: EvalMode::PartialDerivatives,
+                mode: Mode::PartialDerivatives,
                 n_vars: 2
             }
             .ffi_code(),
