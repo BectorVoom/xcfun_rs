@@ -7,9 +7,10 @@
 //!   tw, vwk
 
 // Modules added by Plans 02-04 and 02-05.
-// pub mod slaterx;     // 02-04
-// pub mod vwn3c;       // 02-04
-// pub mod vwn5c;       // 02-04
+pub mod slaterx; // 02-04
+pub mod vwn3c; // 02-04
+pub mod vwn5c; // 02-04
+pub mod vwn_eps; // 02-04 (shared vwn3_eps/vwn5_eps helpers)
 // pub mod pw92c;       // 02-04
 // pub mod pz81c;       // 02-04
 // pub mod ldaerfx;     // 02-04
