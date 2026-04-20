@@ -9,7 +9,6 @@
 //! - `Functional` trait -- core functional interface
 
 pub mod constants;
-pub mod density_vars;
 pub mod enums;
 pub mod error;
 pub mod functional_id;
@@ -17,7 +16,6 @@ pub mod test_data;
 pub mod traits;
 
 pub use constants::*;
-pub use density_vars::DensityVars;
 pub use enums::{EvalMode, VarType};
 pub use error::XcError;
 pub use functional_id::FunctionalId;
