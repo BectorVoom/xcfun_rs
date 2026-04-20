@@ -14,9 +14,9 @@ pub mod vwn_eps; // 02-04 (shared vwn3_eps/vwn5_eps helpers)
 pub mod pw92c; // 02-04
 pub mod pw92eps; // 02-04 (shared pw92_eps helper)
 pub mod pz81c; // 02-04
-// pub mod ldaerfx;     // 02-04
-// pub mod ldaerfc;     // 02-04
-// pub mod ldaerfc_jt;  // 02-04
+pub mod ldaerfx; // 02-04
+pub mod ldaerfc; // 02-04
+pub mod ldaerfc_jt; // 02-04
 // pub mod tfk;         // 02-04
 // pub mod tw;          // 02-05
 // pub mod vwk;         // 02-05
