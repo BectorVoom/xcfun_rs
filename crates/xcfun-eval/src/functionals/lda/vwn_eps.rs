@@ -105,8 +105,10 @@ const VWN3_FERRO_Z_NUM: f64 = 1.1716852777089715_f64;
 const VWN_ZETA_FACTOR: f64 = 1.92366105093154_f64;
 
 // 9/4 * (2^(1/3) - 1) — used in vwn5 spin-interpolation formula (vwn.hpp:76).
-// 9/4 * (2^(1/3) - 1) = 2.25 * 0.2599210498948732 = 0.5848223622134647
-const VWN5_INTER_FACTOR: f64 = 0.5848223622134647_f64;
+// 9/4 * (2^(1/3) - 1) = 2.25 * 0.25992104989487316 = 0.5848223622634647
+// CAUTION: this constant was previously 0.5848223622134647 (typo, 5e-11 rel-drift).
+// Verified 2026-04-21 against Python `9/4 * (2**(1/3) - 1)` at glibc-f64 precision.
+const VWN5_INTER_FACTOR: f64 = 0.5848223622634647_f64;
 
 // ---------------------------------------------------------------------------
 //  Internal: vwn_f_inline — operation-order port of vwn.hpp:48-52 for one

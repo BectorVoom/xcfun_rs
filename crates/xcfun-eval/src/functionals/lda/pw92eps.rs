@@ -327,9 +327,11 @@ pub fn pw92_eps<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n:
     let mut term_a1 = Array::<F>::new(size);
     ctaylor_mul::<F>(&term_a0, &one_m_zeta4, &mut term_a1, n);
     // term_a = term_a1 / c  (multiply by 1/c as scalar)
-    // 1 / 1.7099209341613654 = 0.584822362263464...
-    // 1/c = 1/1.7099209341613654 = 0.5848223622134647 — f64 precision.
-    let inv_c = F::cast_from(0.5848223622134647_f64);
+    // 1 / 1.7099209341613654 = 0.5848223622634647 — f64 precision.
+    // CAUTION: this constant was previously 0.5848223622134647 (typo, 5e-11 rel-drift
+    // vs the true 1/c). Fixed 2026-04-21. Also equals 9/4 * (2^(1/3) - 1) because
+    // c = 8/(9 * (2*2^(1/3) - 2)) = 8/(9 * 2 * (2^(1/3) - 1)) = 4/(9 * (2^(1/3) - 1)).
+    let inv_c = F::cast_from(0.5848223622634647_f64);
     let _ = PW92_C_F64;
     let mut term_a = Array::<F>::new(size);
     ctaylor_scalar_mul::<F>(&term_a1, inv_c, &mut term_a, n);
