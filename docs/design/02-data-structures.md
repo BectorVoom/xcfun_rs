@@ -281,64 +281,106 @@ pub enum Mode {
 
 ---
 
-## 5. `xcfun-core::densvars::DensVars<T>`
+## 5. `xcfun-eval::density_vars::DensVarsDev<F>`
+
+> **Updated 2026-04-22 (Phase 2 D-02 + D-04).** Pre-Phase-2 this section described a host `DensVars<T: Num>` struct of 29 `T`-typed fields living in `xcfun-core::densvars`. Phase 2 Plan 02-03 (Wave-1B-1) landed a cubecl-native redesign in a different crate. The old host-struct design is **SUPERSEDED**; the as-built shape is `DensVarsDev<F>` as a `#[derive(CubeType, CubeLaunch)]` type in `crates/xcfun-eval/src/density_vars.rs`. The reason for the move is D-04 (functional bodies + density-var construction must be `#[cube]` so a single source compiles to CPU + GPU) and D-02 (cubecl nesting spike confirmed Pattern A — multi-`Array<F>` nested cube types are supported on cubecl 0.10-pre.3). See the Phase 2 CONTEXT doc §Decisions D-01..D-04 and Plan 02-03 SUMMARY for rationale.
+
+### 5.1 `DensVarsDev<F>` — cubecl-native density-variables aggregate
 
 ```rust
-pub struct DensVars<T: Num + Copy> {
-    // Raw inputs (exactly the fields stored in xcfun-master/src/densvars.hpp)
-    pub a: T, pub b: T,
-    pub gaa: T, pub gab: T, pub gbb: T,
-    pub lapa: T, pub lapb: T,
-    pub taua: T, pub taub: T,
-    pub jpaa: T, pub jpbb: T,
-    pub ax: T, pub ay: T, pub az: T,
-    pub bx: T, pub by: T, pub bz: T,
+// crate: xcfun-eval (NOT xcfun-core — per D-04, xcfun-core is cubecl-free)
+// module: crates/xcfun-eval/src/density_vars.rs
+use cubecl::prelude::*;
 
-    // Derived quantities (lazy? No: eager, matches C++ constructor exactly)
-    pub n: T,       // a + b
-    pub s: T,       // a - b
-    pub gnn: T,     // gaa + 2*gab + gbb
-    pub gss: T,     // gaa - 2*gab + gbb
-    pub gns: T,     // gaa - gbb
-    pub lapn: T, pub laps: T,
-    pub tau: T, pub taun: T, pub taus: T,
-    pub zeta: T,    // s/n
-    pub r_s: T,     // (3/(4π n))^(1/3)
-    pub n_m13: T,   // n^(-1/3)
-    pub a_43: T, pub b_43: T,
+#[derive(CubeType, CubeLaunch)]
+pub struct DensVarsDev<F: Float> {
+    // Raw inputs per the 31 Vars variants (pre-seeded CTaylor coefficients — see §5.3)
+    pub a: Array<F>,  pub b: Array<F>,
+    pub gaa: Array<F>, pub gab: Array<F>, pub gbb: Array<F>,
+    pub lapa: Array<F>, pub lapb: Array<F>,
+    pub taua: Array<F>, pub taub: Array<F>,
+    pub jpaa: Array<F>, pub jpbb: Array<F>,
+
+    // Derived quantities (eager; populated by build_densvars inside the kernel)
+    pub n: Array<F>,     // a + b
+    pub s: Array<F>,     // a - b
+    pub gnn: Array<F>,   // gaa + 2*gab + gbb
+    pub gss: Array<F>,   // gaa - 2*gab + gbb
+    pub gns: Array<F>,   // gaa - gbb
+    pub lapn: Array<F>, pub laps: Array<F>,
+    pub tau: Array<F>, pub taun: Array<F>, pub taus: Array<F>,
+    pub zeta: Array<F>,  // s/n
 }
 ```
+
+The Phase-2 slice is **22 named `Array<F>` fields** (Plan 02-03 landed this exact set). The set may extend in Phase 3 (`r_s`, `n_m13`, `a_43`, `b_43`, and the gradient-component scalars `ax, ay, az, bx, by, bz, ...`) as GGA functionals need them; the `#[derive(CubeType, CubeLaunch)]` layer accepts new fields without breaking the launch ABI because cubecl regenerates the launcher.
+
+Each `Array<F>` holds the full `[F; 1 << N]` CTaylor coefficient vector for that density variable, backed by the cubecl launcher. Inside a `#[cube] fn` body the field is read through `d.a` and passed to Phase-1 `ctaylor_*` primitives directly — no host materialisation.
+
+Source of truth: `crates/xcfun-eval/src/density_vars.rs` (field set), `crates/xcfun-eval/src/density_vars/build.rs` (builder chain), `crates/xcfun-eval/src/density_vars/regularize.rs` (regularize `#[cube] fn`).
+
+### 5.2 Construction — `#[cube] fn build_densvars`
+
+```rust
+// crate: xcfun-eval
+// module: crates/xcfun-eval/src/density_vars/build.rs
+
+#[cube]
+pub fn build_densvars<F: Float>(
+    input: &Array<F>,                // inlen × (1 << N) flat array of pre-seeded CTaylor coefficients
+    d: &mut DensVarsDev<F>,
+    #[comptime] vars: u32,           // Vars discriminant
+    #[comptime] n: u32,              // CTaylor order exponent
+) {
+    // comptime if-chain dispatcher — Phase 2 ships two variant arms:
+    //   * XC_A_B (id = Vars::AB discriminant)
+    //   * XC_A_B_GAA_GAB_GBB (id = Vars::ABGaaGabGbb discriminant)
+    // Phase 3 extends with GGA-gradient arms; Phase 4 with metaGGA laplacian/kinetic arms.
+    if vars == VARS_XC_A_B {
+        build_xc_a_b::<F>(input, d, n);
+    } else if vars == VARS_XC_A_B_GAA_GAB_GBB {
+        build_xc_a_b_gaa_gab_gbb::<F>(input, d, n);
+    }
+    // NOTE: explicit helper-function chain replaces C-style fallthrough
+    // (CORE-05 + Pitfall P5). Each arm writes every relevant field of `d`.
+
+    regularize::<F>(d, n);           // CORE-06 / D-22 — see §5.3
+}
+```
+
+### 5.3 Regularization — `#[cube] fn regularize`
+
+```rust
+// crate: xcfun-eval
+// module: crates/xcfun-eval/src/density_vars/regularize.rs
+
+const TINY_DENSITY: f64 = 1e-14;  // PhysicaL constant (f64; NEVER f32 — Plan 02-06 fix)
+
+#[cube]
+pub fn regularize<F: Float>(d: &mut DensVarsDev<F>, #[comptime] n: u32) {
+    // Per CORE-06 + D-22: modify ONLY Array<F>[0] (the CNST coefficient).
+    // All higher-order CTaylor coefficients (Array<F>[1..(1 << N)]) are preserved.
+    // Clamps `a` and `b` to TINY_DENSITY where the constant term is below threshold.
+    // Mirrors C++ `regularize(ctaylor<T,N> & x)` in densvars.hpp:22-30.
+}
+```
+
+The `TINY_DENSITY` constant is declared in f64 (not f32) — Plan 02-06's Fix 1 established that even `F::new(1e-14_f32)` truncates to `9.99999982e-15` and cascades to 1.75e-8 rel-err, violating the 1e-12 contract. Every physical constant in `xcfun-eval` now uses `F::cast_from(f64_literal)` with an inline derivation comment.
+
+The regularize invariant is guarded by a dedicated integration test (`crates/xcfun-eval/tests/regularize_invariant.rs`) exercising a CTaylor<f64, 2> input with a seeded first-derivative coefficient; the test asserts that coefficients at indices 1..=3 are unchanged pre/post regularize while index 0 is clamped.
+
+### 5.4 Memory layout notes
 
 Layout:
 
 | Property | Value |
 |----------|-------|
-| Fields | 29 `T` values |
-| For `T = CTaylor<f64, 6>` | 29 × 512 B = 14.5 KiB stack per point |
-| `#[repr]` | Default Rust layout (not C-visible) |
-| Heap | Never |
+| Fields | 22 `Array<F>` fields (Phase 2); extends in Phase 3/4 |
+| For `F = f64`, `N = 2` (order-2 PartialDerivatives) | 22 × 4 × 8 = 704 B of pre-seeded coefficients per point |
+| `#[repr]` | cubecl-derived — launcher layout managed by `#[derive(CubeLaunch)]` |
+| Heap | Only at batch-open (cubecl `Array<F>` allocation); zero-heap on the per-point hot path |
 
-**Construction**: a single associated function populates all fields from the raw `&[T]` density slice, branching on `Vars` once at entry:
-
-```rust
-impl<T: Num + Copy> DensVars<T> {
-    pub fn build(vars: Vars, input: &[T]) -> Self {
-        let mut dv = Self::zeroed();
-        match vars {
-            Vars::A => { dv.a = input[0]; /* … */ }
-            Vars::AB => { dv.a = input[0]; dv.b = input[1]; /* … */ }
-            // … 31 match arms, each exactly matching densvars.hpp constructor …
-        }
-        dv.finalize();                 // fills the derived fields
-        dv.regularize();               // enforces XCFUN_TINY_DENSITY on c[CNST] only
-        dv
-    }
-}
-```
-
-The single `match` is the only top-level branch per point; inside each arm the layout is straight-line assignments the compiler collapses into a contiguous store sequence.
-
-**Regularization**: mirrors `regularize(ctaylor<T,N> & x)` in the reference (densvars.hpp lines 22-30): sets `x.c[CNST] = XCFUN_TINY_DENSITY` when the constant term is below threshold, but leaves derivatives untouched. Critical for correctness at ρ → 0.
+The per-point stack-frame budget is determined by CTaylor scratch allocations inside each functional `#[cube] fn`, not by `DensVarsDev` itself — cubecl keeps `Array<F>` handles as thin descriptors.
 
 ---
 
