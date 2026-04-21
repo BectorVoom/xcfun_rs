@@ -31,19 +31,24 @@ use xcfun_ad::math::{
 use crate::density_vars::DensVarsDev;
 
 // ldaerfx.cpp line 26: const parameter ckf = 3.093667726280136;
-const CKF: f32 = 3.093_667_7_f32;
+// f64 storage + F::cast_from at kernel-time: f32 truncates to ~8 digits,
+// which cascades into ~1e-7 rel-drift that tier-2 order-2 cancellation amplifies
+// to catastrophic failure near branch B/C boundary (a ≈ 94–100).
+const CKF_F64: f64 = 3.093667726280136_f64;
 
 // Range-separation parameter — Phase 2 hard-codes the default 0.4 (matches xcfun's
-// XC_RANGESEP_MU default). Phase 5 (RS-01..10) wires the runtime parameter API.
+// XC_RANGESEP_MU default). 0.4 is EXACTLY representable in f32/f64, so we keep
+// a plain f32 for the scalar-mul fast path; no precision loss here.
 const RANGESEP_MU_F32: f32 = 0.4_f32;
 
-// 24/PI = 7.639437268410976
-const TWENTY_FOUR_OVER_PI: f32 = 7.639_437_3_f32;
+// 24/PI — C++ computes `24.0 / M_PI` at runtime; glibc M_PI is f64.
+// 24 / pi_f64 = 7.639437268410976 (Python verified).
+const TWENTY_FOUR_OVER_PI_F64: f64 = 7.639437268410976_f64;
 
-// sqrt(PI) = 1.7724538509055159
-const SQRT_PI: f32 = 1.772_453_9_f32;
+// sqrt(PI) — C++ uses `sqrt(M_PI)`; libm value is 1.7724538509055159.
+const SQRT_PI_F64: f64 = 1.7724538509055159_f64;
 
-// -3/8 = -0.375
+// -3/8 = -0.375 — EXACTLY representable in f32/f64; no drift.
 const NEG_THREE_EIGHTHS: f32 = -0.375_f32;
 
 // ---------------------------------------------------------------------------
@@ -67,10 +72,11 @@ fn esrx_ldaerfspin<F: Float>(
     ctaylor_scalar_mul::<F>(na, F::new(2.0), &mut rhoa, n);
 
     // akf = ckf * pow(rhoa, 1/3)
+    // Use F::cast_from for the 1/3 exponent (f32 1/3 truncates) and the ckf scalar.
     let mut rhoa_13 = Array::<F>::new(size);
-    ctaylor_pow::<F>(&rhoa, F::new(1.0_f32 / 3.0_f32), &mut rhoa_13, n);
+    ctaylor_pow::<F>(&rhoa, F::cast_from(1.0_f64 / 3.0_f64), &mut rhoa_13, n);
     let mut akf = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&rhoa_13, F::new(CKF), &mut akf, n);
+    ctaylor_scalar_mul::<F>(&rhoa_13, F::cast_from(CKF_F64), &mut akf, n);
 
     // a = mu / (2 * akf)  →  a = mu * (1 / (2 * akf))
     let mut two_akf = Array::<F>::new(size);
@@ -92,14 +98,14 @@ fn esrx_ldaerfspin<F: Float>(
     let mut twenty_four_rhoa_over_pi = Array::<F>::new(size);
     ctaylor_scalar_mul::<F>(
         &rhoa,
-        F::new(TWENTY_FOUR_OVER_PI),
+        F::cast_from(TWENTY_FOUR_OVER_PI_F64),
         &mut twenty_four_rhoa_over_pi,
         n,
     );
     let mut pow_24_rhoa_pi_13 = Array::<F>::new(size);
     ctaylor_pow::<F>(
         &twenty_four_rhoa_over_pi,
-        F::new(1.0_f32 / 3.0_f32),
+        F::cast_from(1.0_f64 / 3.0_f64),
         &mut pow_24_rhoa_pi_13,
         n,
     );
@@ -132,7 +138,7 @@ fn esrx_ldaerfspin<F: Float>(
         let mut erf_val = Array::<F>::new(size);
         ctaylor_erf::<F>(&half_inv_a, &mut erf_val, n);
         let mut sqrt_pi_erf = Array::<F>::new(size);
-        ctaylor_scalar_mul::<F>(&erf_val, F::new(SQRT_PI), &mut sqrt_pi_erf, n);
+        ctaylor_scalar_mul::<F>(&erf_val, F::cast_from(SQRT_PI_F64), &mut sqrt_pi_erf, n);
 
         // 2*a - 4*a³
         let mut two_a = Array::<F>::new(size);

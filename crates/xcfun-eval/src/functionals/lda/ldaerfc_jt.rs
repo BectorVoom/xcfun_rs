@@ -29,19 +29,23 @@ use crate::density_vars::DensVarsDev;
 
 const RANGESEP_MU_F32: f32 = 0.4_f32;
 
-// c1 parameters (ldaerfc_jt.cpp:24-32).
-const C1_U1: f32 = 1.027_074_1_f32;
-const C1_U2: f32 = -0.230_160_62_f32;
-const C1_V1: f32 = 0.619_688_5_f32;
+// c1 parameters (ldaerfc_jt.cpp:24-32). f64 + F::cast_from at kernel-time:
+// f32 truncates to ~7 digits, causing ~1e-7 rel-drift at tier-2 cancellation.
+const C1_U1_F64: f64 = 1.0270741452992294_f64;
+const C1_U2_F64: f64 = -0.230160617208092_f64;
+const C1_V1_F64: f64 = 0.6196884832404359_f64;
 
 // c2 parameters (ldaerfc_jt.cpp:34-45).
-const C2_A: f32 = 3.2581_f32;
-const C2_F: f32 = 3.395_305_5_f32;
-const C2_BET: f32 = 163.44_f32;
-const C2_GAM: f32 = 4.7125_f32;
+// a = 3.2581 (short literal — preserved as f64)
+// f = 3.39530545262710070631 (truncated to f64 = 3.3953054526271006)
+// bet = 163.44, gam = 4.7125 (short literals)
+const C2_A_F64: f64 = 3.2581_f64;
+const C2_F_F64: f64 = 3.3953054526271006_f64;
+const C2_BET_F64: f64 = 163.44_f64;
+const C2_GAM_F64: f64 = 4.7125_f64;
 
-// 0.5 * PI — used in c2 denominator.
-const HALF_PI: f32 = 1.570_796_3_f32;
+// 0.5 * PI — C++ uses `0.5 * M_PI`; glibc M_PI * 0.5 = 1.5707963267948966.
+const HALF_PI_F64: f64 = 1.5707963267948966_f64;
 
 // ---------------------------------------------------------------------------
 //  c1(rs) = (u1*rs + u2*rs²) / (1 + v1*rs)
@@ -58,15 +62,15 @@ fn c1<F: Float>(rs: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
 
     // numerator: u1*rs + u2*rs²
     let mut u1_rs = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(rs, F::new(C1_U1), &mut u1_rs, n);
+    ctaylor_scalar_mul::<F>(rs, F::cast_from(C1_U1_F64), &mut u1_rs, n);
     let mut u2_rs2 = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&rs2, F::new(C1_U2), &mut u2_rs2, n);
+    ctaylor_scalar_mul::<F>(&rs2, F::cast_from(C1_U2_F64), &mut u2_rs2, n);
     let mut numer = Array::<F>::new(size);
     ctaylor_add::<F>(&u1_rs, &u2_rs2, &mut numer, n);
 
     // denominator: 1 + v1*rs
     let mut v1_rs = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(rs, F::new(C1_V1), &mut v1_rs, n);
+    ctaylor_scalar_mul::<F>(rs, F::cast_from(C1_V1_F64), &mut v1_rs, n);
     let mut one_const = Array::<F>::new(size);
     ctaylor_zero::<F>(&mut one_const, n);
     one_const[0] = F::new(1.0);
@@ -92,7 +96,7 @@ fn c2<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     // gam_plus_rs = gam + r_s
     let mut gam_const = Array::<F>::new(size);
     ctaylor_zero::<F>(&mut gam_const, n);
-    gam_const[0] = F::new(C2_GAM);
+    gam_const[0] = F::cast_from(C2_GAM_F64);
     let mut gam_plus_rs = Array::<F>::new(size);
     ctaylor_add::<F>(&gam_const, &d.r_s, &mut gam_plus_rs, n);
 
@@ -103,7 +107,7 @@ fn c2<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     // pow_15 + bet   (scalar-add bet to CNST)
     let mut bet_const = Array::<F>::new(size);
     ctaylor_zero::<F>(&mut bet_const, n);
-    bet_const[0] = F::new(C2_BET);
+    bet_const[0] = F::cast_from(C2_BET_F64);
     let mut pow_15_plus_bet = Array::<F>::new(size);
     ctaylor_add::<F>(&pow_15, &bet_const, &mut pow_15_plus_bet, n);
 
@@ -113,7 +117,7 @@ fn c2<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
 
     // -a * sqrt(gam + r_s)
     let mut neg_a_sqrt = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&sqrt_gpr, F::new(-C2_A), &mut neg_a_sqrt, n);
+    ctaylor_scalar_mul::<F>(&sqrt_gpr, F::cast_from(-C2_A_F64), &mut neg_a_sqrt, n);
 
     // exp(-a * sqrt(...))
     let mut exp_val = Array::<F>::new(size);
@@ -121,19 +125,14 @@ fn c2<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
 
     // g0 = f * (pow_15 + bet) * exp(...)
     let mut f_poly = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&pow_15_plus_bet, F::new(C2_F), &mut f_poly, n);
+    ctaylor_scalar_mul::<F>(&pow_15_plus_bet, F::cast_from(C2_F_F64), &mut f_poly, n);
     let mut g0 = Array::<F>::new(size);
     ctaylor_mul::<F>(&f_poly, &exp_val, &mut g0, n);
 
-    // g0 - 0.5
+    // g0 - 0.5   (C++ ldaerfc_jt.cpp:41)
     let mut half_const = Array::<F>::new(size);
     ctaylor_zero::<F>(&mut half_const, n);
     half_const[0] = F::new(0.5);
-    let mut g0_m_half = Array::<F>::new(size);
-    ctaylor_add::<F>(&g0, &half_const, &mut g0_m_half, n);
-    // Actually need g0 - 0.5 (not +)...
-    ctaylor_zero::<F>(&mut g0_m_half, n);
-    // ... use ctaylor_sub instead to be clear:
     let mut g0_minus_half = Array::<F>::new(size);
     {
         use xcfun_ad::ctaylor::ctaylor_sub;
@@ -146,7 +145,7 @@ fn c2<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
 
     // denom = 0.5π * n² * (g0 - 0.5)
     let mut half_pi_n2 = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&n2, F::new(HALF_PI), &mut half_pi_n2, n);
+    ctaylor_scalar_mul::<F>(&n2, F::cast_from(HALF_PI_F64), &mut half_pi_n2, n);
     let mut denom = Array::<F>::new(size);
     ctaylor_mul::<F>(&half_pi_n2, &g0_minus_half, &mut denom, n);
 
