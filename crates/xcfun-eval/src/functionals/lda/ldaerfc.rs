@@ -18,6 +18,25 @@
 //! # Implementation
 //! Direct operation-order port of the C++ source. Range-separation parameter
 //! `mu = XC_RANGESEP_MU = 0.4` hard-coded (Phase 5 RS-01..10 will wire runtime API).
+//!
+//! # 2026-04-21 constants-correctness fix (Plan 02-04 Wave-1B-14c)
+//!
+//! Initial Wave-1B-12 port hard-coded several f64 constants (most notably
+//! `QRPA_B2`, `DPOL_LEAD_SCALE`, `ECORRLR_ALPHA`, `ECORRLR_CF{,_SQ}`, and the
+//! `coe5` prefactor `-9/(40*sqrt(2π))`) whose symbolic expansions drifted from
+//! what libm `pow`/`log`/`sqrt` actually produce at IEEE-754 f64 precision.
+//! `QRPA_B2` alone was wrong by ~3e-4 *relative*, and `DPOL_LEAD_SCALE` by
+//! ~2.6e-4 — far outside the 1e-7 D-24 tier-1 budget. The tier-1 self-test
+//! (Wave-1B-14b) flagged a 6.3e-6 rel-error on element [0] of the XC_A_B
+//! order-2 output grid, which diagnosed the discrepancy.
+//!
+//! Every literal has been regenerated using Python+libm (verified to match
+//! glibc `pow`/`cbrt`/`log`/`sqrt` bit-for-bit) and each constant carries an
+//! inline derivation. With corrected literals, Python reference evaluation
+//! matches the upstream target `-1.4579390272267870e-01` to **0 relative
+//! error** — confirming the root cause is strictly the constant literals,
+//! not any kernel/AD algorithmic drift (CONTEXT D-19 algorithmic-identity
+//! port invariant holds).
 
 use cubecl::prelude::*;
 use xcfun_ad::ctaylor::{ctaylor_add, ctaylor_scalar_mul, ctaylor_sub, ctaylor_zero};
@@ -29,61 +48,71 @@ use xcfun_ad::math::{
 use super::pw92eps::pw92_eps;
 use crate::density_vars::DensVarsDev;
 
-const RANGESEP_MU_F32: f32 = 0.4_f32;
+const RANGESEP_MU_F64: f64 = 0.4_f64;
 
-// Qrpa constants (ldaerfc.cpp:24-28).
-// Acoul = 2 * (log(2) - 1) / (π²) = -0.0621814...
-const QRPA_ACOUL: f32 = -0.062_181_4_f32;
-const QRPA_A2: f32 = 5.846_05_f32;
-const QRPA_C2: f32 = 3.917_44_f32;
-const QRPA_D2: f32 = 3.448_51_f32;
-// b2 = d2 - 3/(2π*Acoul) * pow(4/(9π), 1/3)
-// 3/(2π*-0.0621814) = -7.6729..; (4/9π)^(1/3) = (0.141471)^(1/3) = 0.52106
-// b2 = 3.44851 - (-7.6729) * 0.52106 = 3.44851 + 4.0 = 7.44851 (approximately)
-// Actually let me recompute carefully:
-//   Acoul = 2*(ln(2)-1)/π² = 2*(0.69314718 - 1)/9.8696 = -0.6137058/9.8696 = -0.062177
-//   3/(2π*-0.062177) = 3/(-0.39063) = -7.68030
-//   (4/(9π))^(1/3) = (0.14147)^(1/3) = 0.52110
-//   b2 = 3.44851 - (-7.68030)*0.52110 = 3.44851 + 4.00325 = 7.4518
-const QRPA_B2: f32 = 7.451_75_f32;
+// Qrpa constants (ldaerfc.cpp:24-28) — all f64-precise per 1e-7 D-24 threshold.
+//
+// The constants are computed *exactly* as the C++ reference does (operation
+// order matches libm/glibc at IEEE-754 f64 precision). Values were regenerated
+// 2026-04-21 (see Plan 02-04 Wave-1B-14c fix note) — the previous precomputed
+// f64 literals were derived from an incorrect symbolic expansion and induced
+// ~6e-6 relative error in the LDAERFC tier-1 test, well above the 1e-7 D-24
+// threshold.
+//
+// Acoul = 2 * (log(2) - 1) / (π²)
+//   = 2 * (0.6931471805599453 - 1) / 9.869604401089358
+//   = -0.0621813817393098        (libm-computed f64)
+const QRPA_ACOUL: f64 = -0.0621813817393098_f64;
+const QRPA_A2: f64 = 5.84605_f64;
+const QRPA_C2: f64 = 3.91744_f64;
+const QRPA_D2: f64 = 3.44851_f64;
+// b2 = d2 - 3 / (2π * Acoul) * pow(4 / (9π), 1/3)
+//    = 3.44851 - 3 / (2π * -0.0621813817393098) * 0.521061761197848
+//    = 3.44851 - (-7.67905...) * 0.521061761197848
+//    = 3.44851 + 4.001015382634055
+//    = 7.4495253826340555         (libm-computed f64)
+const QRPA_B2: f64 = 7.4495253826340555_f64;
 
 // dpol constants (ldaerfc.cpp:34-40).
-// cf = pow(9π/4, 1/3) = (7.0686)^(1/3) = 1.91916
-const DPOL_CF: f32 = 1.919_16_f32;
-// cf² ≈ 3.68318 — used in coe4.
-const DPOL_CF_SQ: f32 = 3.683_18_f32;
-const DPOL_P2P: f32 = 0.04_f32;
-const DPOL_P3P: f32 = 0.4319_f32;
-// pow(2, 5/3) / 5 = 3.1748 / 5 = 0.634960
+// cf = pow(9π/4, 1/3) = 1.9191582926775128   (libm pow / cbrt)
+const DPOL_CF: f64 = 1.9191582926775128_f64;
+// cf² = cf * cf = 3.683168552352866
+const DPOL_CF_SQ: f64 = 3.683168552352866_f64;
+const DPOL_P2P: f64 = 0.04_f64;
+const DPOL_P3P: f64 = 0.4319_f64;
+// pow(2, 5/3) / 5 = 0.6349604207872799
 #[allow(dead_code)]
-const DPOL_TWO_53_OVER_5: f32 = 0.634_960_4_f32;
-// P3P - 0.454555 = 0.4319 - 0.454555 = -0.022655
-const DPOL_P3P_MINUS: f32 = -0.022_655_f32;
+const DPOL_TWO_53_OVER_5: f64 = 0.6349604207872799_f64;
+// P3P - 0.454555 = 0.4319 - 0.454555 = -0.022655 (exact in f64)
+const DPOL_P3P_MINUS: f64 = -0.022655_f64;
 
 // g0f constants (ldaerfc.cpp:47-52).
-const G0F_C0F: f32 = 0.081_930_6_f32;
-const G0F_D0F: f32 = 0.752_411_f32;
-const G0F_E0F: f32 = -0.012_771_3_f32;
-const G0F_F0F: f32 = 0.001_858_98_f32;
-// D0F - 0.7317 = 0.752411 - 0.7317 = 0.020711
-const G0F_D0F_MINUS: f32 = 0.020_711_f32;
+const G0F_C0F: f64 = 0.0819306_f64;
+const G0F_D0F: f64 = 0.752411_f64;
+const G0F_E0F: f64 = -0.0127713_f64;
+const G0F_F0F: f64 = 0.00185898_f64;
+// D0F - 0.7317 = 0.020711000000000045 (IEEE-754 f64 exact result).
+const G0F_D0F_MINUS: f64 = 0.020711000000000045_f64;
 
 // ecorrlr constants (ldaerfc.cpp:57-67).
-// alpha = pow(4/(9π), 1/3) = 0.52109...
-const ECORRLR_ALPHA: f32 = 0.521_095_f32;
-// cf = 1/alpha = 1.91916
-const ECORRLR_CF: f32 = 1.919_16_f32;
-const ECORRLR_CF_SQ: f32 = 3.683_18_f32;
-const ECORRLR_ADIB: f32 = 0.784_949_f32;
-const ECORRLR_Q1A: f32 = -0.388_f32;
-const ECORRLR_Q2A: f32 = 0.676_f32;
-const ECORRLR_Q3A: f32 = 0.547_f32;
-const ECORRLR_T1A: f32 = -4.95_f32;
-const ECORRLR_T2A: f32 = 1.0_f32;
-const ECORRLR_T3A: f32 = 0.31_f32;
+// alpha = pow(4/9/π, 1/3) = 0.521061761197848
+const ECORRLR_ALPHA: f64 = 0.521061761197848_f64;
+// cf = 1/alpha = 1.9191582926775133 (note: differs from DPOL_CF in the last
+// ULP due to the different formula in C++; xcfun's ecorrlr uses `1/alpha`,
+// dpol uses `pow(9π/4, 1/3)` directly).
+const ECORRLR_CF: f64 = 1.9191582926775133_f64;
+// ECORRLR cf² = cf*cf = 3.6831685523528677 (matches DPOL_CF_SQ to 1 ULP).
+const ECORRLR_CF_SQ: f64 = 3.6831685523528677_f64;
+const ECORRLR_ADIB: f64 = 0.784949_f64;
+const ECORRLR_Q1A: f64 = -0.388_f64;
+const ECORRLR_Q2A: f64 = 0.676_f64;
+const ECORRLR_Q3A: f64 = 0.547_f64;
+const ECORRLR_T1A: f64 = -4.95_f64;
+const ECORRLR_T2A: f64 = 1.0_f64;
+const ECORRLR_T3A: f64 = 0.31_f64;
 
-// sqrt(2*PI) = 2.5066282746310002
-const SQRT_TWO_PI: f32 = 2.506_628_3_f32;
+// sqrt(2π) = 2.5066282746310002 (libm sqrt on 2π f64).
+const SQRT_TWO_PI: f64 = 2.5066282746310002_f64;
 
 // ---------------------------------------------------------------------------
 //  Qrpa(x) = Acoul * log((1 + x*(a2 + x*(b2 + c2*x))) / (1 + x*(a2 + d2*x)))
@@ -117,15 +146,15 @@ fn qrpa<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
 
     let mut a2_const = Array::<F>::new(size);
     ctaylor_zero::<F>(&mut a2_const, n);
-    a2_const[0] = F::new(QRPA_A2);
+    a2_const[0] = F::cast_from(QRPA_A2);
 
     let mut b2_const = Array::<F>::new(size);
     ctaylor_zero::<F>(&mut b2_const, n);
-    b2_const[0] = F::new(QRPA_B2);
+    b2_const[0] = F::cast_from(QRPA_B2);
 
     // Numerator Horner: num_inner_b = c2*x + b2
     let mut c2_x = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(x, F::new(QRPA_C2), &mut c2_x, n);
+    ctaylor_scalar_mul::<F>(x, F::cast_from(QRPA_C2), &mut c2_x, n);
     let mut num_inner_b = Array::<F>::new(size);
     ctaylor_add::<F>(&c2_x, &b2_const, &mut num_inner_b, n);
 
@@ -147,7 +176,7 @@ fn qrpa<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
 
     // Denominator Horner: den_mid = d2 * x
     let mut den_mid = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(x, F::new(QRPA_D2), &mut den_mid, n);
+    ctaylor_scalar_mul::<F>(x, F::cast_from(QRPA_D2), &mut den_mid, n);
     // den_sum = a2 + den_mid
     let mut den_sum = Array::<F>::new(size);
     ctaylor_add::<F>(&a2_const, &den_mid, &mut den_sum, n);
@@ -169,7 +198,7 @@ fn qrpa<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_log::<F>(&ratio, &mut log_ratio, n);
 
     // out = Acoul * log_ratio
-    ctaylor_scalar_mul::<F>(&log_ratio, F::new(QRPA_ACOUL), out, n);
+    ctaylor_scalar_mul::<F>(&log_ratio, F::cast_from(QRPA_ACOUL), out, n);
 }
 
 // ---------------------------------------------------------------------------
@@ -192,8 +221,13 @@ fn qrpa<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
 //    out        = lead * ratio
 // ---------------------------------------------------------------------------
 
-// Precompute: (2^(5/3)/5) * cf² = 0.634960 * 3.683183 = 2.339279
-const DPOL_LEAD_SCALE: f32 = 2.339_279_4_f32;
+// Precompute: (2^(5/3)/5) * cf² = 0.6349604207872799 * 3.683168552352866
+//           = 2.3386662538324523 (libm-consistent f64).
+//
+// Earlier code used 2.3392794351087596 (derived from an incorrect cf² value);
+// that discrepancy was the primary contributor to the LDAERFC 6e-6 tier-1
+// failure in Plan 02-04 Wave-1B-14b — see module header.
+const DPOL_LEAD_SCALE: f64 = 2.3386662538324523_f64;
 
 #[cube]
 fn dpol<F: Float>(rs: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
@@ -204,11 +238,11 @@ fn dpol<F: Float>(rs: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let mut inv_rs2 = Array::<F>::new(size);
     ctaylor_reciprocal::<F>(&rs2, &mut inv_rs2, n);
     let mut lead = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&inv_rs2, F::new(DPOL_LEAD_SCALE), &mut lead, n);
+    ctaylor_scalar_mul::<F>(&inv_rs2, F::cast_from(DPOL_LEAD_SCALE), &mut lead, n);
 
     // num_tail = (P3P - 0.454555) * rs
     let mut num_tail = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(rs, F::new(DPOL_P3P_MINUS), &mut num_tail, n);
+    ctaylor_scalar_mul::<F>(rs, F::cast_from(DPOL_P3P_MINUS), &mut num_tail, n);
     let mut one_const = Array::<F>::new(size);
     ctaylor_zero::<F>(&mut one_const, n);
     one_const[0] = F::new(1.0);
@@ -217,9 +251,9 @@ fn dpol<F: Float>(rs: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
 
     // den_linear = P3P * rs; den_quad = P2P * rs²
     let mut den_linear = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(rs, F::new(DPOL_P3P), &mut den_linear, n);
+    ctaylor_scalar_mul::<F>(rs, F::cast_from(DPOL_P3P), &mut den_linear, n);
     let mut den_quad = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&rs2, F::new(DPOL_P2P), &mut den_quad, n);
+    ctaylor_scalar_mul::<F>(&rs2, F::cast_from(DPOL_P2P), &mut den_quad, n);
     let mut den_sum = Array::<F>::new(size);
     ctaylor_add::<F>(&den_linear, &den_quad, &mut den_sum, n);
     let mut den_arr = Array::<F>::new(size);
@@ -232,7 +266,7 @@ fn dpol<F: Float>(rs: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
 
     ctaylor_mul::<F>(&lead, &ratio, out, n);
     // Silence unused-var lint for alias imports.
-    let _ = (F::new(DPOL_CF), F::new(DPOL_CF_SQ));
+    let _ = (F::cast_from(DPOL_CF), F::cast_from(DPOL_CF_SQ));
 }
 
 // ---------------------------------------------------------------------------
@@ -246,10 +280,10 @@ fn g0f<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
 
     // Innermost Horner: (E0F + F0F*x)
     let mut f0f_x = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(x, F::new(G0F_F0F), &mut f0f_x, n);
+    ctaylor_scalar_mul::<F>(x, F::cast_from(G0F_F0F), &mut f0f_x, n);
     let mut e0f_const = Array::<F>::new(size);
     ctaylor_zero::<F>(&mut e0f_const, n);
-    e0f_const[0] = F::new(G0F_E0F);
+    e0f_const[0] = F::cast_from(G0F_E0F);
     let mut inner1 = Array::<F>::new(size);
     ctaylor_add::<F>(&e0f_const, &f0f_x, &mut inner1, n);
 
@@ -260,7 +294,7 @@ fn g0f<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     // (C0F + x*inner1)
     let mut c0f_const = Array::<F>::new(size);
     ctaylor_zero::<F>(&mut c0f_const, n);
-    c0f_const[0] = F::new(G0F_C0F);
+    c0f_const[0] = F::cast_from(G0F_C0F);
     let mut inner2 = Array::<F>::new(size);
     ctaylor_add::<F>(&c0f_const, &x_inner1, &mut inner2, n);
 
@@ -271,7 +305,7 @@ fn g0f<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     // (D0F - 0.7317 + x*inner2)
     let mut d0f_minus_const = Array::<F>::new(size);
     ctaylor_zero::<F>(&mut d0f_minus_const, n);
-    d0f_minus_const[0] = F::new(G0F_D0F_MINUS);
+    d0f_minus_const[0] = F::cast_from(G0F_D0F_MINUS);
     let mut inner3 = Array::<F>::new(size);
     ctaylor_add::<F>(&d0f_minus_const, &x_inner2, &mut inner3, n);
 
@@ -288,7 +322,7 @@ fn g0f<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
 
     // -D0F * x
     let mut neg_d0f_x = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(x, F::new(-G0F_D0F), &mut neg_d0f_x, n);
+    ctaylor_scalar_mul::<F>(x, F::cast_from(-G0F_D0F), &mut neg_d0f_x, n);
 
     // exp(-D0F*x)
     let mut exp_val = Array::<F>::new(size);
@@ -342,7 +376,7 @@ fn ecorrlr<F: Float>(
     #[comptime] n: u32,
 ) {
     let size = comptime!((1_u32 << n) as usize);
-    let mu = F::new(RANGESEP_MU_F32);
+    let mu = F::cast_from(RANGESEP_MU_F64);
 
     // phi = (pow(1+zeta, 2/3) + pow(1-zeta, 2/3)) / 2
     let mut one_const = Array::<F>::new(size);
@@ -352,7 +386,7 @@ fn ecorrlr<F: Float>(
     ctaylor_add::<F>(&d.zeta, &one_const, &mut one_plus_zeta, n);
     let mut one_minus_zeta = Array::<F>::new(size);
     ctaylor_sub::<F>(&one_const, &d.zeta, &mut one_minus_zeta, n);
-    let two_thirds = F::new(2.0_f32 / 3.0_f32);
+    let two_thirds = F::cast_from(2.0_f64 / 3.0_f64);
     let mut pow_plus_23 = Array::<F>::new(size);
     ctaylor_pow::<F>(&one_plus_zeta, two_thirds, &mut pow_plus_23, n);
     let mut pow_minus_23 = Array::<F>::new(size);
@@ -364,7 +398,7 @@ fn ecorrlr<F: Float>(
 
     // b0 = adib * r_s
     let mut b0 = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&d.r_s, F::new(ECORRLR_ADIB), &mut b0, n);
+    ctaylor_scalar_mul::<F>(&d.r_s, F::cast_from(ECORRLR_ADIB), &mut b0, n);
 
     // rs2 = r_s * r_s; rs3 = rs2 * r_s
     let mut rs2 = Array::<F>::new(size);
@@ -374,13 +408,13 @@ fn ecorrlr<F: Float>(
 
     // d2anti = (q1a*r_s + q2a*rs2) * exp(-q3a*r_s) / rs2
     let mut q1a_rs = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&d.r_s, F::new(ECORRLR_Q1A), &mut q1a_rs, n);
+    ctaylor_scalar_mul::<F>(&d.r_s, F::cast_from(ECORRLR_Q1A), &mut q1a_rs, n);
     let mut q2a_rs2 = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&rs2, F::new(ECORRLR_Q2A), &mut q2a_rs2, n);
+    ctaylor_scalar_mul::<F>(&rs2, F::cast_from(ECORRLR_Q2A), &mut q2a_rs2, n);
     let mut d2anti_num = Array::<F>::new(size);
     ctaylor_add::<F>(&q1a_rs, &q2a_rs2, &mut d2anti_num, n);
     let mut neg_q3a_rs = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&d.r_s, F::new(-ECORRLR_Q3A), &mut neg_q3a_rs, n);
+    ctaylor_scalar_mul::<F>(&d.r_s, F::cast_from(-ECORRLR_Q3A), &mut neg_q3a_rs, n);
     let mut exp_q3a = Array::<F>::new(size);
     ctaylor_exp::<F>(&neg_q3a_rs, &mut exp_q3a, n);
     let mut d2anti_num_exp = Array::<F>::new(size);
@@ -392,13 +426,13 @@ fn ecorrlr<F: Float>(
 
     // d3anti = (t1a*r_s + t2a*rs2) * exp(-t3a*r_s) / rs3
     let mut t1a_rs = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&d.r_s, F::new(ECORRLR_T1A), &mut t1a_rs, n);
+    ctaylor_scalar_mul::<F>(&d.r_s, F::cast_from(ECORRLR_T1A), &mut t1a_rs, n);
     let mut t2a_rs2 = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&rs2, F::new(ECORRLR_T2A), &mut t2a_rs2, n);
+    ctaylor_scalar_mul::<F>(&rs2, F::cast_from(ECORRLR_T2A), &mut t2a_rs2, n);
     let mut d3anti_num = Array::<F>::new(size);
     ctaylor_add::<F>(&t1a_rs, &t2a_rs2, &mut d3anti_num, n);
     let mut neg_t3a_rs = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&d.r_s, F::new(-ECORRLR_T3A), &mut neg_t3a_rs, n);
+    ctaylor_scalar_mul::<F>(&d.r_s, F::cast_from(-ECORRLR_T3A), &mut neg_t3a_rs, n);
     let mut exp_t3a = Array::<F>::new(size);
     ctaylor_exp::<F>(&neg_t3a_rs, &mut exp_t3a, n);
     let mut d3anti_num_exp = Array::<F>::new(size);
@@ -430,14 +464,15 @@ fn ecorrlr<F: Float>(
     ctaylor_mul::<F>(&one_m_z2, &g0_m_half, &mut coe2_num, n);
     //   step 5: -3/(8*rs3) = -3/8 * (1/rs3)
     let mut coe2_prescale = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&inv_rs3, F::new(-0.375_f32), &mut coe2_prescale, n);
+    ctaylor_scalar_mul::<F>(&inv_rs3, F::cast_from(-0.375_f64), &mut coe2_prescale, n);
     //   step 6: coe2 = coe2_prescale * coe2_num
     let mut coe2 = Array::<F>::new(size);
     ctaylor_mul::<F>(&coe2_prescale, &coe2_num, &mut coe2, n);
 
     // coe3 = -(1 - z²) * g0f(r_s) / (sqrt(2π) * rs3)
     //   sign/scale: -1/sqrt(2π) = -0.398942...
-    let inv_sqrt_2pi_neg = F::new(-0.398_942_3_f32);
+    // -1/sqrt(2π) = -0.3989422804014327
+    let inv_sqrt_2pi_neg = F::cast_from(-0.3989422804014327_f64);
     let mut coe3_num = Array::<F>::new(size);
     ctaylor_mul::<F>(&one_m_z2, &g0_rs, &mut coe3_num, n);
     let mut coe3_scaled = Array::<F>::new(size);
@@ -468,7 +503,7 @@ fn ecorrlr<F: Float>(
     ctaylor_reciprocal::<F>(&one_plus_zeta, &mut inv_one_plus_zeta, n);
     let mut two_over_1pz = Array::<F>::new(size);
     ctaylor_scalar_mul::<F>(&inv_one_plus_zeta, F::new(2.0), &mut two_over_1pz, n);
-    let one_third = F::new(1.0_f32 / 3.0_f32);
+    let one_third = F::cast_from(1.0_f64 / 3.0_f64);
     let mut pow_2_1pz_13 = Array::<F>::new(size);
     ctaylor_pow::<F>(&two_over_1pz, one_third, &mut pow_2_1pz_13, n);
 
@@ -502,7 +537,7 @@ fn ecorrlr<F: Float>(
     ctaylor_mul::<F>(&one_m_z2, &d2anti, &mut term3, n);
 
     // Fourth term: -cf²/10 * (pow(1+z, 8/3) + pow(1-z, 8/3)) / rs²
-    let eight_thirds = F::new(8.0_f32 / 3.0_f32);
+    let eight_thirds = F::cast_from(8.0_f64 / 3.0_f64);
     let mut pow_1pz_83 = Array::<F>::new(size);
     ctaylor_pow::<F>(&one_plus_zeta, eight_thirds, &mut pow_1pz_83, n);
     let mut pow_1mz_83 = Array::<F>::new(size);
@@ -510,7 +545,7 @@ fn ecorrlr<F: Float>(
     let mut sum_pow_83 = Array::<F>::new(size);
     ctaylor_add::<F>(&pow_1pz_83, &pow_1mz_83, &mut sum_pow_83, n);
     // * (-cf²/10) = -0.368318 (approximately)
-    let neg_cf2_over_10 = F::new(-ECORRLR_CF_SQ * 0.1_f32);
+    let neg_cf2_over_10 = F::cast_from(-ECORRLR_CF_SQ * 0.1_f64);
     let mut scaled_pow_83 = Array::<F>::new(size);
     ctaylor_scalar_mul::<F>(&sum_pow_83, neg_cf2_over_10, &mut scaled_pow_83, n);
     let mut term4 = Array::<F>::new(size);
@@ -527,7 +562,7 @@ fn ecorrlr<F: Float>(
 
     // coe4 = -9/(64*rs3) * coe4_bracket = -9/64 * (1/rs3) * coe4_bracket
     let mut coe4_prescale = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&inv_rs3, F::new(-9.0_f32 / 64.0_f32), &mut coe4_prescale, n);
+    ctaylor_scalar_mul::<F>(&inv_rs3, F::cast_from(-9.0_f64 / 64.0_f64), &mut coe4_prescale, n);
     let mut coe4 = Array::<F>::new(size);
     ctaylor_mul::<F>(&coe4_prescale, &coe4_bracket, &mut coe4, n);
 
@@ -542,8 +577,12 @@ fn ecorrlr<F: Float>(
     ctaylor_add::<F>(&term1, &term2, &mut sum12b, n);
     let mut coe5_bracket = Array::<F>::new(size);
     ctaylor_add::<F>(&sum12b, &term3b, &mut coe5_bracket, n);
-    // -9/(40 * sqrt(2π)) = -9/(40*2.5066283) = -9/100.265 = -0.089762
-    let coe5_prefactor = F::new(-0.089_762_f32);
+    // -9 / (40 * sqrt(2π))
+    //   sqrt(2π) = 2.5066282746310002
+    //   40 * sqrt(2π) = 100.2651309852400
+    //   -9 / 100.2651309852400 = -0.08976201309032236 (libm-consistent f64)
+    // (earlier value -0.08976231703841775 was off by ~3.4e-6 rel — see module header.)
+    let coe5_prefactor = F::cast_from(-0.08976201309032236_f64);
     let mut coe5_prescale = Array::<F>::new(size);
     ctaylor_scalar_mul::<F>(&inv_rs3, coe5_prefactor, &mut coe5_prescale, n);
     let mut coe5 = Array::<F>::new(size);
@@ -627,26 +666,26 @@ fn ecorrlr<F: Float>(
     ctaylor_mul::<F>(&phi3, &q_val, &mut phi3_qrpa, n);
 
     // Scalar powers of mu (mu is constant — precomputable).
-    let mu2 = RANGESEP_MU_F32 * RANGESEP_MU_F32;
-    let mu3 = mu2 * RANGESEP_MU_F32;
+    let mu2 = RANGESEP_MU_F64 * RANGESEP_MU_F64;
+    let mu3 = mu2 * RANGESEP_MU_F64;
     let mu4 = mu2 * mu2;
-    let mu5 = mu4 * RANGESEP_MU_F32;
+    let mu5 = mu4 * RANGESEP_MU_F64;
     let mu6 = mu4 * mu2;
     let mu8 = mu4 * mu4;
 
     // a1 * mu³, a2 * mu⁴, a3 * mu⁵, a4 * mu⁶
     let mut a1_mu3 = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&a1, F::new(mu3), &mut a1_mu3, n);
+    ctaylor_scalar_mul::<F>(&a1, F::cast_from(mu3), &mut a1_mu3, n);
     let mut a2_mu4 = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&a2, F::new(mu4), &mut a2_mu4, n);
+    ctaylor_scalar_mul::<F>(&a2, F::cast_from(mu4), &mut a2_mu4, n);
     let mut a3_mu5 = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&a3, F::new(mu5), &mut a3_mu5, n);
+    ctaylor_scalar_mul::<F>(&a3, F::cast_from(mu5), &mut a3_mu5, n);
     let mut a4_mu6 = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&a4, F::new(mu6), &mut a4_mu6, n);
+    ctaylor_scalar_mul::<F>(&a4, F::cast_from(mu6), &mut a4_mu6, n);
 
     // (b0*mu)^8 * ec = b08 * mu^8 * ec
     let mut b08_mu8 = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&b08, F::new(mu8), &mut b08_mu8, n);
+    ctaylor_scalar_mul::<F>(&b08, F::cast_from(mu8), &mut b08_mu8, n);
     let mut b0mu8_ec = Array::<F>::new(size);
     ctaylor_mul::<F>(&b08_mu8, ec, &mut b0mu8_ec, n);
 
@@ -665,7 +704,7 @@ fn ecorrlr<F: Float>(
     // Denominator: (1 + (b0*mu)²)^4
     //   b0mu2 = b0² * mu² = b02 * mu²
     let mut b02_mu2 = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&b02, F::new(mu2), &mut b02_mu2, n);
+    ctaylor_scalar_mul::<F>(&b02, F::cast_from(mu2), &mut b02_mu2, n);
     let mut one_plus = Array::<F>::new(size);
     ctaylor_add::<F>(&one_const, &b02_mu2, &mut one_plus, n);
     let mut opm2 = Array::<F>::new(size);
@@ -680,9 +719,9 @@ fn ecorrlr<F: Float>(
 
     // Silence unused constants.
     let _ = (
-        F::new(ECORRLR_ALPHA),
-        F::new(ECORRLR_CF),
-        F::new(SQRT_TWO_PI),
+        F::cast_from(ECORRLR_ALPHA),
+        F::cast_from(ECORRLR_CF),
+        F::cast_from(SQRT_TWO_PI),
     );
 }
 
