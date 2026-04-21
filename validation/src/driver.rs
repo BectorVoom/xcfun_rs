@@ -188,8 +188,48 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
             threshold
         );
 
+        // TW + VWK (Vars::A_B_GAA_GAB_GBB, inlen=5) require non-zero gradient
+        // inputs — C++ xcfun aborts on `pow(gaa+gbb, 2)` when gradients are
+        // zero (xcfun-master/external/upstream/taylor/tmath.hpp:156), AND the
+        // Rust launch loop currently only wires (id, n) arms for inlen=2 LDAs
+        // (Plan 02-04/02-05 left TW/VWK host launches out of scope). Record
+        // the gap as rust_unavailable=true so the checkpoint reviewer sees
+        // this as a D-19 PLANNING INCONCLUSIVE trigger, not a silent omission.
+        let skip_reason = if inlen != 2 {
+            Some("TW/VWK launch arm + gradient-safe grid not yet wired (D-19 INCONCLUSIVE)")
+        } else {
+            None
+        };
+
         for order in 0..=max_order.min(2) {
             let outlen = taylorlen(inlen, order as usize);
+            if let Some(reason) = skip_reason {
+                tracing::warn!(
+                    "Tier-2 skipping {} order={}: {} — reporting as rust_unavailable",
+                    name,
+                    order,
+                    reason
+                );
+                // Record one summary placeholder per (functional, order).
+                let rec = ReportRecord {
+                    functional: name.into(),
+                    vars: format!("{:?}", vars),
+                    mode: 1,
+                    order,
+                    point_idx: 0,
+                    element_idx: 0,
+                    input: Vec::new(),
+                    rust: f64::NAN,
+                    cpp: f64::NAN,
+                    abs_err: f64::INFINITY,
+                    rel_err: f64::INFINITY,
+                    threshold,
+                    pass: false,
+                    rust_unavailable: true,
+                };
+                report.push(rec);
+                continue;
+            }
 
             // C++ side: set up once per (functional, order).
             let mut cpp = CppXcfun::new();
