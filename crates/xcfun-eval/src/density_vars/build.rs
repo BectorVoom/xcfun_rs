@@ -72,11 +72,15 @@ pub fn build_densvars<F: Float>(
     ctaylor_zero::<F>(&mut out.jpaa, n);
     ctaylor_zero::<F>(&mut out.jpbb, n);
 
-    // Variant dispatch (comptime if-chain). Phase 2 ships XC_A_B = 2 only;
-    // Plan 02-05 Wave-1C-1 adds XC_A_B_GAA_GAB_GBB = 6.
+    // Variant dispatch (comptime if-chain). Phase 2 ships XC_A_B = 2 and
+    // XC_A_B_GAA_GAB_GBB = 6 (Plan 02-05 Wave-1C-1 Pitfall PHASE2-D fix).
     if comptime!(vars == 2) {
         // XC_A_B (densvars.hpp:65-72). 8 of 11 LDAs use this arm.
         build_xc_a_b::<F>(input, out, n);
+    } else if comptime!(vars == 6) {
+        // XC_A_B_GAA_GAB_GBB (densvars.hpp:58-72). 2 LDAs (LDA-09 part 2 TW,
+        // LDA-10 VWK) — Pitfall PHASE2-D fix (see build_xc_a_b_gaa_gab_gbb).
+        build_xc_a_b_gaa_gab_gbb::<F>(input, out, n);
     }
     // (Other arms guarded by host-side Functional::eval pre-launch check.)
 
@@ -148,4 +152,80 @@ pub fn build_xc_a_b<F: Float>(
     // n = a + b; s = a - b;
     ctaylor_add::<F>(&out.a, &out.b, &mut out.n, n);
     ctaylor_sub::<F>(&out.a, &out.b, &mut out.s, n);
+}
+
+/// `XC_A_B_GAA_GAB_GBB` variant arm — populates `gaa`, `gab`, `gbb` from the
+/// gradient-bearing input slots, derives `gnn`, `gss`, `gns`, then EXPLICITLY
+/// chains to `build_xc_a_b` to populate `a`, `b`, `n`, `s` (replacing the
+/// C-style fallthrough at `xcfun-master/src/densvars.hpp:65-72` per CORE-05 +
+/// Pitfall P5).
+///
+/// 1:1 port of `xcfun-master/src/densvars.hpp:58-72`:
+///
+/// ```cpp
+/// case XC_A_B_GAA_GAB_GBB:
+///     gaa = d[2]; gab = d[3]; gbb = d[4];
+///     gnn = gaa + 2 * gab + gbb;
+///     gss = gaa - 2 * gab + gbb;
+///     gns = gaa - gbb;
+/// case XC_A_B:               // <-- C-style fallthrough (explicit chain here)
+///     a = d[0]; regularize(a);
+///     b = d[1]; regularize(b);
+///     n = a + b; s = a - b;
+///     break;
+/// ```
+///
+/// Input layout (inlen=5, pre-seeded CTaylor per Plan 02-04 Wave-1B-14a amendment):
+///   - `input[0..(1<<n)]`               = coefficients of `a`
+///   - `input[(1<<n)..(2<<n)]`          = coefficients of `b`
+///   - `input[(2<<n)..(3<<n)]`          = coefficients of `gaa`
+///   - `input[(3<<n)..(4<<n)]`          = coefficients of `gab`
+///   - `input[(4<<n)..(5<<n)]`          = coefficients of `gbb`
+///
+/// Used by 2 LDAs: LDA-09 part 2 (TW, tw.cpp) and LDA-10 (VWK, vonw.cpp).
+///
+/// # Pitfall PHASE2-D
+/// TW + VWK declare `XC_DENSITY | XC_GRADIENT` and REQUIRE this arm — the pure-density
+/// `XC_A_B` arm leaves `gaa = gbb = 0` (defensive zero-init from Plan 02-03 Wave-1B-3),
+/// so TW/VWK would silently return zero if driven through the wrong builder.
+#[cube]
+pub fn build_xc_a_b_gaa_gab_gbb<F: Float>(
+    input: &Array<F>,
+    out: &mut DensVarsDev<F>,
+    #[comptime] n: u32,
+) {
+    let size = comptime!((1_u32 << n) as usize);
+
+    // Copy pre-seeded coefficients of `gaa` from input[2*size..3*size] into out.gaa.
+    #[unroll]
+    for i in 0..size {
+        out.gaa[i] = input[2 * size + i];
+    }
+    // Copy pre-seeded coefficients of `gab` from input[3*size..4*size] into out.gab.
+    #[unroll]
+    for i in 0..size {
+        out.gab[i] = input[3 * size + i];
+    }
+    // Copy pre-seeded coefficients of `gbb` from input[4*size..5*size] into out.gbb.
+    #[unroll]
+    for i in 0..size {
+        out.gbb[i] = input[4 * size + i];
+    }
+
+    // gnn = gaa + 2*gab + gbb   (left-to-right, no mul_add per ACC-06)
+    let mut t1 = Array::<F>::new(comptime!((1_u32 << n) as usize));
+    let mut t2 = Array::<F>::new(comptime!((1_u32 << n) as usize));
+    ctaylor_scalar_mul::<F>(&out.gab, F::cast_from(2.0_f64), &mut t1, n); // t1 = 2*gab
+    ctaylor_add::<F>(&out.gaa, &t1, &mut t2, n); // t2 = gaa + 2*gab
+    ctaylor_add::<F>(&t2, &out.gbb, &mut out.gnn, n); // gnn = (gaa + 2*gab) + gbb
+
+    // gss = gaa - 2*gab + gbb   (reuse t1 = 2*gab; reset t2)
+    ctaylor_sub::<F>(&out.gaa, &t1, &mut t2, n); // t2 = gaa - 2*gab
+    ctaylor_add::<F>(&t2, &out.gbb, &mut out.gss, n); // gss = (gaa - 2*gab) + gbb
+
+    // gns = gaa - gbb
+    ctaylor_sub::<F>(&out.gaa, &out.gbb, &mut out.gns, n);
+
+    // EXPLICIT chain to XC_A_B (replaces C fallthrough at densvars.hpp:65-72).
+    build_xc_a_b::<F>(input, out, n);
 }
