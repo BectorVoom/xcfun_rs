@@ -37,28 +37,29 @@ use crate::density_vars::DensVarsDev;
 // Row 3: high-density polarized   {A=0.01555, B=-0.0269, C=0.0007, D=-0.0048}
 // ---------------------------------------------------------------------------
 
-const PZ81_LD_UNPOL_GAMMA: f32 = -0.1423_f32;
-const PZ81_LD_UNPOL_B1: f32 = 1.0529_f32;
-const PZ81_LD_UNPOL_B2: f32 = 0.3334_f32;
+// Stored as f64 and cast via F::cast_from at kernel-time for 1e-11 tier-1 parity.
+const PZ81_LD_UNPOL_GAMMA: f64 = -0.1423_f64;
+const PZ81_LD_UNPOL_B1: f64 = 1.0529_f64;
+const PZ81_LD_UNPOL_B2: f64 = 0.3334_f64;
 
-const PZ81_LD_POL_GAMMA: f32 = -0.0843_f32;
-const PZ81_LD_POL_B1: f32 = 1.3981_f32;
-const PZ81_LD_POL_B2: f32 = 0.2611_f32;
+const PZ81_LD_POL_GAMMA: f64 = -0.0843_f64;
+const PZ81_LD_POL_B1: f64 = 1.3981_f64;
+const PZ81_LD_POL_B2: f64 = 0.2611_f64;
 
-const PZ81_HD_UNPOL_A: f32 = 0.0311_f32;
-const PZ81_HD_UNPOL_B: f32 = -0.048_f32;
-const PZ81_HD_UNPOL_C: f32 = 0.002_f32;
-const PZ81_HD_UNPOL_D: f32 = -0.0116_f32;
+const PZ81_HD_UNPOL_A: f64 = 0.0311_f64;
+const PZ81_HD_UNPOL_B: f64 = -0.048_f64;
+const PZ81_HD_UNPOL_C: f64 = 0.0020_f64;
+const PZ81_HD_UNPOL_D: f64 = -0.0116_f64;
 
-const PZ81_HD_POL_A: f32 = 0.015_55_f32;
-const PZ81_HD_POL_B: f32 = -0.0269_f32;
-const PZ81_HD_POL_C: f32 = 0.0007_f32;
-const PZ81_HD_POL_D: f32 = -0.0048_f32;
+const PZ81_HD_POL_A: f64 = 0.01555000000_f64;
+const PZ81_HD_POL_B: f64 = -0.0269_f64;
+const PZ81_HD_POL_C: f64 = 0.0007_f64;
+const PZ81_HD_POL_D: f64 = -0.0048_f64;
 
 // Constants for fz (pz81c.hpp:24-25): p = 2^(4/3), q = 2*2^(1/3) - 2.
-const PZ81_FZ_P: f32 = 2.519_842_1_f32; // 2^(4/3)
-// 1/q where q = 0.5198421... — reused from pw92eps.
-const PZ81_FZ_INV_Q: f32 = 1.923_661_f32;
+const PZ81_FZ_P: f64 = 2.5198420997897464_f64; // 2^(4/3)
+// 1/q where q = 0.5198420997897463 — reused from pw92eps.
+const PZ81_FZ_INV_Q: f64 = 1.9236610509315363_f64;
 
 // ---------------------------------------------------------------------------
 //  fz(d) = (p * (a_43 + b_43) * n_m13 / n - 2) / q
@@ -80,7 +81,7 @@ fn fz<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let mut sum_43 = Array::<F>::new(size);
     ctaylor_add::<F>(&d.a_43, &d.b_43, &mut sum_43, n);
     let mut prod1 = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&sum_43, F::new(PZ81_FZ_P), &mut prod1, n);
+    ctaylor_scalar_mul::<F>(&sum_43, F::cast_from(PZ81_FZ_P), &mut prod1, n);
     let mut prod2 = Array::<F>::new(size);
     ctaylor_mul::<F>(&prod1, &d.n_m13, &mut prod2, n);
     let mut inv_n = Array::<F>::new(size);
@@ -94,7 +95,7 @@ fn fz<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let mut diff = Array::<F>::new(size);
     ctaylor_sub::<F>(&prod3, &two_const, &mut diff, n);
 
-    ctaylor_scalar_mul::<F>(&diff, F::new(PZ81_FZ_INV_Q), out, n);
+    ctaylor_scalar_mul::<F>(&diff, F::cast_from(PZ81_FZ_INV_Q), out, n);
 }
 
 // ---------------------------------------------------------------------------
@@ -223,20 +224,20 @@ fn pz81_eps<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32
         let mut ehd_unpol = Array::<F>::new(size);
         ehd::<F>(
             &d.r_s,
-            F::new(PZ81_HD_UNPOL_A),
-            F::new(PZ81_HD_UNPOL_B),
-            F::new(PZ81_HD_UNPOL_C),
-            F::new(PZ81_HD_UNPOL_D),
+            F::cast_from(PZ81_HD_UNPOL_A),
+            F::cast_from(PZ81_HD_UNPOL_B),
+            F::cast_from(PZ81_HD_UNPOL_C),
+            F::cast_from(PZ81_HD_UNPOL_D),
             &mut ehd_unpol,
             n,
         );
         let mut ehd_pol = Array::<F>::new(size);
         ehd::<F>(
             &d.r_s,
-            F::new(PZ81_HD_POL_A),
-            F::new(PZ81_HD_POL_B),
-            F::new(PZ81_HD_POL_C),
-            F::new(PZ81_HD_POL_D),
+            F::cast_from(PZ81_HD_POL_A),
+            F::cast_from(PZ81_HD_POL_B),
+            F::cast_from(PZ81_HD_POL_C),
+            F::cast_from(PZ81_HD_POL_D),
             &mut ehd_pol,
             n,
         );
@@ -250,18 +251,18 @@ fn pz81_eps<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32
         let mut eld_unpol = Array::<F>::new(size);
         eld::<F>(
             &d.r_s,
-            F::new(PZ81_LD_UNPOL_GAMMA),
-            F::new(PZ81_LD_UNPOL_B1),
-            F::new(PZ81_LD_UNPOL_B2),
+            F::cast_from(PZ81_LD_UNPOL_GAMMA),
+            F::cast_from(PZ81_LD_UNPOL_B1),
+            F::cast_from(PZ81_LD_UNPOL_B2),
             &mut eld_unpol,
             n,
         );
         let mut eld_pol = Array::<F>::new(size);
         eld::<F>(
             &d.r_s,
-            F::new(PZ81_LD_POL_GAMMA),
-            F::new(PZ81_LD_POL_B1),
-            F::new(PZ81_LD_POL_B2),
+            F::cast_from(PZ81_LD_POL_GAMMA),
+            F::cast_from(PZ81_LD_POL_B1),
+            F::cast_from(PZ81_LD_POL_B2),
             &mut eld_pol,
             n,
         );

@@ -87,14 +87,18 @@ pub fn build_densvars<F: Float>(
     ctaylor_mul::<F>(&out.s, &inv_n, &mut out.zeta, n);
 
     // n_m13 = pow(n, -1/3)
-    ctaylor_pow::<F>(&out.n, F::new(-1.0_f32 / 3.0_f32), &mut out.n_m13, n);
+    //   Use F::cast_from(f64) for the exponent to preserve 1/3 precision to 1e-16
+    //   rather than f32's ~1e-7 — critical for the 1e-11 tier-1 threshold.
+    ctaylor_pow::<F>(&out.n, F::cast_from(-1.0_f64 / 3.0_f64), &mut out.n_m13, n);
 
     // a_43 = pow(a, 4/3); b_43 = pow(b, 4/3)
-    ctaylor_pow::<F>(&out.a, F::new(4.0_f32 / 3.0_f32), &mut out.a_43, n);
-    ctaylor_pow::<F>(&out.b, F::new(4.0_f32 / 3.0_f32), &mut out.b_43, n);
+    ctaylor_pow::<F>(&out.a, F::cast_from(4.0_f64 / 3.0_f64), &mut out.a_43, n);
+    ctaylor_pow::<F>(&out.b, F::cast_from(4.0_f64 / 3.0_f64), &mut out.b_43, n);
 
     // r_s = RS_PREFACTOR * n_m13
-    ctaylor_scalar_mul::<F>(&out.n_m13, F::new(RS_PREFACTOR_F32), &mut out.r_s, n);
+    //   RS_PREFACTOR = 0.6203504908994001 — f64 precision for 1e-11 parity.
+    let _ = RS_PREFACTOR_F32;
+    ctaylor_scalar_mul::<F>(&out.n_m13, F::cast_from(0.6203504908994001_f64), &mut out.r_s, n);
 }
 
 /// `XC_A_B` variant arm — populates `a`, `b`, `n`, `s` from a pre-seeded

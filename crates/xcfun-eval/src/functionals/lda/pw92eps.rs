@@ -31,35 +31,37 @@ use crate::density_vars::DensVarsDev;
 
 /// Accurate PW92 omega denominator. `2 * pow(2.0_f64, 1.0/3.0) - 2.0` evaluated
 /// at f64 precision = 0.5198420997897463. The legacy reference value is 0.5198421.
-const PW92_OMEGA_DENOM_F32: f32 = 0.519_842_1_f32;
+const PW92_OMEGA_DENOM_F64: f64 = 0.5198420997897463_f64;
 
 /// Accurate PW92 prefactor `c = 8 / (9 * omega_denom) = 1.7099209341613654`.
 /// The legacy reference value is 1.709921.
-const PW92_C_F32: f32 = 1.709_920_9_f32;
+const PW92_C_F64: f64 = 1.7099209341613654_f64;
 
 // PW92 PARAMS table (`pw92eps.hpp:41-44`) — paramagnetic / ferromagnetic / spin-stiffness.
 // Each row: [A, alpha, beta1, beta2, beta3, beta4, p]. `eopt` reads indices 0..=5; the
 // 7th entry (p=1.0) is unused here (legacy generic-formula artefact).
-const PW92_PARA_T0: f32 = 0.031_090_7_f32;
-const PW92_PARA_T1: f32 = 0.213_70_f32;
-const PW92_PARA_T2: f32 = 7.595_70_f32;
-const PW92_PARA_T3: f32 = 3.587_6_f32;
-const PW92_PARA_T4: f32 = 1.638_20_f32;
-const PW92_PARA_T5: f32 = 0.492_94_f32;
+//
+// Stored as f64 and cast via F::cast_from at kernel-time for 1e-11 tier-1 parity.
+const PW92_PARA_T0: f64 = 0.03109070_f64;
+const PW92_PARA_T1: f64 = 0.21370_f64;
+const PW92_PARA_T2: f64 = 7.59570_f64;
+const PW92_PARA_T3: f64 = 3.5876_f64;
+const PW92_PARA_T4: f64 = 1.63820_f64;
+const PW92_PARA_T5: f64 = 0.49294_f64;
 
-const PW92_FERRO_T0: f32 = 0.015_545_35_f32;
-const PW92_FERRO_T1: f32 = 0.205_48_f32;
-const PW92_FERRO_T2: f32 = 14.1189_f32;
-const PW92_FERRO_T3: f32 = 6.197_7_f32;
-const PW92_FERRO_T4: f32 = 3.366_20_f32;
-const PW92_FERRO_T5: f32 = 0.625_17_f32;
+const PW92_FERRO_T0: f64 = 0.01554535_f64;
+const PW92_FERRO_T1: f64 = 0.20548_f64;
+const PW92_FERRO_T2: f64 = 14.1189_f64;
+const PW92_FERRO_T3: f64 = 6.1977_f64;
+const PW92_FERRO_T4: f64 = 3.36620_f64;
+const PW92_FERRO_T5: f64 = 0.62517_f64;
 
-const PW92_SS_T0: f32 = 0.016_886_9_f32;
-const PW92_SS_T1: f32 = 0.111_25_f32;
-const PW92_SS_T2: f32 = 10.357_0_f32;
-const PW92_SS_T3: f32 = 3.623_1_f32;
-const PW92_SS_T4: f32 = 0.880_26_f32;
-const PW92_SS_T5: f32 = 0.496_71_f32;
+const PW92_SS_T0: f64 = 0.01688690_f64;
+const PW92_SS_T1: f64 = 0.11125_f64;
+const PW92_SS_T2: f64 = 10.3570_f64;
+const PW92_SS_T3: f64 = 3.6231_f64;
+const PW92_SS_T4: f64 = 0.88026_f64;
+const PW92_SS_T5: f64 = 0.49671_f64;
 
 // ---------------------------------------------------------------------------
 //  Inner helper: eopt(sqrtr, t) — port of pw92eps.hpp:20-25.
@@ -206,7 +208,7 @@ fn omega_zeta<F: Float>(zeta: &Array<F>, out: &mut Array<F>, #[comptime] n: u32)
     let mut one_minus = Array::<F>::new(size);
     ctaylor_sub::<F>(&one_const, zeta, &mut one_minus, n);
 
-    let four_thirds = F::new(4.0_f32 / 3.0_f32);
+    let four_thirds = F::cast_from(4.0_f64 / 3.0_f64);
     let mut pow_plus = Array::<F>::new(size);
     ctaylor_pow::<F>(&one_plus, four_thirds, &mut pow_plus, n);
     let mut pow_minus = Array::<F>::new(size);
@@ -225,9 +227,9 @@ fn omega_zeta<F: Float>(zeta: &Array<F>, out: &mut Array<F>, #[comptime] n: u32)
     // divide by omega_denom = 2*2^(1/3) - 2  (multiply by 1/denom as a scalar)
     // Use 1/denom as a precomputed f32 to avoid a spurious reciprocal kernel on a
     // constant. 1/0.5198421 = 1.9236610509315363... → f32 = 1.923_661_f32.
-    let inv_denom = F::new(1.923_661_f32);
-    // Note: PW92_OMEGA_DENOM_F32 retained as doc reference.
-    let _ = PW92_OMEGA_DENOM_F32;
+    // 1/omega_denom = 1/(2*2^(1/3) - 2) = 1.9236610509315363 — f64 precision.
+    let inv_denom = F::cast_from(1.9236610509315363_f64);
+    let _ = PW92_OMEGA_DENOM_F64;
     ctaylor_scalar_mul::<F>(&numer, inv_denom, out, n);
 }
 
@@ -275,12 +277,12 @@ pub fn pw92_eps<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n:
     let mut e0 = Array::<F>::new(size);
     eopt::<F>(
         &sqrtr,
-        F::new(PW92_PARA_T0),
-        F::new(PW92_PARA_T1),
-        F::new(PW92_PARA_T2),
-        F::new(PW92_PARA_T3),
-        F::new(PW92_PARA_T4),
-        F::new(PW92_PARA_T5),
+        F::cast_from(PW92_PARA_T0),
+        F::cast_from(PW92_PARA_T1),
+        F::cast_from(PW92_PARA_T2),
+        F::cast_from(PW92_PARA_T3),
+        F::cast_from(PW92_PARA_T4),
+        F::cast_from(PW92_PARA_T5),
         &mut e0,
         n,
     );
@@ -289,12 +291,12 @@ pub fn pw92_eps<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n:
     let mut e_ss = Array::<F>::new(size);
     eopt::<F>(
         &sqrtr,
-        F::new(PW92_SS_T0),
-        F::new(PW92_SS_T1),
-        F::new(PW92_SS_T2),
-        F::new(PW92_SS_T3),
-        F::new(PW92_SS_T4),
-        F::new(PW92_SS_T5),
+        F::cast_from(PW92_SS_T0),
+        F::cast_from(PW92_SS_T1),
+        F::cast_from(PW92_SS_T2),
+        F::cast_from(PW92_SS_T3),
+        F::cast_from(PW92_SS_T4),
+        F::cast_from(PW92_SS_T5),
         &mut e_ss,
         n,
     );
@@ -303,12 +305,12 @@ pub fn pw92_eps<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n:
     let mut e_f = Array::<F>::new(size);
     eopt::<F>(
         &sqrtr,
-        F::new(PW92_FERRO_T0),
-        F::new(PW92_FERRO_T1),
-        F::new(PW92_FERRO_T2),
-        F::new(PW92_FERRO_T3),
-        F::new(PW92_FERRO_T4),
-        F::new(PW92_FERRO_T5),
+        F::cast_from(PW92_FERRO_T0),
+        F::cast_from(PW92_FERRO_T1),
+        F::cast_from(PW92_FERRO_T2),
+        F::cast_from(PW92_FERRO_T3),
+        F::cast_from(PW92_FERRO_T4),
+        F::cast_from(PW92_FERRO_T5),
         &mut e_f,
         n,
     );
@@ -326,8 +328,9 @@ pub fn pw92_eps<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n:
     ctaylor_mul::<F>(&term_a0, &one_m_zeta4, &mut term_a1, n);
     // term_a = term_a1 / c  (multiply by 1/c as scalar)
     // 1 / 1.7099209341613654 = 0.584822362263464...
-    let inv_c = F::new(0.584_822_4_f32);
-    let _ = PW92_C_F32; // retained for doc reference
+    // 1/c = 1/1.7099209341613654 = 0.5848223622134647 — f64 precision.
+    let inv_c = F::cast_from(0.5848223622134647_f64);
+    let _ = PW92_C_F64;
     let mut term_a = Array::<F>::new(size);
     ctaylor_scalar_mul::<F>(&term_a1, inv_c, &mut term_a, n);
 

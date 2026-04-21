@@ -19,7 +19,11 @@ use crate::density_vars::DensVarsDev;
 /// `-(81 / (32 * π))^(1/3)` — negated Slater exchange constant, matching the
 /// C++ expression `(-xcfun_constants::c_slater) * (d.a_43 + d.b_43)` in
 /// `slater.hpp:19-21`. `xcfun-core::constants::C_SLATER = 0.9305257363491002`.
-const NEG_C_SLATER_F32: f32 = -0.930_525_7_f32;
+///
+/// Kept as f64 and cast via `F::cast_from` inside the kernel to preserve the
+/// full 1e-11 precision of the C++ reference — an `F::new(f32)` rounding
+/// introduces ~1.3e-7 rel-error, which breaks the tier-1 1e-11 threshold.
+const NEG_C_SLATER_F64: f64 = -0.9305257363491002_f64;
 
 /// Slater LDA exchange kernel. 1:1 port of `slater.hpp:19-21`.
 #[cube]
@@ -35,5 +39,6 @@ pub fn slaterx_kernel<F: Float>(
     //   2. out = (-c_slater) * tmp    (ctaylor_scalar_mul)
     let mut tmp = Array::<F>::new(comptime!((1_u32 << n) as usize));
     ctaylor_add::<F>(&d.a_43, &d.b_43, &mut tmp, n);
-    ctaylor_scalar_mul::<F>(&tmp, F::new(NEG_C_SLATER_F32), out, n);
+    let neg_c_slater = F::cast_from(NEG_C_SLATER_F64);
+    ctaylor_scalar_mul::<F>(&tmp, neg_c_slater, out, n);
 }

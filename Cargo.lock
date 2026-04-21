@@ -4478,6 +4478,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "xcfun-eval"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "cubecl",
+ "cubecl-cpu",
+ "rstest",
+ "thiserror",
+ "xcfun-ad",
+ "xcfun-core",
+]
+
+[[package]]
 name = "xml-rs"
 version = "0.8.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"

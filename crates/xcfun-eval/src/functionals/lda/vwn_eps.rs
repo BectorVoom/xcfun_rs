@@ -44,70 +44,69 @@ use crate::density_vars::DensVarsDev;
 // VWN5 parameter sets (vwn.hpp:55-60 — #ifndef XCFUN_VWN5_REF branch).
 // The second element (p1) is multiplied by 2 relative to Molpro manual per the
 // `ulfek:` comment at vwn.hpp:55.
+//
+// All derived values (vwn_a, vwn_b, vwn_c, z_num) precomputed in f64 and cast
+// via `F::cast_from` at kernel-time for 1e-11 tier-1 parity. f32 literals
+// introduce ~1e-7 rel-error, which violates the 1e-11 threshold.
 // ---------------------------------------------------------------------------
 // VWN5 paramagnetic: p = [-0.10498, 0.0621814, 3.72744, 12.9352]
-// Derived (precomputed f64):
-//   vwn_a = -1.0311676086789439
-//   vwn_b = -0.06233521735788772
-//   vwn_c =  1.2474243062431214
-//   sqrt(4*p3 - p2^2) = 6.15199081975908
-const VWN5_PARA_P0: f32 = -0.10498_f32;
-const VWN5_PARA_P1: f32 = 0.062_181_4_f32;
-const VWN5_PARA_P2: f32 = 3.727_44_f32;
-const VWN5_PARA_P3: f32 = 12.9352_f32;
-const VWN5_PARA_VWN_A: f32 = -1.031_167_6_f32;
-const VWN5_PARA_VWN_B: f32 = -0.062_335_22_f32;
-const VWN5_PARA_VWN_C: f32 = 1.247_424_3_f32;
-const VWN5_PARA_Z_NUM: f32 = 6.151_990_8_f32; // sqrt(4*p3 - p2^2)
+const VWN5_PARA_P0: f64 = -0.10498_f64;
+const VWN5_PARA_P1: f64 = 0.0621814_f64;
+const VWN5_PARA_P2: f64 = 3.72744_f64;
+const VWN5_PARA_P3: f64 = 12.9352_f64;
+const VWN5_PARA_VWN_A: f64 = -1.0311676086789439_f64;
+const VWN5_PARA_VWN_B: f64 = -0.06233521735788772_f64;
+const VWN5_PARA_VWN_C: f64 = 1.2474243062431214_f64;
+const VWN5_PARA_Z_NUM: f64 = 6.15199081975908_f64;
 
 // VWN5 ferromagnetic: p = [-0.325, 0.0310907, 7.06042, 18.0578]
-const VWN5_FERRO_P0: f32 = -0.325_f32;
-const VWN5_FERRO_P1: f32 = 0.031_090_7_f32;
-const VWN5_FERRO_P2: f32 = 7.060_42_f32;
-const VWN5_FERRO_P3: f32 = 18.0578_f32;
-const VWN5_FERRO_VWN_A: f32 = -1.144_600_6_f32;
-const VWN5_FERRO_VWN_B: f32 = -0.289_201_22_f32;
-const VWN5_FERRO_VWN_C: f32 = 3.376_662_f32;
-const VWN5_FERRO_Z_NUM: f32 = 4.730_927_f32;
+const VWN5_FERRO_P0: f64 = -0.325_f64;
+const VWN5_FERRO_P1: f64 = 0.0310907_f64;
+const VWN5_FERRO_P2: f64 = 7.06042_f64;
+const VWN5_FERRO_P3: f64 = 18.0578_f64;
+const VWN5_FERRO_VWN_A: f64 = -1.1446006101852073_f64;
+const VWN5_FERRO_VWN_B: f64 = -0.2892012203704146_f64;
+const VWN5_FERRO_VWN_C: f64 = 3.3766620352569046_f64;
+const VWN5_FERRO_Z_NUM: f64 = 4.730926909560114_f64;
 
 // VWN5 spin-interpolation: p = [-0.0047584, -pow(3π²,-1), 1.13107, 13.0045]
 // p1 = -1/(3π²) = -0.03377372788077926
-const VWN5_INTER_P0: f32 = -0.004_758_4_f32;
-const VWN5_INTER_P1: f32 = -0.033_773_73_f32;
-const VWN5_INTER_P2: f32 = 1.131_07_f32;
-const VWN5_INTER_P3: f32 = 13.0045_f32;
-const VWN5_INTER_VWN_A: f32 = -1.000_414_f32;
-const VWN5_INTER_VWN_B: f32 = -0.000_828_067_6_f32;
-const VWN5_INTER_VWN_C: f32 = 0.317_708_f32;
-const VWN5_INTER_Z_NUM: f32 = 7.123_109_f32;
+const VWN5_INTER_P0: f64 = -0.0047584_f64;
+const VWN5_INTER_P1: f64 = -0.03377372788077926_f64;
+const VWN5_INTER_P2: f64 = 1.13107_f64;
+const VWN5_INTER_P3: f64 = 13.0045_f64;
+const VWN5_INTER_VWN_A: f64 = -1.000414033794282_f64;
+const VWN5_INTER_VWN_B: f64 = -0.0008280675885639077_f64;
+const VWN5_INTER_VWN_C: f64 = 0.31770800474394145_f64;
+const VWN5_INTER_Z_NUM: f64 = 7.123108917818118_f64;
 
 // VWN3 paramagnetic: p = [-0.4092860, 0.0621814, 13.0720, 42.7198] (vwn.hpp:82)
-const VWN3_PARA_P0: f32 = -0.409_286_f32;
-const VWN3_PARA_P1: f32 = 0.062_181_4_f32;
-const VWN3_PARA_P2: f32 = 13.072_f32;
-const VWN3_PARA_P3: f32 = 42.7198_f32;
-const VWN3_PARA_VWN_A: f32 = -1.142_530_5_f32;
-const VWN3_PARA_VWN_B: f32 = -0.285_061_f32;
-const VWN3_PARA_VWN_C: f32 = 660.067_9_f32;
-const VWN3_PARA_Z_NUM: f32 = 0.044_899_89_f32;
+const VWN3_PARA_P0: f64 = -0.4092860_f64;
+const VWN3_PARA_P1: f64 = 0.0621814_f64;
+const VWN3_PARA_P2: f64 = 13.0720_f64;
+const VWN3_PARA_P3: f64 = 42.7198_f64;
+const VWN3_PARA_VWN_A: f64 = -1.142530524167984_f64;
+const VWN3_PARA_VWN_B: f64 = -0.2850610483359679_f64;
+const VWN3_PARA_VWN_C: f64 = 660.0678961137954_f64;
+const VWN3_PARA_Z_NUM: f64 = 0.0448998886415768_f64;
 
 // VWN3 ferromagnetic: p = [-0.7432940, 0.0310907, 20.1231, 101.578] (vwn.hpp:83)
-const VWN3_FERRO_P0: f32 = -0.743_294_f32;
-const VWN3_FERRO_P1: f32 = 0.031_090_7_f32;
-const VWN3_FERRO_P2: f32 = 20.1231_f32;
-const VWN3_FERRO_P3: f32 = 101.578_f32;
-const VWN3_FERRO_VWN_A: f32 = -1.171_582_5_f32;
-const VWN3_FERRO_VWN_B: f32 = -0.343_165_f32;
-const VWN3_FERRO_VWN_C: f32 = 39.807_274_f32;
-const VWN3_FERRO_Z_NUM: f32 = 1.171_685_3_f32;
+const VWN3_FERRO_P0: f64 = -0.7432940_f64;
+const VWN3_FERRO_P1: f64 = 0.0310907_f64;
+const VWN3_FERRO_P2: f64 = 20.1231_f64;
+const VWN3_FERRO_P3: f64 = 101.578_f64;
+const VWN3_FERRO_VWN_A: f64 = -1.1715824994145076_f64;
+const VWN3_FERRO_VWN_B: f64 = -0.3431649988290153_f64;
+const VWN3_FERRO_VWN_C: f64 = 39.80727547405608_f64;
+const VWN3_FERRO_Z_NUM: f64 = 1.1716852777089715_f64;
 
 // `1.92366105093154` from vwn.hpp:71 and :86 — constant `(2^(1/3) - 1)^(-1/2)`
 // used in both vwn3_eps and vwn5_eps as the prefactor of (ufunc(zeta, 4/3) - 2).
-const VWN_ZETA_FACTOR: f32 = 1.923_661_f32;
+const VWN_ZETA_FACTOR: f64 = 1.92366105093154_f64;
 
 // 9/4 * (2^(1/3) - 1) — used in vwn5 spin-interpolation formula (vwn.hpp:76).
-// 9/4 * (2^(1/3) - 1) = 2.25 * 0.2599210498948732 = 0.584822362...
-const VWN5_INTER_FACTOR: f32 = 0.584_822_4_f32;
+// 9/4 * (2^(1/3) - 1) = 2.25 * 0.2599210498948732 = 0.5848223622134647
+const VWN5_INTER_FACTOR: f64 = 0.5848223622134647_f64;
 
 // ---------------------------------------------------------------------------
 //  Internal: vwn_f_inline — operation-order port of vwn.hpp:48-52 for one
@@ -232,14 +231,14 @@ fn vwn_f_body<F: Float>(
 fn vwn_f_vwn5_para<F: Float>(s: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     vwn_f_body::<F>(
         s,
-        F::new(VWN5_PARA_P0),
-        F::new(VWN5_PARA_P2),
-        F::new(VWN5_PARA_P3),
-        F::new(VWN5_PARA_VWN_A),
-        F::new(VWN5_PARA_VWN_B),
-        F::new(VWN5_PARA_VWN_C),
-        F::new(VWN5_PARA_Z_NUM),
-        F::new(VWN5_PARA_P1 * 0.5_f32),
+        F::cast_from(VWN5_PARA_P0),
+        F::cast_from(VWN5_PARA_P2),
+        F::cast_from(VWN5_PARA_P3),
+        F::cast_from(VWN5_PARA_VWN_A),
+        F::cast_from(VWN5_PARA_VWN_B),
+        F::cast_from(VWN5_PARA_VWN_C),
+        F::cast_from(VWN5_PARA_Z_NUM),
+        F::cast_from(VWN5_PARA_P1 * 0.5_f64),
         out,
         n,
     );
@@ -249,14 +248,14 @@ fn vwn_f_vwn5_para<F: Float>(s: &Array<F>, out: &mut Array<F>, #[comptime] n: u3
 fn vwn_f_vwn5_ferro<F: Float>(s: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     vwn_f_body::<F>(
         s,
-        F::new(VWN5_FERRO_P0),
-        F::new(VWN5_FERRO_P2),
-        F::new(VWN5_FERRO_P3),
-        F::new(VWN5_FERRO_VWN_A),
-        F::new(VWN5_FERRO_VWN_B),
-        F::new(VWN5_FERRO_VWN_C),
-        F::new(VWN5_FERRO_Z_NUM),
-        F::new(VWN5_FERRO_P1 * 0.5_f32),
+        F::cast_from(VWN5_FERRO_P0),
+        F::cast_from(VWN5_FERRO_P2),
+        F::cast_from(VWN5_FERRO_P3),
+        F::cast_from(VWN5_FERRO_VWN_A),
+        F::cast_from(VWN5_FERRO_VWN_B),
+        F::cast_from(VWN5_FERRO_VWN_C),
+        F::cast_from(VWN5_FERRO_Z_NUM),
+        F::cast_from(VWN5_FERRO_P1 * 0.5_f64),
         out,
         n,
     );
@@ -266,14 +265,14 @@ fn vwn_f_vwn5_ferro<F: Float>(s: &Array<F>, out: &mut Array<F>, #[comptime] n: u
 fn vwn_f_vwn5_inter<F: Float>(s: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     vwn_f_body::<F>(
         s,
-        F::new(VWN5_INTER_P0),
-        F::new(VWN5_INTER_P2),
-        F::new(VWN5_INTER_P3),
-        F::new(VWN5_INTER_VWN_A),
-        F::new(VWN5_INTER_VWN_B),
-        F::new(VWN5_INTER_VWN_C),
-        F::new(VWN5_INTER_Z_NUM),
-        F::new(VWN5_INTER_P1 * 0.5_f32),
+        F::cast_from(VWN5_INTER_P0),
+        F::cast_from(VWN5_INTER_P2),
+        F::cast_from(VWN5_INTER_P3),
+        F::cast_from(VWN5_INTER_VWN_A),
+        F::cast_from(VWN5_INTER_VWN_B),
+        F::cast_from(VWN5_INTER_VWN_C),
+        F::cast_from(VWN5_INTER_Z_NUM),
+        F::cast_from(VWN5_INTER_P1 * 0.5_f64),
         out,
         n,
     );
@@ -283,14 +282,14 @@ fn vwn_f_vwn5_inter<F: Float>(s: &Array<F>, out: &mut Array<F>, #[comptime] n: u
 fn vwn_f_vwn3_para<F: Float>(s: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     vwn_f_body::<F>(
         s,
-        F::new(VWN3_PARA_P0),
-        F::new(VWN3_PARA_P2),
-        F::new(VWN3_PARA_P3),
-        F::new(VWN3_PARA_VWN_A),
-        F::new(VWN3_PARA_VWN_B),
-        F::new(VWN3_PARA_VWN_C),
-        F::new(VWN3_PARA_Z_NUM),
-        F::new(VWN3_PARA_P1 * 0.5_f32),
+        F::cast_from(VWN3_PARA_P0),
+        F::cast_from(VWN3_PARA_P2),
+        F::cast_from(VWN3_PARA_P3),
+        F::cast_from(VWN3_PARA_VWN_A),
+        F::cast_from(VWN3_PARA_VWN_B),
+        F::cast_from(VWN3_PARA_VWN_C),
+        F::cast_from(VWN3_PARA_Z_NUM),
+        F::cast_from(VWN3_PARA_P1 * 0.5_f64),
         out,
         n,
     );
@@ -300,14 +299,14 @@ fn vwn_f_vwn3_para<F: Float>(s: &Array<F>, out: &mut Array<F>, #[comptime] n: u3
 fn vwn_f_vwn3_ferro<F: Float>(s: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     vwn_f_body::<F>(
         s,
-        F::new(VWN3_FERRO_P0),
-        F::new(VWN3_FERRO_P2),
-        F::new(VWN3_FERRO_P3),
-        F::new(VWN3_FERRO_VWN_A),
-        F::new(VWN3_FERRO_VWN_B),
-        F::new(VWN3_FERRO_VWN_C),
-        F::new(VWN3_FERRO_Z_NUM),
-        F::new(VWN3_FERRO_P1 * 0.5_f32),
+        F::cast_from(VWN3_FERRO_P0),
+        F::cast_from(VWN3_FERRO_P2),
+        F::cast_from(VWN3_FERRO_P3),
+        F::cast_from(VWN3_FERRO_VWN_A),
+        F::cast_from(VWN3_FERRO_VWN_B),
+        F::cast_from(VWN3_FERRO_VWN_C),
+        F::cast_from(VWN3_FERRO_Z_NUM),
+        F::cast_from(VWN3_FERRO_P1 * 0.5_f64),
         out,
         n,
     );
@@ -340,7 +339,7 @@ fn ufunc_4_3<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let mut one_minus = Array::<F>::new(size);
     ctaylor_sub::<F>(&one_const, x, &mut one_minus, n);
 
-    let four_thirds = F::new(4.0_f32 / 3.0_f32);
+    let four_thirds = F::cast_from(4.0_f64 / 3.0_f64);
     let mut pow_plus = Array::<F>::new(size);
     ctaylor_pow::<F>(&one_plus, four_thirds, &mut pow_plus, n);
     let mut pow_minus = Array::<F>::new(size);
@@ -395,7 +394,7 @@ pub fn vwn3_eps<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n:
 
     // g = 1.92366105093154 * (ufunc(zeta, 4/3) - 2)
     let mut g = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&ufz_m2, F::new(VWN_ZETA_FACTOR), &mut g, n);
+    ctaylor_scalar_mul::<F>(&ufz_m2, F::cast_from(VWN_ZETA_FACTOR), &mut g, n);
 
     // vwn_f(s, para) and vwn_f(s, ferro)
     let mut f_para = Array::<F>::new(size);
@@ -448,7 +447,7 @@ pub fn vwn5_eps<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n:
     let mut ufz_m2 = Array::<F>::new(size);
     ctaylor_sub::<F>(&ufz, &two_const, &mut ufz_m2, n);
     let mut g = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&ufz_m2, F::new(VWN_ZETA_FACTOR), &mut g, n);
+    ctaylor_scalar_mul::<F>(&ufz_m2, F::cast_from(VWN_ZETA_FACTOR), &mut g, n);
 
     // zeta4 = pow(zeta, 4) — exact x^4 via pow4 helper (avoids series expansion drift)
     let mut zeta4 = Array::<F>::new(size);
@@ -479,7 +478,7 @@ pub fn vwn5_eps<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n:
     let mut finter_one_m = Array::<F>::new(size);
     ctaylor_mul::<F>(&f_inter, &one_m_zeta4, &mut finter_one_m, n);
     let mut term_b = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&finter_one_m, F::new(VWN5_INTER_FACTOR), &mut term_b, n);
+    ctaylor_scalar_mul::<F>(&finter_one_m, F::cast_from(VWN5_INTER_FACTOR), &mut term_b, n);
 
     // bracket = term_a + term_b
     let mut bracket = Array::<F>::new(size);
