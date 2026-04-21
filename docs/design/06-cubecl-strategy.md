@@ -100,22 +100,31 @@ pub fn eval_batch_kernel<F: Float>(
 
 ### 3.1 Per-functional inner kernels
 
-Each functional `pw92c`, `beckex`, `m06x`, … has a `#[cube]` wrapper:
+> **Phase 2 status (2026-04-22):** Per-functional `#[cube] fn` body convention **LANDED** for 11 LDAs (Plans 02-04 + 02-05). Phase 3 extends to 45 GGAs; Phase 4 extends to 15 metaGGAs. The as-built kernel signature in `crates/xcfun-eval/src/functionals/lda/*.rs` takes `&DensVarsDev<F>` (no type-level `const N: u32` on `DensVarsDev`; order is carried as a `#[comptime] n: u32` parameter per D-17) and writes into `&mut Array<F>`. Each body composes Phase 1 `ctaylor_*` primitives (`xcfun_ad::ctaylor_rec::mul::ctaylor_mul`, `xcfun_ad::math::ctaylor_{reciprocal,sqrt,exp,log,pow,powi_*,erf,asinh,atan}`, and `xcfun_ad::expand::*`) plus the Phase-2 `build_densvars` preamble.
+
+Each functional `slaterx`, `vwn3c`, `pw92c`, `ldaerfx`, …, `tw`, `vwk` has a `#[cube] fn <name>_kernel`:
 
 ```rust
+// crate: xcfun-eval
+// module: crates/xcfun-eval/src/functionals/lda/pw92c.rs
 #[cube]
-fn pw92c_kernel<F: Float, const N: u32>(d: &DensVarsDev<F, N>) -> CTaylorDev<F, N> {
-    // Same body as crate::functionals::lda::pw92c::<CTaylor<F, N>>.
+pub fn pw92c_kernel<F: Float>(
+    d: &DensVarsDev<F>,
+    out: &mut Array<F>,
+    #[comptime] n: u32,
+) {
+    // Composes Phase 1 primitives + pw92eps shared helper.
+    // No host Rust; no std; no unsafe; no mul_add.
 }
 ```
 
 The kernel calls only:
-1. Other `#[cube]`-annotated functions (elementary functionals, helpers from `xcfun-core::functionals::shared`, ported to `#[cube]`).
-2. `F::{add, sub, mul, div, neg, sqrt, exp, log, powf, erf}` (cubecl math intrinsics).
+1. Other `#[cube]`-annotated functions — Phase 1 `xcfun_ad::ctaylor_*` / `xcfun_ad::expand::*` + Phase 2 `xcfun_eval::density_vars::{build_densvars, regularize}` + per-functional `xcfun_eval::functionals::lda::{pw92eps, vwn_eps}` shared helpers.
+2. cubecl `Float` trait methods (`F::cast_from`, `F::new(0.0)`, etc.).
 3. `ABSOLUTE_POS`, `CUBE_DIM` (cubecl builtins).
-4. Stack-allocated `[F; 1 << N]` arrays.
+4. `Array<F>` indexing.
 
-Nothing else. The `#[cube]` macro enforces this at compile time.
+Nothing else. The `#[cube]` macro enforces this at compile time. ACC-06 (`xtask check-no-mul-add`) additionally bans `.mul_add(` inside `crates/xcfun-eval/src/functionals/**/*.rs` to preserve algorithmic-identity accumulation order vs. the C++ reference.
 
 ### 3.2 Dispatch by `FunctionalId`
 
