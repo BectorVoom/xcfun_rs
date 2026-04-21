@@ -15,11 +15,11 @@
 //! using the same operation order as the kernel, so kernel-vs-host delta
 //! is ≤ 1 ULP on cubecl-cpu. The 1e-13 relative-error gate is comfortable.
 //!
-//! # Cubecl 0.10-pre.3 f32-constant drift (erf, gauss via `tfuns_stretch`)
+//! # Constant precision
 //!
-//! - `erf_expand` scales by `2/√π` computed with `f32` π
-//!   (`core::f32::consts::PI` widened to `f64`): ~1.3e-8 drift vs f64 π.
-//!   Host reference mirrors this exactly.
+//! - `erf_expand` scales by `2/√π` injected via `F::cast_from::<f64>` at
+//!   f64 precision (Plan 02-06 Fix A). Host reference uses the same f64
+//!   constant `1.1283791670955126`.
 //! - `gauss_expand` itself has no f32 constant; it uses `F::new(-2.0)`
 //!   which is exact.
 
@@ -322,10 +322,10 @@ fn host_erf_cubecl_polyfill(x: f64) -> f64 {
 fn host_erf_expand(a: f64, n: usize) -> Vec<f64> {
     let mut t = host_gauss_expand(a, n);
 
-    // Match kernel's f32-π drift: c = 2.0 / (core::f32::consts::PI as f64).sqrt().
-    let pi_f32: f32 = core::f32::consts::PI;
-    let sqrt_pi = (pi_f32 as f64).sqrt();
-    let c = 2.0 / sqrt_pi;
+    // Plan 02-06 Fix A: kernel scales by `2/√π` injected at f64 precision
+    // via `F::cast_from(1.1283791670955126_f64)`. Mirror the same constant
+    // here so the host oracle stays bit-close to the kernel.
+    let c = 1.1283791670955126_f64;
     for i in 0..=n {
         t[i] *= c;
     }

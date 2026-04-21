@@ -28,21 +28,22 @@
 //!
 //! None. `erf` is entire on the reals.
 //!
-//! # Cubecl 0.10-pre.3 API deviation: `2/√π` rounded through f32 precision
+//! # `2/√π` constant — f64 precision via `F::cast_from`
 //!
 //! Cubecl 0.10-pre.3's `Float::new(val: f32)` accepts an `f32` literal only,
-//! which rounds mathematical constants like π to f32 precision (~24 bits of
-//! mantissa) before widening to the target float type. For f64 target this
-//! introduces a ~2.7e-8 relative error in the value of π, propagating to
-//! a ~1.3e-8 relative error in `2/√π`. Every coefficient `t[i]` is scaled
-//! by this constant, so every `t[i]` inherits the ~1.3e-8 drift.
+//! so `F::new(core::f32::consts::PI)` rounds π to f32 precision (~24 bits of
+//! mantissa) before widening. At f64 target that costs ~2.7e-8 relative error
+//! in π, cascading to ~1.3e-8 in `2/√π` — every `t[i]` inherits the drift.
 //!
-//! This mirrors the `cbrt` precedent from Plan 01-03: rather than pass
-//! `2/√π` as a kernel scalar arg (violating the plan signature), we
-//! reproduce the f32-precision path in the host reference so the test
-//! can still pass at bit-exact on cubecl-cpu. Downstream plans that compare
-//! to C++ `std::erf` will need a per-cell tolerance relaxation (or a
-//! scalar-arg revision) — pre-flagged for Plan 01-06's math.rs.
+//! Plan 02-06 (Phase 2 tier-2 parity) surfaced this as the dominant
+//! contribution to XC_LDAERFX order-2 error (~0.1 peak) and the smaller
+//! LDAERFC/LDAERFC_JT order-2 drifts. Fix: pre-compute the f64 value on
+//! the host and inject it via `F::cast_from::<f64>`, which preserves full
+//! f64 precision through the `Cast` trait (same pattern used by
+//! `density_vars::build` for the `1/3`, `4/3`, `-1/3` LDA exponents).
+//!
+//! Constant used: `2/√π = 1.1283791670955126_f64` (libm double-precision
+//! `2.0 / libm::sqrt(std::f64::consts::PI)`).
 //!
 //! `t[0] = erf(a)` itself uses cubecl's `Erf` unary op, which on cubecl-cpu
 //! lowers to host libm `erf` — full f64 precision.
@@ -61,13 +62,12 @@ pub fn erf_expand<F: Float>(t: &mut Array<F>, a: F, #[comptime] n: u32) {
     gauss_expand::<F>(t, a, n);
 
     // tmath.hpp:221-222 — t[i] *= 2 / sqrt(π) for i ∈ 0..=n.
-    // The constant 2/√π is computed via F::new(f32) which rounds π to f32
-    // precision. See the module header for the resulting ~1.3e-8 drift vs
-    // the C++ reference computed with f64-precision M_PI.
-    let two = F::new(2.0);
-    let pi = F::new(core::f32::consts::PI);
-    let sqrt_pi = pi.sqrt();
-    let c = two / sqrt_pi;
+    // Constant `2/√π` computed at host f64 precision and injected via
+    // `F::cast_from::<f64>`. See the module header for why `F::new(f32)` is
+    // unusable here (π rounds to f32 before widening).
+    // Value: `2.0 / libm::sqrt(std::f64::consts::PI)` = 1.1283791670955126_f64,
+    // exact to all 17 decimals matching C++ `2.0 / std::sqrt(M_PI)`.
+    let c = F::cast_from(1.1283791670955126_f64);
     #[unroll]
     for i in 0_u32..=n {
         let ki = i as usize;
