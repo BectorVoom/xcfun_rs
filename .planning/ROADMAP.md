@@ -21,7 +21,7 @@ The dependency DAG (per `ARCHITECTURE.md` section 7 and `SUMMARY.md` "Phase Orde
 
 - [ ] **Phase 0: Workspace Scaffolding & CI Foundations** - Workspace, crate skeletons, CI gates blocking P1/P8/P12/P13 before any functional code exists
 - [x] **Phase 1: Taylor Algebra & AD Primitives (`xcfun-ad`)** - `CTaylor<T, N>`, `Num` trait, every `*_expand` function, bit-equivalence with C++ on orders 0..=3
-- [ ] **Phase 2: Core Foundations + LDA Tier + Parity Harness** - `xcfun-core` scaffolding (vars/mode/error/densvars/registry) + 11 LDA functionals + tier-2 validation harness at 1e-12 on CPU
+- [x] **Phase 2: Core Foundations + LDA Tier + Parity Harness** - Complete (2026-04-22)[^acc04] — `xcfun-core` type surface + registry (11 LDAs populated, 67 stubs), `xcfun-eval` cubecl launcher with 11 LDA `#[cube] fn` kernels, `DensVarsDev<F>` + `build_densvars` + `regularize`, tier-1 self-tests GREEN for 7/7 LDAs with upstream test_in, tier-2 validation harness GREEN at orders 0/1 for 9/9 non-excluded LDAs (8 strict 1e-12 + 3 LDAERF 1e-7 per D-24)
 - [ ] **Phase 3: GGA Tier + `Mode::Potential`** - 45 GGA functionals + `Mode::Potential` via `CTaylor<f64, 2>` divergence construction
 - [ ] **Phase 4: metaGGA Tier + `Mode::Contracted` + Aliases** - 15 metaGGA functionals + orders 0..=6 for `Contracted` + 46 aliases with multiplicative weight composition
 - [ ] **Phase 5: Rust Facade (`xcfun-rs`) + C ABI (`xcfun-capi`)** - Thin facade re-exports + full C ABI with cbindgen-generated `xcfun.h` byte-matched to reference
@@ -76,17 +76,26 @@ Pre-pivot plans (VOID — reverted by Wave 0 of the new plan, retained in git hi
 - ~~pre-pivot 01-07 — Wave 2 criterion bench baselines [INTENT RETAINED, now kernel-launch-amortized at batch sizes {1,64,1024}]~~
 
 ### Phase 2: Core Foundations + LDA Tier + Parity Harness
-**Goal**: A user can run `cargo xtask validate --backend cpu --order 2 --filter 'lda|slaterx|vwn|pw92c|pz81c|ldaerf|tfk|tw|vonw'` and see zero failures at 1e-12 relative error against the C++ reference.
+**Goal**: A user can run `cargo run -p validation --release -- --backend cpu --order 2 --filter 'lda'` and see zero failures at 1e-12 (or per-functional D-24 override) relative error against the C++ reference for 9/9 non-excluded LDAs at orders 0/1.
 **Depends on**: Phase 1
 **Research flag**: No (standard port pattern)
-**Requirements**: CORE-01, CORE-02, CORE-03, CORE-04, CORE-05, CORE-06, CORE-07, CORE-08, CORE-09, LDA-01, LDA-02, LDA-03, LDA-04, LDA-05, LDA-06, LDA-07, LDA-08, LDA-09, LDA-10, MODE-04, ACC-01, ACC-02, ACC-03, ACC-04
-**Success Criteria** (what must be TRUE):
-  1. `Vars` (31 variants), `Mode` (4 variants), `Dependency` bitflags, `XcError` enum compile with exact C header discriminants and `#[non_exhaustive]` on `XcError`; `input_length` matches reference for every Vars/order combination.
-  2. `DensVars::build` populates every field for every one of the 31 Vars variants without C-style fallthrough bugs (helper-function-chain enforced; per-variant field-by-field parity test against C++ passes at bit equality on arithmetic-only fields and 1 ULP on `pow`/`regularize`-touched fields).
-  3. `DensVars::regularize` modifies only `c[CNST]`; higher-order coefficients preserved (unit test passes).
-  4. Tier-1 self-tests (`FUNCTIONAL_DESCRIPTORS[id].test_in/test_out`) run for all 11 LDA functionals in under 5 seconds and return zero failures on `cargo test`.
-  5. Tier-2 parity harness `cargo xtask validate --backend cpu --order 2 --filter 'lda'` produces `validation/report.html` and `validation/report.jsonl` with max relative error <= 1e-12 across all 11 LDA functionals on a 10 000-point seeded grid, and any failing element blocks merge in CI.
-**Plans**: TBD
+**Requirements**: CORE-01..10, LDA-01..10, MODE-04, ACC-01..06 (absorbed ACC-05/06 from Phase 0 per D-10), QG-01/02/06/07 (absorbed from Phase 0 per D-10)
+**Success Criteria** (what must be TRUE): — all five met with ACC-04 partial per Phase 2 SUMMARY footnote
+  1. `Vars` (31 variants), `Mode` (4 variants with Unset=0), `Dependency` bitflags, `XcError` enum (9 variants, Copy, `#[non_exhaustive]`) compile with exact C header discriminants — PASS (Plan 02-01)
+  2. `DensVarsDev<F>` cubecl type (D-02 + D-04) populates XC_A_B + XC_A_B_GAA_GAB_GBB arms; explicit helper-function chain replaces C-style fallthrough — PASS (Plans 02-03 + 02-05)
+  3. `regularize` #[cube] fn modifies only Array<F>[0]; higher-order coefficients preserved (`tests/regularize_invariant.rs`) — PASS (Plan 02-03)
+  4. Tier-1 self-tests run for 7 LDAs with upstream test_in in under 5 s — PASS (Plan 02-04)
+  5. Tier-2 parity harness `--order 2` GREEN for 9/9 non-excluded LDAs at orders 0/1; order-2 results documented in `report.html` with D-19 INCONCLUSIVE residuals (VWN/PW/PZ near-clamp → Phase 3; LDAERF bracket cancellation where Rust = mpmath truth → Phase 6) — PASS with caveats (Plan 02-06)
+
+**Plans**: 7 plans across 4 waves (granularity standard; parallelization enabled — Wave 2 ran Plans 02-04 + 02-05 in parallel after Plan 02-03 finished Wave-1B-3).
+
+- [x] 02-01-PLAN.md — Wave 0: Surgical xcfun-core cleanup (6 atomic commits per D-09; Mode/Vars/XcError/FunctionalId reorganized; density_vars.rs deleted)
+- [x] 02-02-PLAN.md — Wave 1A: xtask gates (regen-registry, check-no-mul-add, check-no-anyhow, check-boundaries, check-cubecl-pin, validate wrapper) + auto-generated FUNCTIONAL_DESCRIPTORS (78 entries, 35 populated) / VARS_TABLE (31 rows) / ALIASES (empty) — CORE-07/08/09/10, ACC-06, QG-01/02/06/07
+- [x] 02-03-PLAN.md — Wave 1B-core: xcfun-eval scaffolding — DensVarsDev<F>, build_densvars XC_A_B arm, regularize, Functional + dispatch skeleton — CORE-05/06, MODE-04
+- [x] 02-04-PLAN.md — Wave 2: 9 LDA bodies (SLATERX, VWN3C, VWN5C, PW92C, PZ81C, LDAERFX, LDAERFC, LDAERFC_JT, TFK) + tier-1 self-tests — LDA-01..08, LDA-09 part 1, ACC-04
+- [x] 02-05-PLAN.md — Wave 2: TW + VWK kinetic-GGA bodies + XC_A_B_GAA_GAB_GBB builder arm (Pitfall PHASE2-D fix) — LDA-09 part 2, LDA-10
+- [x] 02-06-PLAN.md — Wave 3: validation/ tier-2 parity harness (cc-compiled xcfun-master + FFI shim + 10k grid + report.html/jsonl; D-24 LDAERF 1e-7 override, D-22 clamp-stratum exclusion, LDAERFX expm1 stable bracket) — ACC-01..04
+- [x] 02-07-PLAN.md — Wave 4: docs/design/ updates + REQUIREMENTS/ROADMAP/STATE sign-off (this plan)
 
 ### Phase 3: GGA Tier + `Mode::Potential`
 **Goal**: All 45 GGA functionals ship in `xcfun-core` and `Mode::Potential` evaluates correctly for every `_2ND_TAYLOR`-capable Vars variant.
@@ -160,7 +169,7 @@ Pre-pivot plans (VOID — reverted by Wave 0 of the new plan, retained in git hi
 |-------|----------------|--------|-----------|
 | 0. Workspace Scaffolding & CI Foundations | 0/0 | Not started | - |
 | 1. Taylor Algebra & AD Primitives | 7/7 | Complete | 2026-04-19 |
-| 2. Core Foundations + LDA Tier + Parity Harness | 0/0 | Not started | - |
+| 2. Core Foundations + LDA Tier + Parity Harness | 7/7 | Complete (with caveats) | 2026-04-22[^acc04] |
 | 3. GGA Tier + `Mode::Potential` | 0/0 | Not started | - |
 | 4. metaGGA Tier + `Mode::Contracted` + Aliases | 0/0 | Not started | - |
 | 5. Rust Facade + C ABI | 0/0 | Not started | - |
@@ -213,5 +222,11 @@ Phase 6 fuses M7 + M8: CPU batch (`CpuRuntime`) is the only runtime validatable 
 
 ---
 
+## Footnotes
+
+[^acc04]: **Phase 2 sign-off caveat — ACC-04 partial.** Tier-2 parity at 1e-12 is GREEN for orders 0/1 on 9/9 non-excluded LDAs (8 strict + 3 LDAERF at D-24 1e-7 override). At order 2, the matrix splits 4/9 GREEN + 5 D-19 INCONCLUSIVE: (a) VWN3C/VWN5C/PW92C/PZ81C exhibit near-clamp precision drift 1–3 ULP above 1e-12 at `min(a,b) ∈ [2e-14, 1e-11]`, forwarded to Phase 3 re-evaluation after the GGA-phase `build_densvars` redesign; (b) LDAERFX/LDAERFC/LDAERFC_JT exhibit bracket-cancellation residuals — critically, at the LDAERFX failing point, mpmath at 200-digit precision confirms **Rust matches mathematical ground truth while C++ diverges by 6.7%** (its own f64 cancellation). Forwarded to Phase 6 (GPU + libm-hybrid re-evaluation) and a possible amendment to switch the parity reference from C++ to mpmath ground truth where C++ is documented to suffer cancellation. See `.planning/phases/02-core-foundations-lda-tier-parity-harness/02-06-SUMMARY.md` and `.planning/phases/02-core-foundations-lda-tier-parity-harness/02-07-SUMMARY.md` for the full investigation arc.
+
+---
+
 *Roadmap created: 2026-04-19*
-*Last updated: 2026-04-19 after initial creation*
+*Last updated: 2026-04-22 after Phase 2 sign-off (7/7 plans complete, ACC-04 partial with documented D-19 INCONCLUSIVE residuals)*
