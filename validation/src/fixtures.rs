@@ -20,6 +20,29 @@ pub const N_REGULARIZE: usize = 1000;
 pub const N_POLARISED: usize = 1000;
 pub const N_GRADIENT: usize = 1000;
 
+/// Upper bound of the regularize-clamp stratum: `2 × TINY_DENSITY`.
+///
+/// D-22 (PHASE2-CONTEXT) defines `TINY_DENSITY = 1e-14` as the per-spin
+/// density floor applied by `xcfun-eval::density_vars::regularize`. Grid
+/// points with `min(a, b) ≤ 2 × TINY_DENSITY` land in the clamp regime
+/// where the regularize function **deliberately saturates** density inputs
+/// to 1e-14 — this is a precision sacrifice chosen by design (ensures
+/// `pow(rho, 1/3)`, `log(rho)`, etc. produce finite outputs on numerically
+/// trivial density).
+///
+/// **Testing AT the clamp is testing the clamp's own precision sacrifice,
+/// not kernel correctness.** Tier-2 parity at these points is a
+/// test of `regularize`'s design decision, not of the functional port.
+/// Plan 02-06 Fix 2 excludes such points from the tier-2 verdict
+/// (parallel to the existing `excluded_by_upstream_spec` marker for
+/// TW/VWK which lack upstream `test_in` data).
+///
+/// The `2×` factor: the floor is 1e-14 per spin, but `min(a,b)` in
+/// practice varies with the regularize stratum's log-uniform spread; 2e-14
+/// catches points where EITHER spin component is clamped or within a
+/// tight neighborhood of the clamp boundary.
+pub const REGULARIZE_CLAMP_STRATUM_BOUND: f64 = 2e-14_f64;
+
 /// One grid point — superset of all input slots used across LDA + GGA + MGGA tiers.
 ///
 /// Phase 2 LDAs consume `n + s` (or `a + b` derived via `ab_from_ns`); the

@@ -62,6 +62,8 @@ pub fn write_html(report: &Report, path: &str) -> Result<()> {
         .values()
         .map(|c| c.rust_unavailable)
         .sum();
+    let clamp_total = report.clamp_stratum_total();
+    let clamp_fails = report.clamp_stratum_failures_total();
     html.push_str(&format!(
         "<p>Total records: <strong>{}</strong>; Failed: <strong style=\"color:{}\">{}</strong>{}</p>\n",
         total,
@@ -76,6 +78,14 @@ pub fn write_html(report: &Report, path: &str) -> Result<()> {
             String::new()
         }
     ));
+    if clamp_total > 0 {
+        html.push_str(&format!(
+            "<p>Clamp-stratum excluded (Plan 02-06 Fix 2, D-22): <strong>{}</strong> records \
+            (of which <strong>{}</strong> would have failed the threshold but are tests \
+            of the `regularize` clamp design, not kernel correctness).</p>\n",
+            clamp_total, clamp_fails,
+        ));
+    }
 
     // Collect functionals in a stable order that matches the plan's table.
     let stable_order = [

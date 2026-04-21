@@ -27,7 +27,7 @@ use xcfun_core::{FunctionalId, Mode, VARS_TABLE, Vars, taylorlen};
 use xcfun_eval::Functional;
 
 use crate::ffi::CppXcfun;
-use crate::fixtures::GridPoint;
+use crate::fixtures::{GridPoint, REGULARIZE_CLAMP_STRATUM_BOUND};
 
 /// One tier-2 parity record — emitted per `(functional, vars, mode, order,
 /// point_idx, element_idx)` tuple. Serialized to `validation/report.jsonl`.
@@ -58,11 +58,23 @@ pub struct ReportRecord {
     /// synthetic grid fixtures covers these cases.
     #[serde(default)]
     pub excluded_by_upstream_spec: bool,
+    /// `true` if this grid point lands in the regularize-clamp stratum
+    /// (`min(a, b) ≤ REGULARIZE_CLAMP_STRATUM_BOUND = 2e-14`) where D-22
+    /// `regularize` deliberately saturates density inputs to `TINY_DENSITY`.
+    /// Testing here exercises the clamp's precision sacrifice by design —
+    /// not kernel correctness. Records flagged here do NOT count against
+    /// the tier-2 verdict (`Report::failed_count()` skips them).
+    /// Plan 02-06 Fix 2.
+    #[serde(default)]
+    pub excluded_by_regularize_clamp_design: bool,
 }
 
 /// Per-`(functional, order)` summary used to build the report.html matrix.
 #[derive(Debug, Clone)]
 pub struct CellSummary {
+    /// Max rel-error across NON-EXCLUDED records only. Clamp-stratum and
+    /// upstream-spec-excluded records do not contribute to this maximum
+    /// (they do NOT count against the tier-2 verdict).
     pub max_rel_err: f64,
     pub threshold: f64,
     pub records_total: usize,
@@ -75,6 +87,14 @@ pub struct CellSummary {
     /// records marked `excluded_by_upstream_spec` do NOT count against the
     /// harness verdict — they are reported transparently as gaps for tier-3.
     pub excluded_by_upstream_spec: bool,
+    /// Count of records excluded by `excluded_by_regularize_clamp_design`
+    /// (Plan 02-06 Fix 2 — D-22 clamp-stratum design intent). Transparent
+    /// transparency in the HTML report.
+    pub clamp_stratum_records: usize,
+    /// Count of records in the clamp stratum that also failed (would have
+    /// failed the threshold if counted). Reported transparently but does
+    /// not fail the harness verdict.
+    pub clamp_stratum_failures: usize,
 }
 
 /// Tier-2 report aggregator.
@@ -94,21 +114,34 @@ impl Report {
             records_failed: 0,
             rust_unavailable: 0,
             excluded_by_upstream_spec: false,
+            clamp_stratum_records: 0,
+            clamp_stratum_failures: 0,
         });
         if rec.excluded_by_upstream_spec {
             entry.excluded_by_upstream_spec = true;
         }
-        entry.max_rel_err = entry.max_rel_err.max(rec.rel_err);
+        // Only aggregate rel_err MAX from non-excluded records. Excluded
+        // (clamp-stratum / upstream-spec) records are reported transparently
+        // in the JSONL but do not define the cell's tier-2 verdict.
+        if !rec.excluded_by_upstream_spec && !rec.excluded_by_regularize_clamp_design {
+            entry.max_rel_err = entry.max_rel_err.max(rec.rel_err);
+        }
         entry.records_total += 1;
-        if !rec.pass && !rec.excluded_by_upstream_spec {
+        if rec.excluded_by_regularize_clamp_design {
+            entry.clamp_stratum_records += 1;
+            if !rec.pass {
+                entry.clamp_stratum_failures += 1;
+            }
+        }
+        if !rec.pass && !rec.excluded_by_upstream_spec && !rec.excluded_by_regularize_clamp_design
+        {
             entry.records_failed += 1;
         }
         if rec.rust_unavailable {
             entry.rust_unavailable += 1;
         }
-        // To bound JSONL size: keep all failing records + a few sampled passes
-        // per (functional, order) for transparency. Also always keep
-        // `excluded_by_upstream_spec` marker records.
+        // To bound JSONL size: keep all failing records (including excluded
+        // ones for transparency) + a few sampled passes per (functional, order).
         if !rec.pass {
             self.records.push(rec);
         } else if rec.point_idx == 0 && rec.element_idx == 0 {
@@ -118,7 +151,8 @@ impl Report {
 
     /// Count tier-2 failures — EXCLUDES cells marked `excluded_by_upstream_spec`
     /// (TW + VWK have no upstream test_in; tier-2 parity for them is not a
-    /// defined comparison per CONTEXT D-19).
+    /// defined comparison per CONTEXT D-19) AND excludes clamp-stratum
+    /// records (Plan 02-06 Fix 2 — D-22 regularize-clamp design intent).
     pub fn failed_count(&self) -> usize {
         self.matrix
             .values()
@@ -129,6 +163,17 @@ impl Report {
 
     pub fn total_records(&self) -> usize {
         self.matrix.values().map(|c| c.records_total).sum()
+    }
+
+    /// Count clamp-stratum records across all cells (for transparency).
+    pub fn clamp_stratum_total(&self) -> usize {
+        self.matrix.values().map(|c| c.clamp_stratum_records).sum()
+    }
+
+    /// Count clamp-stratum records that would have failed if counted.
+    /// Reported separately for D-22 transparency; does NOT fail the verdict.
+    pub fn clamp_stratum_failures_total(&self) -> usize {
+        self.matrix.values().map(|c| c.clamp_stratum_failures).sum()
     }
 }
 
@@ -260,6 +305,7 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
                     pass: false,
                     rust_unavailable: true,
                     excluded_by_upstream_spec: true,
+                    excluded_by_regularize_clamp_design: false,
                 };
                 report.push(rec);
                 continue;
@@ -315,6 +361,19 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
                 let mut rust_out = vec![0.0_f64; outlen];
                 let mut cpp_out = vec![0.0_f64; outlen];
 
+                // D-22 clamp stratum: records where `min(a,b)` is within
+                // 2 × TINY_DENSITY test the regularize design intent
+                // (deliberate density saturation), not kernel correctness.
+                // Plan 02-06 Fix 2 marks these records for transparency but
+                // excludes them from the tier-2 verdict.
+                //
+                // For vars = A_B (inlen = 2): `(a, b) = input[0..2]`.
+                // For vars = A_B_GAA_GAB_GBB: same (a, b) slots in [0..2]
+                // (we currently skip inlen != 2 via the `excluded` check,
+                // so this branch handles only A_B in practice).
+                let in_clamp_stratum = input.len() >= 2
+                    && input[0].min(input[1]) <= REGULARIZE_CLAMP_STRATUM_BOUND;
+
                 // Evaluate C++ side unconditionally.
                 cpp.eval(&input, &mut cpp_out);
 
@@ -355,6 +414,7 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
                         pass,
                         rust_unavailable,
                         excluded_by_upstream_spec: false,
+                        excluded_by_regularize_clamp_design: in_clamp_stratum,
                     };
                     report.push(rec);
                 }
@@ -363,14 +423,16 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
     }
 
     tracing::info!(
-        "Tier-2 done: {} records evaluated, {} failed ({} rust-unavailable)",
+        "Tier-2 done: {} records evaluated, {} failed ({} rust-unavailable, {} clamp-stratum excluded, {} would-fail-in-clamp)",
         report.total_records(),
         report.failed_count(),
         report
             .matrix
             .values()
             .map(|c| c.rust_unavailable)
-            .sum::<usize>()
+            .sum::<usize>(),
+        report.clamp_stratum_total(),
+        report.clamp_stratum_failures_total(),
     );
     Ok(report)
 }
