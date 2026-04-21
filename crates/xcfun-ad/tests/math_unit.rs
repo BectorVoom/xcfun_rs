@@ -347,23 +347,22 @@ fn pow_n1_half() {
 fn erf_n1() {
     // x = 0 + y → erf(y) ≈ (2/√π) · y → out[0] = 0, out[1] = 2/√π
     //
-    // Cubecl-cpu computes erf(0) via a Wikipedia §5-term polyfill (not
-    // libm::erf) that has max absolute error ~1.5e-7. So `erf(0)` is NOT
-    // bit-zero — it's ~3e-8 on cubecl-cpu. See `expand/erf.rs` header for
-    // the precision disclosure. This composed-function test accepts up
-    // to 1e-7 absolute error on both `t[0]` and `t[1]`.
+    // Plan 02-06 Fix B: kernel now uses in-house `erf_precise` (port of
+    // FreeBSD s_erf.c, ≤ 1 ULP vs libm::erf). `erf(0)` is now exactly 0
+    // (Branch A: z = 0·0 = 0, r/s = PP0/1 = PP0, x + x·y = 0 + 0·PP0 = 0).
+    // `t[1] = 2/√π` inherits ≤ 1 ULP drift from the libm-exact f64 constant.
     let expected_t1 = 2.0 / std::f64::consts::PI.sqrt();
     let got = run_unary(&[0.0, 1.0], 2, 1, KernelUnary::Erf);
-    // t[0] = erf(0) — polyfill drift ≤ 1.5e-7 absolute.
-    assert!(
-        got[0].abs() < 1.5e-7,
-        "erf_n1 t[0] = {} (expected near 0, drift budget 1.5e-7)",
+    // t[0] = erf(0) is exactly 0 with the new in-house erf.
+    assert_eq!(
+        got[0], 0.0,
+        "erf_n1 t[0] = {} (post Fix B: erf(0) is now bit-exact 0)",
         got[0]
     );
-    // t[1] inherits 2/√π drift from f32 π (~1.3e-8 relative).
+    // t[1] inherits 2/√π drift only from the f64 constant rounding.
     let rel1 = (got[1] - expected_t1).abs() / expected_t1.abs();
     assert!(
-        rel1 < 1e-7,
+        rel1 < 1e-15,
         "erf_n1 t[1]: got {}, expected {}, rel_err {:e}",
         got[1], expected_t1, rel1
     );

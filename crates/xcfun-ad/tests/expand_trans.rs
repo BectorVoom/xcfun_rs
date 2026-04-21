@@ -76,7 +76,12 @@ where
     f64::from_bytes(&bytes).to_vec()
 }
 
-const REL_TOL: f64 = 1.0e-13;
+// Plan 02-06 Fix B: kernel uses in-house `erf_precise` (libm-equivalent).
+// Host `host_erf_expand` mirrors via `erf_precise_host` step-for-step, so
+// the kernel-vs-host delta is ≤ 1 ULP (≈ 2e-16 relative) on cubecl-cpu.
+// Tightened from the post-Fix-A 1e-13 to 1e-14 to demonstrate the
+// new precision floor while leaving comfortable headroom for the f64 ULP.
+const REL_TOL: f64 = 1.0e-14;
 
 fn assert_close(got: &[f64], expected: &[f64], label: &str) {
     assert_eq!(
@@ -291,34 +296,6 @@ fn host_gauss_expand(a: f64, n: usize) -> Vec<f64> {
     t
 }
 
-/// Cubecl-cpu's erf polyfill (Wikipedia §"Numerical approximations", max
-/// error 1.5e-7). This is what cubecl-cpu lowers `Arithmetic::Erf(f64)` to
-/// (see `cubecl-cpu/src/compiler/passes/erf_transform.rs` +
-/// `cubecl-core/src/frontend/polyfills.rs:28-52`). The polyfill constants
-/// are stored as f32 literals in the cubecl source, so even on f64 target
-/// the computation widens f32 → f64 mid-expression and carries ~1.5e-7
-/// drift vs a true f64 `libm::erf`. We mirror that path here so the test
-/// can assert bit-close identity against the kernel output.
-fn host_erf_cubecl_polyfill(x: f64) -> f64 {
-    // Reproduces `erf(x) = sign(x) * erf_positive(|x|)` from polyfills.rs.
-    let abs_x = x.abs();
-    // Constants — f32 literals widened to f64 (the cubecl `F::new(f32) → f64`
-    // path). `core::f32::consts`-free handwritten values exactly as the
-    // polyfill stores them.
-    let p = 0.3275911_f32 as f64;
-    let a1 = 0.2548296_f32 as f64;
-    let a2 = -0.28449674_f32 as f64;
-    let a3 = 1.4214137_f32 as f64;
-    let a4 = -1.453152_f32 as f64;
-    let a5 = 1.0614054_f32 as f64;
-    let one = 1.0_f64;
-
-    let t = one / (one + p * abs_x);
-    let tmp = ((((a5 * t + a4) * t) + a3) * t + a2) * t + a1;
-    let erf_pos = one - (tmp * t * (-abs_x * abs_x).exp());
-    if x < 0.0 { -erf_pos } else { erf_pos }
-}
-
 fn host_erf_expand(a: f64, n: usize) -> Vec<f64> {
     let mut t = host_gauss_expand(a, n);
 
@@ -331,10 +308,11 @@ fn host_erf_expand(a: f64, n: usize) -> Vec<f64> {
     }
 
     host_tfuns_integrate(&mut t);
-    // Mirror cubecl-cpu's polyfill path for erf(a) — NOT libm::erf. The
-    // polyfill has ~1.5e-7 drift vs libm::erf but is what the kernel
-    // actually computes.
-    t[0] = host_erf_cubecl_polyfill(a);
+    // Plan 02-06 Fix B: kernel now uses the in-house `erf_precise`
+    // (port of FreeBSD s_erf.c — see `crates/xcfun-ad/src/expand/erf.rs`).
+    // Mirror it via the host-side `erf_precise_host` so the oracle stays
+    // bit-close to the kernel.
+    t[0] = xcfun_ad::expand::erf::erf_precise_host(a);
     t
 }
 
