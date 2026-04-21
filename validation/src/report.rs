@@ -114,7 +114,9 @@ pub fn write_html(report: &Report, path: &str) -> Result<()> {
             match cell {
                 Some(cell) => {
                     tolerance = Some(cell.threshold);
-                    let cls = if cell.rust_unavailable > 0 {
+                    let cls = if cell.excluded_by_upstream_spec {
+                        "gray"
+                    } else if cell.rust_unavailable > 0 {
                         "gray"
                     } else if cell.records_failed > 0 {
                         "red"
@@ -123,7 +125,9 @@ pub fn write_html(report: &Report, path: &str) -> Result<()> {
                     } else {
                         "green"
                     };
-                    let text = if cell.rust_unavailable > 0 {
+                    let text = if cell.excluded_by_upstream_spec {
+                        "N/A (excluded: no upstream test_in)".to_string()
+                    } else if cell.rust_unavailable > 0 {
                         "N/A (NotConfigured)".to_string()
                     } else {
                         format!("{:.2e}", cell.max_rel_err)

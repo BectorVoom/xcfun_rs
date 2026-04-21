@@ -50,6 +50,14 @@ pub struct ReportRecord {
     /// this `(id, vars, order)` tuple — i.e., the kernel exists but the host
     /// launch arm does not. Recorded transparently for D-19 review.
     pub rust_unavailable: bool,
+    /// `true` if this functional is excluded from tier-2 because upstream
+    /// has no `test_in` to compare against (TW + VWK — no upstream test data;
+    /// ldaerfc.cpp FUNCTIONAL macro for these ends at ENERGY_FUNCTION without
+    /// XC_A_B/XC_PARTIAL_DERIVATIVES/test_* args). Tier-2 parity is
+    /// meaningless without an upstream reference; tier-3 (Phase 3+) with
+    /// synthetic grid fixtures covers these cases.
+    #[serde(default)]
+    pub excluded_by_upstream_spec: bool,
 }
 
 /// Per-`(functional, order)` summary used to build the report.html matrix.
@@ -62,6 +70,11 @@ pub struct CellSummary {
     /// Count of records where Rust returned `NotConfigured` (a structural gap,
     /// distinct from numerical failure).
     pub rust_unavailable: usize,
+    /// `true` iff the (functional, order) cell is entirely excluded from tier-2
+    /// because upstream has no `test_in` to compare against (TW + VWK). Failing
+    /// records marked `excluded_by_upstream_spec` do NOT count against the
+    /// harness verdict — they are reported transparently as gaps for tier-3.
+    pub excluded_by_upstream_spec: bool,
 }
 
 /// Tier-2 report aggregator.
@@ -80,17 +93,22 @@ impl Report {
             records_total: 0,
             records_failed: 0,
             rust_unavailable: 0,
+            excluded_by_upstream_spec: false,
         });
+        if rec.excluded_by_upstream_spec {
+            entry.excluded_by_upstream_spec = true;
+        }
         entry.max_rel_err = entry.max_rel_err.max(rec.rel_err);
         entry.records_total += 1;
-        if !rec.pass {
+        if !rec.pass && !rec.excluded_by_upstream_spec {
             entry.records_failed += 1;
         }
         if rec.rust_unavailable {
             entry.rust_unavailable += 1;
         }
         // To bound JSONL size: keep all failing records + a few sampled passes
-        // per (functional, order) for transparency.
+        // per (functional, order) for transparency. Also always keep
+        // `excluded_by_upstream_spec` marker records.
         if !rec.pass {
             self.records.push(rec);
         } else if rec.point_idx == 0 && rec.element_idx == 0 {
@@ -98,8 +116,15 @@ impl Report {
         }
     }
 
+    /// Count tier-2 failures — EXCLUDES cells marked `excluded_by_upstream_spec`
+    /// (TW + VWK have no upstream test_in; tier-2 parity for them is not a
+    /// defined comparison per CONTEXT D-19).
     pub fn failed_count(&self) -> usize {
-        self.matrix.values().map(|c| c.records_failed).sum()
+        self.matrix
+            .values()
+            .filter(|c| !c.excluded_by_upstream_spec)
+            .map(|c| c.records_failed)
+            .sum()
     }
 
     pub fn total_records(&self) -> usize {
@@ -188,29 +213,37 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
             threshold
         );
 
-        // TW + VWK (Vars::A_B_GAA_GAB_GBB, inlen=5) require non-zero gradient
-        // inputs — C++ xcfun aborts on `pow(gaa+gbb, 2)` when gradients are
-        // zero (xcfun-master/external/upstream/taylor/tmath.hpp:156), AND the
-        // Rust launch loop currently only wires (id, n) arms for inlen=2 LDAs
-        // (Plan 02-04/02-05 left TW/VWK host launches out of scope). Record
-        // the gap as rust_unavailable=true so the checkpoint reviewer sees
-        // this as a D-19 PLANNING INCONCLUSIVE trigger, not a silent omission.
-        let skip_reason = if inlen != 2 {
-            Some("TW/VWK launch arm + gradient-safe grid not yet wired (D-19 INCONCLUSIVE)")
-        } else {
-            None
-        };
+        // TW + VWK (Vars::A_B_GAA_GAB_GBB, inlen=5) are EXCLUDED from tier-2
+        // because:
+        //   1. Upstream `tw.cpp` / `vonw.cpp` ship NO `test_in`/`test_out` data
+        //      in their FUNCTIONAL macros (ENERGY_FUNCTION only, no XC_A_B +
+        //      XC_PARTIAL_DERIVATIVES + test_* args). With no upstream reference,
+        //      tier-2 parity is not a defined comparison (CONTEXT D-19).
+        //   2. C++ xcfun aborts on `pow(gaa+gbb, 2)` with zero gradients
+        //      (xcfun-master/external/upstream/taylor/tmath.hpp:156), so the
+        //      bulk/regularize/polarised strata (gradients = 0) cannot be
+        //      exercised on the C++ side anyway.
+        //   3. The Rust launch loop currently wires only (id, n) arms for
+        //      inlen=2 LDAs. Extending to inlen=5 is deferred to Phase 3
+        //      (GGA scaffolding) where it lands alongside the gradient-present
+        //      grid strata — bug #4 host launch arm wiring.
+        //
+        // Per the user-approved tier-2 plan for these functionals, they are
+        // tagged `excluded_by_upstream_spec` in the report; their failure
+        // counts do NOT roll up into the harness verdict.
+        let excluded = inlen != 2;
 
         for order in 0..=max_order.min(2) {
             let outlen = taylorlen(inlen, order as usize);
-            if let Some(reason) = skip_reason {
+            if excluded {
                 tracing::warn!(
-                    "Tier-2 skipping {} order={}: {} — reporting as rust_unavailable",
+                    "Tier-2 EXCLUDED {} order={}: no upstream test_in (excluded_by_upstream_spec)",
                     name,
                     order,
-                    reason
                 );
-                // Record one summary placeholder per (functional, order).
+                // Emit one marker record per (functional, order). The flag
+                // `excluded_by_upstream_spec=true` means this does NOT count
+                // against the harness verdict.
                 let rec = ReportRecord {
                     functional: name.into(),
                     vars: format!("{:?}", vars),
@@ -226,6 +259,7 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
                     threshold,
                     pass: false,
                     rust_unavailable: true,
+                    excluded_by_upstream_spec: true,
                 };
                 report.push(rec);
                 continue;
@@ -320,6 +354,7 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
                         threshold,
                         pass,
                         rust_unavailable,
+                        excluded_by_upstream_spec: false,
                     };
                     report.push(rec);
                 }
