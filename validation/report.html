@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>XCFun Tier-2 Parity Report</title>
+<style>
+body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; padding: 24px; max-width: 1100px; }
+h1 { margin: 0 0 8px 0; }
+p { margin: 4px 0; }
+code { background: #f4f4f4; padding: 1px 5px; border-radius: 3px; }
+table { border-collapse: collapse; margin-top: 16px; font-family: Menlo, monospace; }
+th, td { border: 1px solid #aaa; padding: 6px 12px; text-align: right; }
+th { background: #eee; text-align: center; }
+td.name { text-align: left; font-weight: bold; }
+td.green { background: #cfc; }
+td.yellow { background: #ffc; }
+td.red { background: #fcc; font-weight: bold; }
+td.gray { background: #eee; color: #666; }
+td.tol { text-align: center; }
+td.missing { background: #eef; color: #668; font-style: italic; text-align: center; }
+.legend { margin-top: 20px; font-size: 0.95em; }
+.legend span { padding: 2px 8px; border: 1px solid #aaa; margin-right: 4px; }
+</style></head><body>
+<h1>XCFun Tier-2 Parity Report</h1>
+<p>Backend: <code>CpuRuntime (cubecl-cpu =0.10.0-pre.3)</code></p>
+<p>Reference: <code>xcfun-master/</code> (vendored, cc-compiled static lib <code>xcfun_cpp_lda</code>)</p>
+<p>Generated: <code>1776772789 seconds since Unix epoch (UTC)</code></p>
+<p>Total records: <strong>10000</strong>; Failed: <strong style="color:#060">0</strong></p>
+<table>
+<thead><tr>
+<th>Functional</th>
+<th>order=0</th><th>order=1</th><th>order=2</th>
+<th>Tolerance</th>
+</tr></thead>
+<tbody>
+<tr><td class="name">XC_SLATERX</td><td class="green">2.29e-16</td><td class="missing">—</td><td class="missing">—</td><td class="tol">1e-12</td></tr>
+</tbody></table>
+<div class="legend">
+<p>Color key: <span class="green">GREEN</span> rel-err &lt; threshold/10; <span class="yellow">YELLOW</span> threshold/10 &le; rel-err &lt; threshold; <span class="red">RED</span> rel-err &ge; threshold (FAIL); <span class="gray">GRAY</span> Rust launch arm not yet wired (D-19 INCONCLUSIVE trigger — NOT silent widening).</p>
+<p>Threshold dispatch per CONTEXT D-24: strict 1e-12 for 8 LDAs; 1e-7 for the 3 LDAERF functionals (user-approved override, annotated above).</p>
+</div>
+</body></html>
