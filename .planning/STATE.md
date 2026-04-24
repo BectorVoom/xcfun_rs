@@ -8,7 +8,7 @@ progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 21
-  completed_plans: 17
+  completed_plans: 18
   percent: 25
 ---
 
@@ -20,16 +20,17 @@ progress:
 
 **Core Value:** Every functional must produce numerical output matching C++ xcfun within relative error <= 1.0e-12, across all evaluation modes and derivative orders.
 
-**Current focus:** Phase 03 — gga-tier-mode-potential (Waves 0-2 complete — executing Wave 3)
+**Current focus:** Phase 03 — gga-tier-mode-potential (Waves 0-3 complete — executing Wave 4)
 
 ## Current Position
 
-Phase: 03 (gga-tier-mode-potential) — EXECUTING (3/7 plans complete)
-Plans: 7 (03-00 ✓, 03-01 ✓, 03-02 ✓, 03-03 OPTX+PW86/91+P86+APBE, 03-04 B97+KT+BTK, 03-05 Mode::Potential, 03-06 orders 3..=4 + ACC-04 re-run + sign-off)
+Phase: 03 (gga-tier-mode-potential) — EXECUTING (4/7 plans complete)
+Plans: 7 (03-00 ✓, 03-01 ✓, 03-02 ✓, 03-03 ✓, 03-04 B97+KT+BTK, 03-05 Mode::Potential, 03-06 orders 3..=4 + ACC-04 re-run + sign-off)
 Scope: 36 GGA functional IDs (BRX/BRC/BRXC + CSC deferred to Phase 4 per D-01-A; LB94 deferred per D-19)
-Wave 0 (03-00) COMPLETE 2026-04-25: `ctaylor_expm1` (D-05) + `ctaylor_sqrtx_asinh_sqrtx` (D-06) + 6500 fixtures GREEN at 1e-12.
-Wave 1 (03-01) COMPLETE 2026-04-25: `gga/` module + 6 shared helpers + 7 DensVarsDev Vars arms (D-10-A) + Mode::Potential host gates. 25 tests GREEN.
-Wave 2 (03-02) COMPLETE 2026-04-25: 17 GGA kernels ported (PBE×12 + Becke×4 + LYP), 5 skeleton→FULL conversions (pbex::enhancement_rpbe + pbec_eps trio + pw91_like pair), `Functional::parameters: [f64;4]` (B3), dispatch extended 11→28 ids, c_stubs.cpp 67→50. INCONCLUSIVE per D-19: tier-2 strict 1e-12 GGA parity validation deferred to Wave 3 Task 1 (host-side launch path needs ~51 new launch_eval_point arms for inlen=5, ~2500 LOC).
+Wave 0 (03-00) COMPLETE: `ctaylor_expm1` (D-05) + `ctaylor_sqrtx_asinh_sqrtx` (D-06) + 6500 fixtures GREEN at 1e-12.
+Wave 1 (03-01) COMPLETE: `gga/` module + 6 shared helpers + 7 DensVarsDev Vars arms (D-10-A) + Mode::Potential host gates.
+Wave 2 (03-02) COMPLETE: 17 GGA kernels (PBE×12 + Becke×4 + LYP), 5 skeleton→FULL conversions, `Functional::parameters: [f64;4]`, dispatch 11→28, c_stubs 67→50.
+Wave 3 (03-03) COMPLETE: 10 GGA kernels (OPTX×2 + PW86/91×4 + P86×2 + APBE×2), W3+W7 FULL helpers, W8 pz81_eps pub, dispatch 28→38, c_stubs 50→40; Wave-2 INCONCLUSIVE ABSORBED (run_launch + launch_and_accumulate extended for inlen=5); OPTX GREEN at strict 1e-12. **NEW D-19 INCONCLUSIVE**: 5 functionals (PW86X, APBEX, APBEC, P86C, PW91C) show 1e-6 to 1e-9 port-order drift from C++ `pow` expression vs Rust `ctaylor_pow` chain — constants verified to 16 digits; forwarded to Wave 6 sign-off for Rule-1 fix decision.
 
 - **Milestone:** Initial v1 build-out
 - **Phase:** 02 (core-foundations-lda-tier-parity-harness) — **COMPLETE (2026-04-22)**
