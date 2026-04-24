@@ -108,7 +108,20 @@ Pre-pivot plans (VOID — reverted by Wave 0 of the new plan, retained in git hi
   3. `output_length` returns `taylor_len(input_len, order)` for `Mode::PartialDerivatives` and 2 or 3 for `Mode::Potential`, matching the C++ reference on every configuration.
   4. `Mode::PartialDerivatives` produces output layout matching `XCFunctional.cpp:501-612` on orders 0..=4 for representative GGAs (verified in the parity harness).
   5. Range-separated GGA functionals (`beckecamx`, `beckesrx`) pass the 1e-12 gate on CPU; `erf`-drift warning signs from Pitfall P2 are resolved (no element within the tier-2 budget drifts above 5e-13 due to libm variance).
-**Plans**: TBD
+**Plans**: 7 plans across 7 waves (granularity standard; parallelization enabled — Waves 2-4 parallelize family-port subtrees).
+
+- [x] 03-00-PLAN.md — Wave 0: xcfun-ad substrate (D-05 ctaylor_expm1 + D-06 ctaylor_sqrtx_asinh_sqrtx) + fixture-gate at 1e-14
+- [ ] 03-01-PLAN.md — Wave 1: gga/ module tree + 7 new DensVarsDev Vars arms (D-10-A corrected 27..30) + shared helpers + regularize_2nd_taylor test + Mode::Potential host-side gates
+- [ ] 03-02-PLAN.md — Wave 2: 17 kernels (PBE ×12 + Becke ×4 + LYP ×1) per D-01-B; dispatch extension
+- [ ] 03-03-PLAN.md — Wave 3: 10 kernels (OPTX ×2 + PW86/PW91 ×4 + P86 ×2 + APBE ×2)
+- [ ] 03-04-PLAN.md — Wave 4: 8 kernels (B97 ×6 + KTX + BTK) per D-01-C; compile-time capstone (Pitfall G10)
+- [ ] 03-05-PLAN.md — Wave 5: Mode::Potential (LDA + GGA 3-direction divergence per XCFunctional.cpp:637-790)
+- [ ] 03-06-PLAN.md — Wave 6: Mode::PartialDerivatives orders 3..=4 + tier-2 full-matrix + Phase-2 ACC-04 re-run + Phase-3 sign-off
+
+**Scope amendments (planner 2026-04-24):**
+- **BRX/BRC/BRXC (GGA-03) + CSC (part of GGA-10) deferred to Phase 4** per D-01-A — these declare `Dependency::KINETIC|LAPLACIAN|JP` (metaGGA-class) requiring inlen=11 Vars arm + a separate `BR_taylor` Newton-inverse xcfun-ad primitive.
+- **LB94 (part of GGA-10) deferred** per D-19 to Phase 5 (or Phase 4 if alias-feasible) — legacy `setup_lb94` pattern, not in the 78-entry FunctionalId enum.
+- Phase 3 ships **36 of 40** GGA functional IDs (not 45 as the original Goal stated). Goal text to be corrected at sign-off.
 
 ### Phase 4: metaGGA Tier + `Mode::Contracted` + Aliases
 **Goal**: All 78 functionals are ported and all 46 aliases resolve, with `Mode::Contracted` orders 0..=6 exercised; `cargo xtask validate --backend cpu --order 3` reports zero failures across the entire 78-functional set.
