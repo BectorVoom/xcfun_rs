@@ -2,34 +2,37 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: phase-3-context-gathered-ready-for-plan
-last_updated: "2026-04-24T00:00:00Z"
+status: phase-3-planned-ready-to-execute
+last_updated: "2026-04-24T08:25:00.000Z"
 progress:
   total_phases: 8
   completed_phases: 2
-  total_plans: 14
+  total_plans: 21
   completed_plans: 14
   percent: 25
 ---
 
 # Project State: xcfun_rs
 
-**Last updated:** 2026-04-24 (after `/gsd-discuss-phase 3 --auto` completion — Phase 3 context gathered, 25 decisions captured, ready for `/gsd-plan-phase 3`)
+**Last updated:** 2026-04-24 (after `/gsd-plan-phase 3 --auto` completion — Phase 3 planned: 7 PLAN.md files shipped across 7 waves, checker GREEN on iteration 3, CONTEXT.md amended with D-01-A/B/C + D-10-A)
 
 ## Project Reference
 
 **Core Value:** Every functional must produce numerical output matching C++ xcfun within relative error <= 1.0e-12, across all evaluation modes and derivative orders.
 
-**Current focus:** Phase 2 SIGNED OFF (2026-04-22). Next: Phase 3 — GGA Tier + Mode::Potential.
+**Current focus:** Phase 03 — gga-tier-mode-potential (ready to execute)
 
 ## Current Position
 
-Phase 2 SIGNED OFF (2026-04-22) with documented ACC-04 caveats. Next: `/gsd-plan-phase 3`.
+Phase: 03 (gga-tier-mode-potential) — PLANNED, READY TO EXECUTE
+Plans: 7 (03-00 substrate, 03-01 DensVars+shared scaffolding, 03-02 PBE+Becke+LYP, 03-03 OPTX+PW86/91+P86+APBE, 03-04 B97+KT+BTK, 03-05 Mode::Potential, 03-06 orders 3..=4 + ACC-04 re-run + sign-off)
+Scope: 36 GGA functional IDs (BRX/BRC/BRXC + CSC deferred to Phase 4 per D-01-A; LB94 deferred per D-19)
+Phase 2 SIGNED OFF (2026-04-22) with documented ACC-04 caveats. Next: `/gsd-execute-phase 3`.
 
 - **Milestone:** Initial v1 build-out
 - **Phase:** 02 (core-foundations-lda-tier-parity-harness) — **COMPLETE (2026-04-22)**
 - **Plan:** 02-07 complete. All 7 Phase-2 plans shipped (Wave 0 → Wave 4); 30 of 31 Phase-2 requirement IDs fully satisfied + 1 Partial (ACC-04) with documented D-19 INCONCLUSIVE residuals forwarded to Phase 3 (VWN/PW/PZ near-clamp precision) and Phase 6 (LDAERF bracket cancellation; Rust = mpmath truth, C++ has own 6.7% cancellation at LDAERFX failing point).
-- **Status:** Phase 2 done; ready for Phase 3 planning
+- **Status:** Executing Phase 03
 - **Progress:** [██▌       ] 25% (14/14 plans across 2 phases complete; 6/8 phases remaining)
 
 ## Performance Metrics
@@ -161,15 +164,17 @@ None.
 - 2026-04-21: Plan 02-06 complete (Wave 3: validation/ tier-2 harness; user-approved D-24 LDAERF 1e-7 override transparent in report.html; LDAERFX expm1 stable bracket Fix 1; D-22 clamp-stratum exclusion Fix 2; in-kernel libm-port erf_precise). 13 commits `55dba99 → 8ab7d4e`. ACC-01..03 [x], ACC-04 [~] Partial.
 - 2026-04-22: Plan 02-07 complete — Phase 2 signed off. 4 design docs updated (02/05/06/09) to reflect as-built D-02/D-04/D-17/tier-1-tier-2 pattern; 30 Phase-2 IDs [x] Complete + ACC-04 [~] Partial with documented D-19 residuals; ROADMAP Phase 2 [x] Complete (with caveats) 7/7 plans; STATE advanced to 25% (14/14 plans across 2 phases).
 - 2026-04-24: `/gsd-discuss-phase 3 --auto` complete. Phase 3 (GGA Tier + Mode::Potential) CONTEXT.md written at `.planning/phases/03-gga-tier-mode-potential/03-CONTEXT.md` with 25 decisions (D-01..D-25) auto-selected across 10 gray areas. Inherits 53 locked decisions from Phases 1+2. DISCUSSION-LOG.md records the auto-selection rationale. Scope-count corrected: 40 GGA functionals (ROADMAP's "45" is loose). LB94 deferred to Phase 5 per D-19 (not in the 78-entry enum; uses legacy `setup_lb94` pattern). xcfun-ad additive extensions queued: `expm1`/`ctaylor_expm1` (D-05) and `sqrtx_asinh_sqrtx` helper (D-06) — mandatory for 6 GGA families. Note: `gsd-sdk` CLI unavailable in this environment; the workflow's final git-commit + auto-advance-to-plan steps were not auto-invoked.
+- 2026-04-24: `/gsd-plan-phase 3 --auto` complete. Research + pattern-mapping + 7 PLAN.md files (03-00..03-06) shipped. CONTEXT.md amended (commit `ee77cd7`): D-01-A scope reduction 40→36 (BRX/BRC/BRXC + CSC deferred to Phase 4 — metaGGA-class deps); D-01-B Wave 1 = 17 kernels; D-01-C Wave 3 = 8 kernels; D-10-A `_2ND_TAYLOR` discriminants corrected to 27..30. Checker GREEN on iteration 3 (5 BLOCKER / 9 WARNING / 3 INFO on iter 1 → 2 BLOCKER / 1 WARNING on iter 2 → 0 on iter 3). Key commits: `eea97b3` (RESEARCH.md), `050d0c6` (VALIDATION.md), `3e35e7b` (PATTERNS.md), `ee77cd7` (CONTEXT amendments), `96932d4` (03-00 plan), `00ce743` (plans 01-06), `1e8c156`..`5ac932f` (r1 revisions), `5d1fe96` (r2 final).
 
 ## Session Continuity
 
-**Last session stopped at:** `/gsd-discuss-phase 3 --auto` — CONTEXT.md + DISCUSSION-LOG.md written for Phase 3; STATE.md frontmatter advanced to `phase-3-context-gathered-ready-for-plan`. Not yet git-committed; `gsd-plan-phase 3` not yet launched.
+**Last session stopped at:** `/gsd-plan-phase 3 --auto` — Phase 3 planned: 7 PLAN.md files across 7 waves; CONTEXT.md amended with D-01-A/B/C + D-10-A; checker GREEN on iteration 3. Git-committed (heads on `master` at `5d1fe96`).
 
-**Next action:** `/gsd-plan-phase 3 --auto` to generate the Phase 3 plan(s) from CONTEXT.md's 25 decisions.
+**Next action:** `/gsd-execute-phase 3 --auto` to execute Wave 0 (xcfun-ad primitives D-05/D-06 + fixtures), then waves 1–6 in order.
 
-**Phase 3 scope (locked in CONTEXT.md):**
-- 40 GGA functional bodies across 10 families (PBE/Becke/BR/LYP/OPTX/PW86-PW91/P86/APBE/B97/KT-BTK-CSC) — LB94 deferred.
+**Phase 3 scope (locked in CONTEXT.md + amendments):**
+
+- **36 GGA functional bodies** across 8 families (PBE ×12 / Becke ×4 / LYP ×1 / OPTX ×2 / PW86-PW91 ×4 / P86 ×2 / APBE ×2 / B97 ×6 / KT-BTK ×2) — BRX/BRC/BRXC + CSC deferred to Phase 4; LB94 deferred to Phase 5.
 - `Mode::Potential` via line-for-line port of `XCFunctional.cpp:637-790` divergence construction.
 - `Mode::PartialDerivatives` orders 3..=4 extension.
 - 7 new Vars arms in DensVarsDev (3 GGA + 4 2ND_TAYLOR for Potential).
