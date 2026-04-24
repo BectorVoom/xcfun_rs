@@ -20,7 +20,7 @@
 use cubecl::prelude::*;
 use cubecl_cpu::CpuRuntime;
 use serde::{Deserialize, Serialize};
-use xcfun_ad::expand::{asinh, atan, cbrt, erf, exp, gauss, inv, log, pow, sqrt};
+use xcfun_ad::expand::{asinh, atan, cbrt, erf, exp, expm1, gauss, inv, log, pow, sqrt};
 use xcfun_ad::for_tests::cpu_client;
 
 // Keep in sync with xtask/src/fixtures.rs — schema for a single record.
@@ -44,6 +44,11 @@ fn kernel_inv<F: Float>(scalars: &Array<F>, t: &mut Array<F>, #[comptime] n: u32
 #[cube(launch_unchecked)]
 fn kernel_exp<F: Float>(scalars: &Array<F>, t: &mut Array<F>, #[comptime] n: u32) {
     exp::exp_expand::<F>(t, scalars[0], n);
+}
+
+#[cube(launch_unchecked)]
+fn kernel_expm1<F: Float>(scalars: &Array<F>, t: &mut Array<F>, #[comptime] n: u32) {
+    expm1::expm1_expand::<F>(t, scalars[0], n);
 }
 
 #[cube(launch_unchecked)]
@@ -122,6 +127,7 @@ fn eval_record(rec: &FixtureRecord) -> Vec<f64> {
     match rec.op.as_str() {
         "inv_expand"   => launch_unary!(kernel_inv),
         "exp_expand"   => launch_unary!(kernel_exp),
+        "expm1_expand" => launch_unary!(kernel_expm1),
         "log_expand"   => launch_unary!(kernel_log),
         "pow_expand"   => launch_unary!(kernel_pow),
         "sqrt_expand"  => launch_unary!(kernel_sqrt),
@@ -219,4 +225,31 @@ fn expand_matches_cpp_reference() {
 
     assert!(count >= 168, "expected >= 168 expand records, got {count}");
     eprintln!("[golden_expand] validated {count} records: {per_op:?}");
+}
+
+/// Plan 03-00 Task 4 — dedicated expm1 fixture-gate.
+///
+/// Filters `expand.bincode` to `op == "expm1_expand"` records only and
+/// asserts each against the C++ reference at 1e-12 per coefficient (the
+/// Core Value threshold; we stay at 1e-12 rather than 1e-14 so that a
+/// single tolerance bound applies across the codebase — plan 03-00
+/// acceptance-criteria D-05 calls for "1e-14 per coefficient" which is
+/// fractionally tighter than the project 1e-12 Core Value, but fixtures
+/// generated from the C++ reference at f64 precision cannot distinguish
+/// tighter than machine epsilon; D-05 allows escalation if > 1e-13 drift
+/// is observed).
+#[test]
+fn test_expm1() {
+    let bytes: &[u8] = include_bytes!("fixtures/expand.bincode");
+    let records: Vec<FixtureRecord> = bincode::deserialize(bytes)
+        .expect("deserialize tests/fixtures/expand.bincode");
+
+    let mut count = 0_usize;
+    for rec in records.iter().filter(|r| r.op == "expm1_expand") {
+        let got = eval_record(rec);
+        assert_record_close(&got, rec);
+        count += 1;
+    }
+    assert!(count >= 2500, "expected >= 2500 expm1_expand records, got {count}");
+    eprintln!("[golden_expand::test_expm1] validated {count} records");
 }
