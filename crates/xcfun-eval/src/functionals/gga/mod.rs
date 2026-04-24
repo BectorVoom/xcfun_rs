@@ -22,10 +22,12 @@ pub mod pbe;
 pub mod becke;
 pub mod lyp;
 
+// Wave 3 (03-03) ships OPTX (2), PW91 family (4), P86 (2), APBE (2).
+pub mod optx;
+pub mod pw91;
+pub mod p86;
+pub mod apbe;
+
 // Other family modules — populated in later waves of Phase 3:
-// pub mod optx;   // 03-03 (OPTX, OPTXCORR)
-// pub mod pw91;   // 03-03 (PW91X, PW91K, PW91C)
-// pub mod p86;    // 03-04 (P86C)
-// pub mod apbe;   // 03-02 (APBEX, APBEC)
 // pub mod b97;    // 03-04 (B97X, B97-1X, B97-2X, B97C, B97-1C, B97-2C, B97XC, …)
 // pub mod kt;     // 03-03 (KTX, BTK)
