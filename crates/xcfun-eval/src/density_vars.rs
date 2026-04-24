@@ -1,6 +1,7 @@
 //! Device-side densvars container — `#[derive(CubeType, CubeLaunch)]` struct
-//! holding 22 named `Array<F>` fields. 1:1 port of the field set in
-//! `xcfun-master/src/densvars.hpp:223-244` per CORE-05 + D-02.
+//! holding 24 named `Array<F>` fields (22 from Phase 2 + `lapn` + `laps`
+//! added in Phase 3 plan 03-01 per B2 resolution). 1:1 port of the field
+//! set in `xcfun-master/src/densvars.hpp:223-244` per CORE-05 + D-02.
 //!
 //! Each `Array<F>` is a length-`(1 << N)` CTaylor coefficient array
 //! (bit-flag-indexed per `xcfun-ad::index::{CNST, VAR0..VAR7}`). Plan 02-04/02-05
@@ -12,7 +13,8 @@ use cubecl::prelude::*;
 pub mod build;
 pub mod regularize;
 
-/// Device-side density-variables container. 22 named CTaylor<F, N> fields,
+/// Device-side density-variables container. 24 named CTaylor<F, N> fields
+/// (22 from Phase 2 + `lapn` + `laps` added in Phase 3 plan 03-01 per B2),
 /// each backed by an `Array<F>` of length `1 << N` (bit-flag-indexed).
 ///
 /// Field order matches `xcfun-master/src/densvars.hpp:223-244` C++ struct
@@ -53,6 +55,12 @@ pub struct DensVarsDev<F: Float> {
     pub lapa: Array<F>,
     /// beta-spin Laplacian ∇²ρ_β
     pub lapb: Array<F>,
+    /// total-density Laplacian ∇²n = lapa + lapb (B2 — added by plan 03-01 for
+    /// `N_2ND_TAYLOR` / `N_S_2ND_TAYLOR` under Mode::Potential)
+    pub lapn: Array<F>,
+    /// spin-density Laplacian ∇²s = lapa − lapb (B2 — added by plan 03-01 for
+    /// `N_S_2ND_TAYLOR`)
+    pub laps: Array<F>,
     // Spin-polarisation + radius
     /// spin polarisation ζ = s / n
     pub zeta: Array<F>,

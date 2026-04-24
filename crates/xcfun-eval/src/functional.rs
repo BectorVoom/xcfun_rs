@@ -297,7 +297,8 @@ fn run_launch(
     // Input buffer on device.
     let in_h = client.create_from_slice(f64::as_bytes(flat_input));
 
-    // DensVarsDev scratch handles — 22 Array<F> fields, each of length (1 << n).
+    // DensVarsDev scratch handles — 24 Array<F> fields, each of length (1 << n).
+    // Phase 3 plan 03-01 B2: lapn + laps added after lapb (see density_vars.rs).
     let array_len = (1_usize << n) * core::mem::size_of::<f64>();
     let mk = || client.empty(array_len);
     let a_h = mk();
@@ -315,6 +316,8 @@ fn run_launch(
     let taub_h = mk();
     let lapa_h = mk();
     let lapb_h = mk();
+    let lapn_h = mk();
+    let laps_h = mk();
     let zeta_h = mk();
     let rs_h = mk();
     let nm13_h = mk();
@@ -340,85 +343,85 @@ fn run_launch(
         // at the call site, we match on each (id, n) pair supported in Phase 2.
         match (id_u32, n) {
             (0, 0) => launch_eval_point::<0, 2, 0>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (0, 1) => launch_eval_point::<0, 2, 1>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (0, 2) => launch_eval_point::<0, 2, 2>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (2, 0) => launch_eval_point::<2, 2, 0>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (2, 1) => launch_eval_point::<2, 2, 1>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (2, 2) => launch_eval_point::<2, 2, 2>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (3, 0) => launch_eval_point::<3, 2, 0>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (3, 1) => launch_eval_point::<3, 2, 1>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (3, 2) => launch_eval_point::<3, 2, 2>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (13, 0) => launch_eval_point::<13, 2, 0>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (13, 1) => launch_eval_point::<13, 2, 1>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (13, 2) => launch_eval_point::<13, 2, 2>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (14, 0) => launch_eval_point::<14, 2, 0>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (14, 1) => launch_eval_point::<14, 2, 1>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (14, 2) => launch_eval_point::<14, 2, 2>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (15, 0) => launch_eval_point::<15, 2, 0>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (15, 1) => launch_eval_point::<15, 2, 1>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (15, 2) => launch_eval_point::<15, 2, 2>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (24, 0) => launch_eval_point::<24, 2, 0>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (24, 1) => launch_eval_point::<24, 2, 1>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (24, 2) => launch_eval_point::<24, 2, 2>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (28, 0) => launch_eval_point::<28, 2, 0>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (28, 1) => launch_eval_point::<28, 2, 1>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (28, 2) => launch_eval_point::<28, 2, 2>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (55, 0) => launch_eval_point::<55, 2, 0>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (55, 1) => launch_eval_point::<55, 2, 1>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             (55, 2) => launch_eval_point::<55, 2, 2>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
+                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
             ),
             _ => {
                 let _ = vars_u32;
@@ -438,7 +441,7 @@ fn run_launch(
 unsafe fn launch_eval_point<const ID: u32, const VARS: u32, const N: u32>(
     client: &crate::for_tests::CpuClient,
     in_h: cubecl::server::Handle,
-    densvar_handles: &[cubecl::server::Handle; 22],
+    densvar_handles: &[cubecl::server::Handle; 24],
     out_h: cubecl::server::Handle,
     in_len: usize,
     arr_cnt: usize,
@@ -474,6 +477,8 @@ unsafe fn launch_eval_point<const ID: u32, const VARS: u32, const N: u32>(
                 ArrayArg::from_raw_parts(densvar_handles[19].clone(), arr_cnt),
                 ArrayArg::from_raw_parts(densvar_handles[20].clone(), arr_cnt),
                 ArrayArg::from_raw_parts(densvar_handles[21].clone(), arr_cnt),
+                ArrayArg::from_raw_parts(densvar_handles[22].clone(), arr_cnt),
+                ArrayArg::from_raw_parts(densvar_handles[23].clone(), arr_cnt),
             ),
             ArrayArg::from_raw_parts(out_h, out_len),
             ID,
