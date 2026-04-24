@@ -61,7 +61,9 @@ fn eval_point_kernel<F: Float>(
     dispatch_kernel::<F>(id, d, out, n);
 }
 
-/// A weighted sum of functionals. Phase 2 minimal slice (D-21).
+/// A weighted sum of functionals. Phase 2 minimal slice (D-21) extended in
+/// Phase 3 plan 03-02 with B3 `parameters: [f64; 4]` for range-separation /
+/// CAM functionals (BECKESRX + BECKECAMX).
 pub struct Functional {
     /// (FunctionalId, weight) pairs. Weights sum to the active-functional set.
     pub weights: &'static [(FunctionalId, f64)],
@@ -71,7 +73,23 @@ pub struct Functional {
     pub mode: Mode,
     /// Derivative order. Phase 2 supports 0..=2 per D-23.
     pub order: u32,
+    /// B3 — Range-separation / CAM parameters per
+    /// `xcfun-master/src/functionals/common_parameters.cpp:17-29`.
+    /// Indices:
+    ///   0 = `XC_EXX`         default 0.0
+    ///   1 = `XC_RANGESEP_MU` default 0.4
+    ///   2 = `XC_CAM_ALPHA`   default 0.19
+    ///   3 = `XC_CAM_BETA`    default 0.46
+    ///
+    /// BECKESRX reads index 1 (RANGESEP_MU); BECKECAMX reads indices 1..=3.
+    /// The parameter buffer is launched as an extra cubecl `Array<F>` argument
+    /// alongside `DensVarsDev` only by kernels that consume it.
+    pub parameters: [f64; 4],
 }
+
+/// Default parameters per `common_parameters.cpp:17-29`. Use this when
+/// constructing a `Functional` that doesn't override them explicitly.
+pub const DEFAULT_PARAMETERS: [f64; 4] = [0.0, 0.4, 0.19, 0.46];
 
 impl Functional {
     /// `input_length(vars)` per MODE-04 — number of f64 inputs the kernel reads.
@@ -621,6 +639,7 @@ mod tests {
             vars: Vars::A_B,
             mode: Mode::Unset,
             order: 0,
+            parameters: DEFAULT_PARAMETERS,
         };
         let mut out = vec![0.0; 1];
         assert!(matches!(
@@ -636,6 +655,7 @@ mod tests {
             vars: Vars::A_B,
             mode: Mode::Potential,
             order: 0,
+            parameters: DEFAULT_PARAMETERS,
         };
         let mut out = vec![0.0; 1];
         assert!(matches!(
@@ -651,6 +671,7 @@ mod tests {
             vars: Vars::A_B,
             mode: Mode::Contracted,
             order: 0,
+            parameters: DEFAULT_PARAMETERS,
         };
         let mut out = vec![0.0; 1];
         assert!(matches!(
@@ -666,6 +687,7 @@ mod tests {
             vars: Vars::A_B,
             mode: Mode::PartialDerivatives,
             order: 3,
+            parameters: DEFAULT_PARAMETERS,
         };
         let mut out = vec![0.0; 10];
         assert!(matches!(
@@ -681,6 +703,7 @@ mod tests {
             vars: Vars::A_B,
             mode: Mode::PartialDerivatives,
             order: 0,
+            parameters: DEFAULT_PARAMETERS,
         };
         let mut out = vec![0.0; 1];
         assert!(matches!(
@@ -699,6 +722,7 @@ mod tests {
             vars: Vars::A_B,
             mode: Mode::PartialDerivatives,
             order: 1,
+            parameters: DEFAULT_PARAMETERS,
         };
         // Expected outlen = taylorlen(2, 1) = 3
         let mut out = vec![0.0; 5];
@@ -721,6 +745,7 @@ mod tests {
             vars: Vars::A_B,
             mode: Mode::PartialDerivatives,
             order: 0,
+            parameters: DEFAULT_PARAMETERS,
         };
         let mut out = vec![99.0_f64; 1];
         assert!(f.eval(&[1.0, 0.5], &mut out).is_ok());
@@ -787,6 +812,7 @@ mod tests {
             vars: Vars::A_B_2ND_TAYLOR,
             mode: Mode::Potential,
             order: 0,
+            parameters: DEFAULT_PARAMETERS,
         };
         assert!(matches!(
             f.eval_setup(Vars::A_B_2ND_TAYLOR, Mode::Potential, 0),
@@ -802,6 +828,7 @@ mod tests {
             vars: Vars::A_B_2ND_TAYLOR,
             mode: Mode::Potential,
             order: 0,
+            parameters: DEFAULT_PARAMETERS,
         };
         assert!(matches!(
             f.eval_setup(Vars::A_B_2ND_TAYLOR, Mode::Potential, 0),
@@ -818,6 +845,7 @@ mod tests {
             vars: Vars::A_B_GAA_GAB_GBB,
             mode: Mode::Potential,
             order: 0,
+            parameters: DEFAULT_PARAMETERS,
         };
         assert!(matches!(
             f.eval_setup(Vars::A_B_GAA_GAB_GBB, Mode::Potential, 0),
@@ -833,6 +861,7 @@ mod tests {
             vars: Vars::A_B_2ND_TAYLOR,
             mode: Mode::Potential,
             order: 0,
+            parameters: DEFAULT_PARAMETERS,
         };
         assert!(f
             .eval_setup(Vars::A_B_2ND_TAYLOR, Mode::Potential, 0)
@@ -847,6 +876,7 @@ mod tests {
             vars: Vars::A_B,
             mode: Mode::Potential,
             order: 0,
+            parameters: DEFAULT_PARAMETERS,
         };
         assert!(f.eval_setup(Vars::A_B, Mode::Potential, 0).is_ok());
     }
@@ -858,6 +888,7 @@ mod tests {
             vars: Vars::A_B,
             mode: Mode::Unset,
             order: 0,
+            parameters: DEFAULT_PARAMETERS,
         };
         assert!(matches!(
             f.eval_setup(Vars::A_B, Mode::Unset, 0),
@@ -876,6 +907,7 @@ mod tests {
             vars: Vars::A_B_GAA_GAB_GBB,
             mode: Mode::PartialDerivatives,
             order: 0,
+            parameters: DEFAULT_PARAMETERS,
         };
         let deps = f.dependencies();
         assert!(deps.contains(Dependency::DENSITY));

@@ -354,6 +354,7 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
                 vars,
                 mode: Mode::PartialDerivatives,
                 order,
+                parameters: xcfun_eval::functional::DEFAULT_PARAMETERS,
             };
 
             for (point_idx, gp) in grid.iter().enumerate() {
