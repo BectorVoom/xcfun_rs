@@ -25,11 +25,11 @@
 //! - `enhancement_RPBE` — **SKELETON** (body lands in 03-02 Task 1 Step A, RPBEX consumer).
 
 use cubecl::prelude::*;
-use xcfun_ad::ctaylor::{ctaylor_scalar_mul, ctaylor_zero};
+use xcfun_ad::ctaylor::ctaylor_scalar_mul;
 use xcfun_ad::ctaylor_rec::mul::ctaylor_mul;
-use xcfun_ad::math::ctaylor_reciprocal;
+use xcfun_ad::math::{ctaylor_expm1, ctaylor_reciprocal};
 
-use super::constants::{MU_PBE_F64, NEG_C_SLATER_F64};
+use super::constants::{MU_PBE_F64, MU_PBE_RPBEX_F64, NEG_C_SLATER_F64, R_PBE_F64};
 use super::pw91_like;
 
 /// `enhancement(R, ρ, |∇ρ|²)` — shared PBE / REVPBE / PBESOL exchange
@@ -107,10 +107,23 @@ pub fn enhancement<F: Float>(
 ///
 /// Port of `pbex.hpp:41-46`:
 /// ```cpp
-/// return 1 - R_pbe · expm1((-μ / R_pbe) · S²(ρ, grad²));
+/// const parameter mu = 0.2195149727645171;
+/// return 1 - R_pbe * expm1((-mu / R_pbe) * S2(rho, grad));
 /// ```
 ///
-/// SKELETON — full body lands in 03-02 Task 1 Step A (RPBEX consumer).
+/// **FULL BODY** (Wave 2, plan 03-02 — W3 conversion).
+///
+/// Note: the C++ source uses the literal `mu = 0.2195149727645171`
+/// (`MU_PBE_RPBEX_F64`) regardless of the `XCFUN_REF_PBEX_MU` flag, NOT
+/// the default-branch `MU_PBE_F64` used by `enhancement`. Plan 03-01 SUMMARY
+/// §Decision-1 documents this constant split.
+///
+/// Operation order (no mul_add per ACC-06):
+///   1. `s2_val = pw91_like::s2(ρ, grad²)`
+///   2. `arg    = (-μ / R_PBE) · s2_val`            (scalar_mul)
+///   3. `em1    = expm1(arg)`                       (ctaylor_expm1, D-05)
+///   4. `r_em1  = R_PBE · em1`                      (scalar_mul)
+///   5. `out    = 1 - r_em1`                        (negate + CNST-bump)
 #[cube]
 pub fn enhancement_rpbe<F: Float>(
     rho: &Array<F>,
@@ -118,10 +131,29 @@ pub fn enhancement_rpbe<F: Float>(
     out: &mut Array<F>,
     #[comptime] n: u32,
 ) {
-    // SKELETON — full body lands in 03-02 Task 1 Step A.
-    let _ = rho;
-    let _ = grad2;
-    ctaylor_zero::<F>(out, n);
+    let size = comptime!((1_u32 << n) as usize);
+    // Step 1: s2_val.
+    let mut s2_val = Array::<F>::new(size);
+    pw91_like::s2::<F>(rho, grad2, &mut s2_val, n);
+    // Step 2: arg = (-μ_RPBEX / R_PBE) · s2_val.
+    let factor = F::cast_from(-MU_PBE_RPBEX_F64 / R_PBE_F64);
+    let mut arg = Array::<F>::new(size);
+    ctaylor_scalar_mul::<F>(&s2_val, factor, &mut arg, n);
+    // Step 3: em1 = expm1(arg).
+    let mut em1 = Array::<F>::new(size);
+    ctaylor_expm1::<F>(&arg, &mut em1, n);
+    // Step 4: r_em1 = R_PBE · em1.
+    let mut r_em1 = Array::<F>::new(size);
+    ctaylor_scalar_mul::<F>(&em1, F::cast_from(R_PBE_F64), &mut r_em1, n);
+    // Step 5: out = 1 - r_em1. Negate r_em1, then bump CNST by 1.
+    let neg_one = F::new(0.0) - F::new(1.0);
+    let mut neg = Array::<F>::new(size);
+    ctaylor_scalar_mul::<F>(&r_em1, neg_one, &mut neg, n);
+    #[unroll]
+    for i in 0..size {
+        out[i] = neg[i];
+    }
+    out[0] = out[0] + F::new(1.0);
 }
 
 /// `energy_pbe_ab(R, ρ, |∇ρ|²) = prefactor(ρ) · enhancement(R, ρ, grad²)`.
