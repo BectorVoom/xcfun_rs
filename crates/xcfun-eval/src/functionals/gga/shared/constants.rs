@@ -73,6 +73,12 @@ pub const PBEC_BETA_ACCURATE_F64: f64 = 0.066_724_550_603_149_22_f64;
 /// `PBEC_BETA_ACCURATE_F64 / PBEC_GAMMA_F64` evaluated in f64.
 pub const PBEC_BETA_GAMMA_F64: f64 = 2.146_126_339_967_364_2_f64;
 
+/// PBEC `d2` (= t²) prefactor: `(1/12 · 3^(5/6) / π^(-1/6))² = cbrt(π/3) / 16`.
+/// Evaluated in f64 as 0.06346820609770369. Used by PBEC, PBEINTC, PBELOCC,
+/// ZVPBESOLC, ZVPBEINTC, VWN_PBEC; also by SPBEC where it is written as
+/// `cbrt(π/3) / 16`.
+pub const PBEC_D2_PREFACTOR_F64: f64 = 0.063_468_206_097_703_69_f64;
+
 // --- PW91-like family (pw9xx.hpp:39-94) --------------------------------
 
 /// `pw9xx.hpp:44-46` `S2` prefactor = `(6^(2/3) / (12·π^(2/3)))²`.

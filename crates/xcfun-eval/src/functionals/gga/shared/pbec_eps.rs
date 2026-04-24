@@ -23,7 +23,7 @@
 use cubecl::prelude::*;
 use xcfun_ad::ctaylor::{ctaylor_add, ctaylor_scalar_mul};
 use xcfun_ad::ctaylor_rec::mul::ctaylor_mul;
-use xcfun_ad::math::{ctaylor_expm1, ctaylor_log, ctaylor_pow, ctaylor_reciprocal};
+use xcfun_ad::math::{ctaylor_expm1, ctaylor_log, ctaylor_pow, ctaylor_reciprocal, ctaylor_sqrt};
 
 use super::constants::{PBEC_BETA_GAMMA_F64, PBEC_GAMMA_F64};
 
@@ -153,6 +153,41 @@ pub fn h_gga<F: Float>(
     ctaylor_scalar_mul::<F>(u3, F::cast_from(PBEC_GAMMA_F64), &mut gu3, n);
     // Step 13: out = gu3 · lg.
     ctaylor_mul::<F>(&gu3, &lg, out, n);
+}
+
+/// `phi_reorganised(n_m13, a_43, b_43) = 2^(-1/3) · n_m13² · (sqrt(a_43) + sqrt(b_43))`
+/// — algebraically identical to `phi(ζ)` but computed in the form used by the
+/// C++ `pbec.cpp:35-38` to preserve 1e-12 operation-order identity.
+///
+/// **FULL BODY** (Wave 2, plan 03-02). Operation order matches C++ verbatim:
+///   1. `sa  = sqrt(a_43)`                         (ctaylor_sqrt)
+///   2. `sb  = sqrt(b_43)`                         (ctaylor_sqrt)
+///   3. `sab = sa + sb`                            (ctaylor_add)
+///   4. `nsq = n_m13 · n_m13`                       (ctaylor_mul)
+///   5. `prod = nsq · sab`                          (ctaylor_mul)
+///   6. `out  = 2^(-1/3) · prod`                    (scalar_mul)
+#[cube]
+pub fn phi_reorganised<F: Float>(
+    n_m13: &Array<F>,
+    a_43: &Array<F>,
+    b_43: &Array<F>,
+    out: &mut Array<F>,
+    #[comptime] n: u32,
+) {
+    let size = comptime!((1_u32 << n) as usize);
+    let mut sa = Array::<F>::new(size);
+    ctaylor_sqrt::<F>(a_43, &mut sa, n);
+    let mut sb = Array::<F>::new(size);
+    ctaylor_sqrt::<F>(b_43, &mut sb, n);
+    let mut sab = Array::<F>::new(size);
+    ctaylor_add::<F>(&sa, &sb, &mut sab, n);
+    let mut nsq = Array::<F>::new(size);
+    ctaylor_mul::<F>(n_m13, n_m13, &mut nsq, n);
+    let mut prod = Array::<F>::new(size);
+    ctaylor_mul::<F>(&nsq, &sab, &mut prod, n);
+    // 2^(-1/3) precomputed in f64.
+    const TWO_NEG_13_F64: f64 = 0.793_700_525_984_099_8_f64;
+    ctaylor_scalar_mul::<F>(&prod, F::cast_from(TWO_NEG_13_F64), out, n);
 }
 
 /// `phi(ζ) = ½ · ((1+ζ)^(2/3) + (1-ζ)^(2/3))` — PBEC spin-polarisation factor.

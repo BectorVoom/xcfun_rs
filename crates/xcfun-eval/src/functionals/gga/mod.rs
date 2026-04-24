@@ -17,10 +17,12 @@
 
 pub mod shared;
 
-// Family modules — populated in later waves of Phase 3:
-// pub mod pbe;    // 03-02 (PBEX, REVPBEX, SPBEX, PBEINTX, PBELOCX, PBESOLX, RPBEX, …)
-// pub mod becke;  // 03-03/04 (BECKEX, BECKECORRX, BECKESRX, BECKECAMX)
-// pub mod lyp;    // 03-04 (LYPC)
+// Family modules — Wave 2 (03-02) ships PBE family (12), Becke (4), LYP (1).
+pub mod pbe;
+pub mod becke;
+pub mod lyp;
+
+// Other family modules — populated in later waves of Phase 3:
 // pub mod optx;   // 03-03 (OPTX, OPTXCORR)
 // pub mod pw91;   // 03-03 (PW91X, PW91K, PW91C)
 // pub mod p86;    // 03-04 (P86C)
