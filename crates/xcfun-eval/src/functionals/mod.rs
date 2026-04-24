@@ -2,3 +2,4 @@
 //! Phase 3 adds GGAs, Phase 4 adds metaGGAs.
 
 pub mod lda;
+pub mod gga;
