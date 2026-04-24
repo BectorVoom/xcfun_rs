@@ -228,9 +228,10 @@ fn cpp_name(xc_name: &str) -> String {
 pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<Report> {
     let mut report = Report::default();
 
-    // The 11 Phase-2 LDA functionals. 8 use Vars::A_B; TW + VWK use
-    // Vars::A_B_GAA_GAB_GBB (kinetic-GGAs in LDA tier per RESEARCH §Critical Findings).
+    // The 11 Phase-2 LDA functionals + 27 Phase-3 GGAs (17 Wave-2 + 10 Wave-3).
+    // 8 LDAs use Vars::A_B; TW + VWK + 27 GGAs use Vars::A_B_GAA_GAB_GBB.
     let lda_targets: &[(FunctionalId, &str, Vars)] = &[
+        // Phase-2 LDAs (11).
         (FunctionalId::XC_SLATERX, "XC_SLATERX", Vars::A_B),
         (FunctionalId::XC_VWN3C, "XC_VWN3C", Vars::A_B),
         (FunctionalId::XC_VWN5C, "XC_VWN5C", Vars::A_B),
@@ -242,6 +243,35 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
         (FunctionalId::XC_TFK, "XC_TFK", Vars::A_B),
         (FunctionalId::XC_TW, "XC_TW", Vars::A_B_GAA_GAB_GBB),
         (FunctionalId::XC_VWK, "XC_VWK", Vars::A_B_GAA_GAB_GBB),
+        // Phase-3 Wave-2 GGAs (17): PBE×12 + Becke×4 + LYP×1.
+        (FunctionalId::XC_PBEX, "XC_PBEX", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_PBEC, "XC_PBEC", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_REVPBEX, "XC_REVPBEX", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_RPBEX, "XC_RPBEX", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_PBESOLX, "XC_PBESOLX", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_PBEINTX, "XC_PBEINTX", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_PBEINTC, "XC_PBEINTC", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_SPBEC, "XC_SPBEC", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_PBELOCC, "XC_PBELOCC", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_ZVPBESOLC, "XC_ZVPBESOLC", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_ZVPBEINTC, "XC_ZVPBEINTC", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_VWN_PBEC, "XC_VWN_PBEC", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_BECKEX, "XC_BECKEX", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_BECKECORRX, "XC_BECKECORRX", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_BECKESRX, "XC_BECKESRX", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_BECKECAMX, "XC_BECKECAMX", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_LYPC, "XC_LYPC", Vars::A_B_GAA_GAB_GBB),
+        // Phase-3 Wave-3 GGAs (10): OPTX×2 + PW86/91×4 + P86×2 + APBE×2.
+        (FunctionalId::XC_PW86X, "XC_PW86X", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_OPTX, "XC_OPTX", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_OPTXCORR, "XC_OPTXCORR", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_PW91X, "XC_PW91X", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_PW91K, "XC_PW91K", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_P86C, "XC_P86C", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_P86CORRC, "XC_P86CORRC", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_APBEX, "XC_APBEX", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_APBEC, "XC_APBEC", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_PW91C, "XC_PW91C", Vars::A_B_GAA_GAB_GBB),
     ];
 
     for &(id, name, vars) in lda_targets {
@@ -258,25 +288,19 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
             threshold
         );
 
-        // TW + VWK (Vars::A_B_GAA_GAB_GBB, inlen=5) are EXCLUDED from tier-2
-        // because:
-        //   1. Upstream `tw.cpp` / `vonw.cpp` ship NO `test_in`/`test_out` data
-        //      in their FUNCTIONAL macros (ENERGY_FUNCTION only, no XC_A_B +
-        //      XC_PARTIAL_DERIVATIVES + test_* args). With no upstream reference,
-        //      tier-2 parity is not a defined comparison (CONTEXT D-19).
-        //   2. C++ xcfun aborts on `pow(gaa+gbb, 2)` with zero gradients
-        //      (xcfun-master/external/upstream/taylor/tmath.hpp:156), so the
-        //      bulk/regularize/polarised strata (gradients = 0) cannot be
-        //      exercised on the C++ side anyway.
-        //   3. The Rust launch loop currently wires only (id, n) arms for
-        //      inlen=2 LDAs. Extending to inlen=5 is deferred to Phase 3
-        //      (GGA scaffolding) where it lands alongside the gradient-present
-        //      grid strata — bug #4 host launch arm wiring.
+        // TW + VWK are EXCLUDED from tier-2 because they ship NO upstream
+        // test_in/test_out data in their FUNCTIONAL macros (ENERGY_FUNCTION
+        // only). With no upstream reference, tier-2 parity is not a defined
+        // comparison (CONTEXT D-19). C++ xcfun also aborts on `pow(gaa+gbb, 2)`
+        // with zero gradients per `tmath.hpp:156`, so the bulk/regularize/
+        // polarised strata cannot be exercised on the C++ side anyway.
         //
-        // Per the user-approved tier-2 plan for these functionals, they are
-        // tagged `excluded_by_upstream_spec` in the report; their failure
-        // counts do NOT roll up into the harness verdict.
-        let excluded = inlen != 2;
+        // Tagged `excluded_by_upstream_spec`; failure counts do NOT roll up.
+        //
+        // Phase 3 plan 03-03 — inlen=5 launch path is now wired (commit ae8e698)
+        // for all 27 GGA ids; the inlen != 2 exclusion is replaced by an
+        // explicit per-name skip list for TW + VWK only.
+        let excluded = matches!(name, "XC_TW" | "XC_VWK");
 
         for order in 0..=max_order.min(2) {
             let outlen = taylorlen(inlen, order as usize);
