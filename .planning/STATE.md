@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: phase-1-and-2-complete-ready-for-phase-3
-last_updated: "2026-04-22T00:00:00Z"
+status: phase-3-context-gathered-ready-for-plan
+last_updated: "2026-04-24T00:00:00Z"
 progress:
   total_phases: 8
   completed_phases: 2
@@ -14,7 +14,7 @@ progress:
 
 # Project State: xcfun_rs
 
-**Last updated:** 2026-04-22 (after Plan 02-07 completion — Phase 2 signed off with ACC-04 partial caveat)
+**Last updated:** 2026-04-24 (after `/gsd-discuss-phase 3 --auto` completion — Phase 3 context gathered, 25 decisions captured, ready for `/gsd-plan-phase 3`)
 
 ## Project Reference
 
@@ -160,17 +160,23 @@ None.
 - 2026-04-21: Plan 02-05 complete (Wave 2: TW + VWK kinetic-GGA + XC_A_B_GAA_GAB_GBB builder arm; Pitfall PHASE2-D resolved). Commits `0b200d1`, `865d6b6`, `e114556`, `ebe2631`. LDA-09 part 2, LDA-10 [x].
 - 2026-04-21: Plan 02-06 complete (Wave 3: validation/ tier-2 harness; user-approved D-24 LDAERF 1e-7 override transparent in report.html; LDAERFX expm1 stable bracket Fix 1; D-22 clamp-stratum exclusion Fix 2; in-kernel libm-port erf_precise). 13 commits `55dba99 → 8ab7d4e`. ACC-01..03 [x], ACC-04 [~] Partial.
 - 2026-04-22: Plan 02-07 complete — Phase 2 signed off. 4 design docs updated (02/05/06/09) to reflect as-built D-02/D-04/D-17/tier-1-tier-2 pattern; 30 Phase-2 IDs [x] Complete + ACC-04 [~] Partial with documented D-19 residuals; ROADMAP Phase 2 [x] Complete (with caveats) 7/7 plans; STATE advanced to 25% (14/14 plans across 2 phases).
+- 2026-04-24: `/gsd-discuss-phase 3 --auto` complete. Phase 3 (GGA Tier + Mode::Potential) CONTEXT.md written at `.planning/phases/03-gga-tier-mode-potential/03-CONTEXT.md` with 25 decisions (D-01..D-25) auto-selected across 10 gray areas. Inherits 53 locked decisions from Phases 1+2. DISCUSSION-LOG.md records the auto-selection rationale. Scope-count corrected: 40 GGA functionals (ROADMAP's "45" is loose). LB94 deferred to Phase 5 per D-19 (not in the 78-entry enum; uses legacy `setup_lb94` pattern). xcfun-ad additive extensions queued: `expm1`/`ctaylor_expm1` (D-05) and `sqrtx_asinh_sqrtx` helper (D-06) — mandatory for 6 GGA families. Note: `gsd-sdk` CLI unavailable in this environment; the workflow's final git-commit + auto-advance-to-plan steps were not auto-invoked.
 
 ## Session Continuity
 
-**Last session stopped at:** Plan 02-07 complete; Phase 2 signed off (14/14 plans; 25% project progress).
-30 of 31 Phase-2 requirement IDs marked [x] in REQUIREMENTS.md; ACC-04 marked [~] Partial.
-Tier-2 parity harness GREEN at all per-functional thresholds for orders 0/1 (8 LDAs at 1e-12; 3 LDAERF at 1e-7 per D-24).
-Order-2 residuals documented D-19 INCONCLUSIVE: VWN/PW/PZ near-clamp precision → Phase 3; LDAERF bracket cancellation where Rust = mpmath truth (C++ itself has 6.7% cancellation) → Phase 6.
+**Last session stopped at:** `/gsd-discuss-phase 3 --auto` — CONTEXT.md + DISCUSSION-LOG.md written for Phase 3; STATE.md frontmatter advanced to `phase-3-context-gathered-ready-for-plan`. Not yet git-committed; `gsd-plan-phase 3` not yet launched.
 
-**Next action:** `/gsd-plan-phase 3` to begin Phase 3 (GGA Tier + Mode::Potential).
+**Next action:** `/gsd-plan-phase 3 --auto` to generate the Phase 3 plan(s) from CONTEXT.md's 25 decisions.
 
-Phase 3 ports the 45 GGA functionals + `Mode::Potential` + extends `MODE-01` to orders 3..=4. It builds atop the Phase 2 substrate: `xcfun-eval::Functional` + `dispatch_kernel` + `DensVarsDev<F>` (extend with new variant arms for gradient-bearing Vars); extends `xtask regen-registry` to populate the GGA descriptors; extends `validation/build.rs` to cc-compile GGA C++ bodies. Phase 3 will also re-run tier-2 for VWN3C/VWN5C/PW92C/PZ81C order-2 to check whether the GGA-era `build_densvars` redesign incidentally resolves the near-clamp precision drift flagged in ACC-04.
+**Phase 3 scope (locked in CONTEXT.md):**
+- 40 GGA functional bodies across 10 families (PBE/Becke/BR/LYP/OPTX/PW86-PW91/P86/APBE/B97/KT-BTK-CSC) — LB94 deferred.
+- `Mode::Potential` via line-for-line port of `XCFunctional.cpp:637-790` divergence construction.
+- `Mode::PartialDerivatives` orders 3..=4 extension.
+- 7 new Vars arms in DensVarsDev (3 GGA + 4 2ND_TAYLOR for Potential).
+- 2 new xcfun-ad primitives (expm1, sqrtx_asinh_sqrtx).
+- GGA shared helpers extracted to `crates/xcfun-eval/src/functionals/gga/shared/*.rs`.
+- Wave 5 capstone re-runs tier-2 at order 2 for VWN3C/VWN5C/PW92C/PZ81C (ACC-04 Phase-2 forward-action).
+- Strict 1e-12 parity; D-24 LDAERF 1e-7 override NOT extended to GGA `erf` usage.
 
 **Related artifacts:**
 
