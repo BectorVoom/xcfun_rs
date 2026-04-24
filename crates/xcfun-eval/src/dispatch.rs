@@ -3,8 +3,9 @@
 //!
 //! See RESEARCH.md §"Registry Shape + Circular-Dep Resolution" for rationale.
 //!
-//! Phase 2 dispatch arms (11 LDAs) + Phase 3 Wave-2 GGAs (17):
+//! Phase 2 dispatch arms (11 LDAs) + Phase 3 Wave-2 GGAs (17) + Wave-3 GGAs (10):
 //!   id ==  0 → XC_SLATERX     (Plan 02-04)
+//!   id ==  1 → XC_PW86X       (Plan 03-03 — Wave 3)
 //!   id ==  2 → XC_VWN3C       (Plan 02-04)
 //!   id ==  3 → XC_VWN5C       (Plan 02-04)
 //!   id ==  4 → XC_PBEC        (Plan 03-02 — Wave 2)
@@ -17,21 +18,30 @@
 //!   id == 14 → XC_LDAERFC     (Plan 02-04)
 //!   id == 15 → XC_LDAERFC_JT  (Plan 02-04)
 //!   id == 16 → XC_LYPC        (Plan 03-02 — Wave 2)
+//!   id == 17 → XC_OPTX        (Plan 03-03 — Wave 3)
+//!   id == 18 → XC_OPTXCORR    (Plan 03-03 — Wave 3)
 //!   id == 19 → XC_REVPBEX     (Plan 03-02 — Wave 2)
 //!   id == 20 → XC_RPBEX       (Plan 03-02 — Wave 2)
 //!   id == 21 → XC_SPBEC       (Plan 03-02 — Wave 2)
 //!   id == 22 → XC_VWN_PBEC    (Plan 03-02 — Wave 2)
 //!   id == 24 → XC_TFK         (Plan 02-04)
 //!   id == 25 → XC_TW          (Plan 02-05)
+//!   id == 26 → XC_PW91X       (Plan 03-03 — Wave 3)
+//!   id == 27 → XC_PW91K       (Plan 03-03 — Wave 3)
 //!   id == 28 → XC_PW92C       (Plan 02-04)
 //!   id == 55 → XC_PZ81C       (Plan 02-04)
+//!   id == 56 → XC_P86C        (Plan 03-03 — Wave 3)
+//!   id == 57 → XC_P86CORRC    (Plan 03-03 — Wave 3)
 //!   id == 59 → XC_VWK         (Plan 02-05)
+//!   id == 67 → XC_APBEC       (Plan 03-03 — Wave 3)
+//!   id == 68 → XC_APBEX       (Plan 03-03 — Wave 3)
 //!   id == 69 → XC_ZVPBESOLC   (Plan 03-02 — Wave 2)
 //!   id == 71 → XC_PBEINTC     (Plan 03-02 — Wave 2)
 //!   id == 72 → XC_PBEINTX     (Plan 03-02 — Wave 2)
 //!   id == 73 → XC_PBELOCC     (Plan 03-02 — Wave 2)
 //!   id == 74 → XC_PBESOLX     (Plan 03-02 — Wave 2)
 //!   id == 76 → XC_ZVPBEINTC   (Plan 03-02 — Wave 2)
+//!   id == 77 → XC_PW91C       (Plan 03-03 — Wave 3)
 
 use cubecl::prelude::*;
 use xcfun_core::FunctionalId;
@@ -51,6 +61,9 @@ pub fn dispatch_kernel<F: Float>(
     if comptime!(id == 0) {
         // XC_SLATERX
         crate::functionals::lda::slaterx::slaterx_kernel::<F>(d, out, n);
+    } else if comptime!(id == 1) {
+        // XC_PW86X
+        crate::functionals::gga::pw91::pw86x::pw86x_kernel::<F>(d, out, n);
     } else if comptime!(id == 2) {
         // XC_VWN3C
         crate::functionals::lda::vwn3c::vwn3c_kernel::<F>(d, out, n);
@@ -87,6 +100,12 @@ pub fn dispatch_kernel<F: Float>(
     } else if comptime!(id == 16) {
         // XC_LYPC
         crate::functionals::gga::lyp::lypc_kernel::<F>(d, out, n);
+    } else if comptime!(id == 17) {
+        // XC_OPTX
+        crate::functionals::gga::optx::optx::optx_kernel::<F>(d, out, n);
+    } else if comptime!(id == 18) {
+        // XC_OPTXCORR
+        crate::functionals::gga::optx::optxcorr::optxcorr_kernel::<F>(d, out, n);
     } else if comptime!(id == 19) {
         // XC_REVPBEX
         crate::functionals::gga::pbe::revpbex::revpbex_kernel::<F>(d, out, n);
@@ -105,15 +124,33 @@ pub fn dispatch_kernel<F: Float>(
     } else if comptime!(id == 25) {
         // XC_TW
         crate::functionals::lda::tw::tw_kernel::<F>(d, out, n);
+    } else if comptime!(id == 26) {
+        // XC_PW91X
+        crate::functionals::gga::pw91::pw91x::pw91x_kernel::<F>(d, out, n);
+    } else if comptime!(id == 27) {
+        // XC_PW91K
+        crate::functionals::gga::pw91::pw91k::pw91k_kernel::<F>(d, out, n);
     } else if comptime!(id == 28) {
         // XC_PW92C
         crate::functionals::lda::pw92c::pw92c_kernel::<F>(d, out, n);
     } else if comptime!(id == 55) {
         // XC_PZ81C
         crate::functionals::lda::pz81c::pz81c_kernel::<F>(d, out, n);
+    } else if comptime!(id == 56) {
+        // XC_P86C
+        crate::functionals::gga::p86::p86c::p86c_kernel::<F>(d, out, n);
+    } else if comptime!(id == 57) {
+        // XC_P86CORRC
+        crate::functionals::gga::p86::p86corrc::p86corrc_kernel::<F>(d, out, n);
     } else if comptime!(id == 59) {
         // XC_VWK
         crate::functionals::lda::vwk::vwk_kernel::<F>(d, out, n);
+    } else if comptime!(id == 67) {
+        // XC_APBEC
+        crate::functionals::gga::apbe::apbec::apbec_kernel::<F>(d, out, n);
+    } else if comptime!(id == 68) {
+        // XC_APBEX
+        crate::functionals::gga::apbe::apbex::apbex_kernel::<F>(d, out, n);
     } else if comptime!(id == 69) {
         // XC_ZVPBESOLC
         crate::functionals::gga::pbe::zvpbesolc::zvpbesolc_kernel::<F>(d, out, n);
@@ -132,6 +169,9 @@ pub fn dispatch_kernel<F: Float>(
     } else if comptime!(id == 76) {
         // XC_ZVPBEINTC
         crate::functionals::gga::pbe::zvpbeintc::zvpbeintc_kernel::<F>(d, out, n);
+    } else if comptime!(id == 77) {
+        // XC_PW91C
+        crate::functionals::gga::pw91::pw91c::pw91c_kernel::<F>(d, out, n);
     }
 }
 
@@ -139,9 +179,10 @@ pub fn dispatch_kernel<F: Float>(
 /// `dispatch_kernel`. Called by `Functional::eval` BEFORE launching, so stubs
 /// (67 - 17 = 50 non-implemented) return `XcError::NotConfigured`.
 ///
-/// Phase 2 ships 11 LDA ids; Phase 3 plan 03-02 adds 17 GGA ids:
-///   {4, 5, 6, 7, 8, 9, 16, 19, 20, 21, 22, 69, 71, 72, 73, 74, 76}.
-/// Total: 28 functional ids supported.
+/// Phase 2 ships 11 LDA ids; Phase 3 plan 03-02 adds 17 GGA ids; plan 03-03
+/// adds 10 more GGAs (OPTX×2 + PW86/91×4 + P86×2 + APBE×2):
+///   {1, 17, 18, 26, 27, 56, 57, 67, 68, 77}.
+/// Total: 38 functional ids supported.
 pub fn supports(id: FunctionalId) -> bool {
     matches!(
         id as u32,
@@ -150,5 +191,7 @@ pub fn supports(id: FunctionalId) -> bool {
         // Phase 3 Wave-2 GGAs (17)
         | 4 | 5 | 6 | 7 | 8 | 9 | 16 | 19 | 20 | 21 | 22
         | 69 | 71 | 72 | 73 | 74 | 76
+        // Phase 3 Wave-3 GGAs (10)
+        | 1 | 17 | 18 | 26 | 27 | 56 | 57 | 67 | 68 | 77
     )
 }
