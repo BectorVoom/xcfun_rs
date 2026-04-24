@@ -160,6 +160,16 @@ and see **zero failures at 1e-12 relative error** against the C++ reference on t
 
 None surfaced — STATE.md `Active TODOs` lists only "Plan Phase 3", which is this workflow itself.
 
+
+### Amendments (planner-applied 2026-04-24 — from research findings)
+
+- **D-01-A (scope reduction):** Phase 3 ports **36 GGA functional IDs**, not 40. BRX (10) / BRC (11) / BRXC (12) + CSC (66) defer to Phase 4 (metaGGA tier) — they declare `Dependency::KINETIC|LAPLACIAN|JP` requiring inlen=11 Vars arm NOT in D-10 + separate `BR_taylor` Newton-inverse algebra. **Authorisation:** `--auto` defaults; research recommended deferral; matches CONTEXT §"Out of scope" metaGGA boundary. REQUIREMENTS.md GGA-03 and GGA-10 amended at Phase 3 sign-off — BR bodies and CSC move to Phase 4.
+- **D-01-B:** Wave 1 revised scope: 17 kernels (PBE ×12 + Becke ×4 + LYP ×1).
+- **D-01-C:** Wave 3 revised scope: 8 kernels (B97 ×6 + KT+BTK).
+- **D-10-A (discriminant correction):** `_2ND_TAYLOR` Vars discriminants are 27, 28, 29, 30 (not 26..29 as D-10 stated). Source of truth: `crates/xcfun-core/src/enums.rs:73-76`. Build-densvars if-chain arms MUST key off these values.
+
+---
+
 </decisions>
 
 <canonical_refs>
