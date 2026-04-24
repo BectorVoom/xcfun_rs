@@ -307,6 +307,23 @@ fn launch_and_accumulate(
     weight: f64,
     output: &mut [f64],
 ) -> Result<(), XcError> {
+    // Phase 3 plan 03-03 — generalised inlen support: Phase 2 ships inlen=2
+    // (LDA XC_A_B). Phase 3 GGAs use inlen=5 (XC_A_B_GAA_GAB_GBB). The launch
+    // layout for arbitrary inlen mirrors `XCFunctional.cpp:515-612` exactly:
+    //
+    //   - Order 0: N=0 launch, input as inlen scalars; output[0] = out[CNST].
+    //   - Order 1: 1 N=2 launch; in[i][VAR0]=1 for all i; output[i+1] = out[VAR_i].
+    //     Wait — that's the `inlen <= 7` style. For our case the LDA path uses
+    //     2 vars (in[0][VAR0]=1, in[1][VAR1]=1) but XCFunctional.cpp uses a
+    //     loop where each i seeds in[i][VAR_i]=1. Either approach yields the
+    //     same gradient information; we adopt the seeding-loop pattern from
+    //     `XCFunctional.cpp:577-612` which generalises to any inlen.
+    //   - Order 2: inlen·(inlen+1)/2 launches over (i,j) i≤j.
+    //
+    // The output layout for `taylorlen(inlen, order)` is the upper triangle:
+    //   output[0]                               = energy (CNST)
+    //   output[1..inlen+1]                      = ∂/∂x_i for i=0..inlen
+    //   output[inlen+1..taylorlen(inlen,2)]     = ∂²/∂x_i∂x_j for i≤j (lex order)
     match order {
         0 => {
             // Order 0: N=0 launch, input length = inlen scalars.
@@ -316,92 +333,57 @@ fn launch_and_accumulate(
             Ok(())
         }
         1 => {
-            // Order 1 with inlen = 2: one N=2 launch with in[0][VAR0]=1, in[1][VAR1]=1.
-            //   Flat CTaylor<F, 2> input layout (per slot, 4 coeffs each):
-            //     slot 0: [a, 1, 0, 0]   (a[CNST]=a, a[VAR0]=1, rest 0)
-            //     slot 1: [b, 0, 1, 0]   (b[CNST]=b, b[VAR1]=1, rest 0)
-            if inlen != 2 {
-                // Phase 2 launch loop supports inlen=2 only; LDAs with other
-                // vars (none in Phase 2 plan 02-04) reject here.
-                return Err(XcError::NotConfigured);
+            // Order 1 with arbitrary inlen ∈ {2, 5}: do `inlen` separate N=2
+            // launches. For each i we seed in[i][VAR0]=1 and read out[VAR0]
+            // for ∂/∂x_i. This is the per-VAR0-only seeding pattern of
+            // XCFunctional.cpp:559-573 — single-direction directional derivative.
+            //
+            // OPTIMISATION OPPORTUNITY: For inlen=2 we still ship the
+            // single-launch dual-seed pattern (in[0][VAR0]=1 + in[1][VAR1]=1)
+            // for backwards compatibility with Phase-2 LDA tier-2.
+            if inlen == 2 {
+                let sz = 4_usize; // 1 << 2
+                let mut flat = vec![0.0_f64; inlen * sz];
+                flat[0] = input[0];
+                flat[1] = 1.0;
+                flat[sz] = input[1];
+                flat[sz + 2] = 1.0;
+                let out = run_launch(id_u32, vars_u32, 2, &flat, sz)?;
+                output[0] += weight * out[0];
+                output[1] += weight * out[1];
+                output[2] += weight * out[2];
+                return Ok(());
             }
-            let sz = 4_usize; // 1 << 2
-            let mut flat = vec![0.0_f64; inlen * sz];
-            flat[0] = input[0]; // a[CNST]
-            flat[1] = 1.0; // a[VAR0]
-            flat[sz] = input[1]; // b[CNST]
-            flat[sz + 2] = 1.0; // b[VAR1]
-            let out = run_launch(id_u32, vars_u32, 2, &flat, sz)?;
-            // C++ XCFunctional.cpp:515-555 layout:
-            //   output[0] = out[CNST]   (energy)
-            //   output[1] = out[VAR0]   (∂/∂a)
-            //   output[2] = out[VAR1]   (∂/∂b)
-            output[0] += weight * out[0]; // CNST
-            output[1] += weight * out[1]; // VAR0
-            output[2] += weight * out[2]; // VAR1
+            // General inlen: per-slot single-VAR0 seed.
+            let sz = 4_usize;
+            let mut energy_seen = 0.0_f64;
+            for i in 0..inlen {
+                let mut flat = vec![0.0_f64; inlen * sz];
+                for k in 0..inlen {
+                    flat[k * sz] = input[k];
+                }
+                flat[i * sz + 1] = 1.0; // in[i][VAR0] = 1
+                let out = run_launch(id_u32, vars_u32, 2, &flat, sz)?;
+                if i == inlen - 1 {
+                    energy_seen = out[0];
+                }
+                output[i + 1] += weight * out[1]; // VAR0 → ∂/∂x_i
+            }
+            output[0] += weight * energy_seen;
             Ok(())
         }
         2 => {
-            // Order 2 with inlen = 2: 3 N=2 launches for (i,j) in
-            //   {(0,0), (0,1), (1,1)} — the i ≤ j upper triangle.
-            //   Output layout (6 slots): [E, ∂/∂a, ∂/∂b, ∂²/∂a², ∂²/∂a∂b, ∂²/∂b²]
-            if inlen != 2 {
-                return Err(XcError::NotConfigured);
+            // Order 2: arbitrary inlen. Generalised version of Phase-2 inlen=2.
+            // For inlen ∈ {2, 5}, do inlen·(inlen+1)/2 N=2 launches over (i,j) i≤j.
+            //
+            // For inlen=2 we keep the Phase-2-compatible dual-seeded path so the
+            // LDA tier-2 baseline stays bit-identical.
+            if inlen == 2 {
+                return launch_and_accumulate_order2_inlen2(
+                    id_u32, vars_u32, input, weight, output,
+                );
             }
-            let sz = 4_usize;
-
-            // Mirrors XCFunctional.cpp:589-612:
-            //   k = inlen + 1 = 3
-            //   for i in 0..inlen:
-            //       in[i][VAR0] = 1
-            //       for j in i..inlen:
-            //           in[j][VAR1] = 1
-            //           launch; output[k++] = out[VAR0|VAR1]
-            //           in[j][VAR1] = 0
-            //       output[i+1] = out[VAR0]   // from last inner iteration
-            //       in[i] reset
-            //   output[0] = out[CNST]         // from last launch overall
-
-            let mut last_out: Option<Vec<f64>> = None;
-            let mut k = inlen + 1; // first 2nd-deriv slot
-            let mut per_i_last_out: Vec<Option<Vec<f64>>> = vec![None; inlen];
-
-            for i in 0..inlen {
-                for j in i..inlen {
-                    // Pack input CTaylor: each slot has `sz=4` coefficients.
-                    let mut flat = vec![0.0_f64; inlen * sz];
-                    flat[0] = input[0];
-                    flat[sz] = input[1];
-                    // in[i][VAR0] = 1
-                    flat[i * sz + 1] = 1.0;
-                    // in[j][VAR1] = 1  (if i == j, both VAR0 and VAR1 are set on the same slot)
-                    flat[j * sz + 2] = 1.0;
-
-                    let out = run_launch(id_u32, vars_u32, 2, &flat, sz)?;
-
-                    // VAR0|VAR1 = 1 | 2 = 3
-                    output[k] += weight * out[3];
-                    k += 1;
-
-                    per_i_last_out[i] = Some(out.clone());
-                    last_out = Some(out);
-                }
-            }
-
-            // First derivatives: for each i, read out[VAR0] from that i's LAST inner launch
-            //   (which corresponds to j = inlen - 1).
-            for (i, last_i) in per_i_last_out.iter().enumerate() {
-                if let Some(out) = last_i {
-                    output[i + 1] += weight * out[1]; // VAR0
-                }
-            }
-
-            // Energy: from the very last launch's CNST.
-            if let Some(out) = last_out {
-                output[0] += weight * out[0]; // CNST
-            }
-
-            Ok(())
+            launch_and_accumulate_order2_general(id_u32, vars_u32, inlen, input, weight, output)
         }
         _ => Err(XcError::InvalidOrder {
             order,
@@ -409,6 +391,125 @@ fn launch_and_accumulate(
             n_vars: inlen,
         }),
     }
+}
+
+#[cfg(feature = "testing")]
+fn launch_and_accumulate_order2_inlen2(
+    id_u32: u32,
+    vars_u32: u32,
+    input: &[f64],
+    weight: f64,
+    output: &mut [f64],
+) -> Result<(), XcError> {
+    let inlen = 2_usize;
+    let sz = 4_usize;
+
+    // Mirrors XCFunctional.cpp:589-612:
+    //   k = inlen + 1 = 3
+    //   for i in 0..inlen:
+    //       in[i][VAR0] = 1
+    //       for j in i..inlen:
+    //           in[j][VAR1] = 1
+    //           launch; output[k++] = out[VAR0|VAR1]
+    //           in[j][VAR1] = 0
+    //       output[i+1] = out[VAR0]   // from last inner iteration
+    //       in[i] reset
+    //   output[0] = out[CNST]         // from last launch overall
+
+    let mut last_out: Option<Vec<f64>> = None;
+    let mut k = inlen + 1; // first 2nd-deriv slot
+    let mut per_i_last_out: Vec<Option<Vec<f64>>> = vec![None; inlen];
+
+    for i in 0..inlen {
+        for j in i..inlen {
+            // Pack input CTaylor: each slot has `sz=4` coefficients.
+            let mut flat = vec![0.0_f64; inlen * sz];
+            flat[0] = input[0];
+            flat[sz] = input[1];
+            // in[i][VAR0] = 1
+            flat[i * sz + 1] = 1.0;
+            // in[j][VAR1] = 1  (if i == j, both VAR0 and VAR1 are set on the same slot)
+            flat[j * sz + 2] = 1.0;
+
+            let out = run_launch(id_u32, vars_u32, 2, &flat, sz)?;
+
+            // VAR0|VAR1 = 1 | 2 = 3
+            output[k] += weight * out[3];
+            k += 1;
+
+            per_i_last_out[i] = Some(out.clone());
+            last_out = Some(out);
+        }
+    }
+
+    // First derivatives: for each i, read out[VAR0] from that i's LAST inner launch
+    //   (which corresponds to j = inlen - 1).
+    for (i, last_i) in per_i_last_out.iter().enumerate() {
+        if let Some(out) = last_i {
+            output[i + 1] += weight * out[1]; // VAR0
+        }
+    }
+
+    // Energy: from the very last launch's CNST.
+    if let Some(out) = last_out {
+        output[0] += weight * out[0]; // CNST
+    }
+
+    Ok(())
+}
+
+/// Order-2 launch loop for arbitrary inlen (Phase 3 plan 03-03 — Wave-2
+/// INCONCLUSIVE absorption). Generalises the Phase-2 inlen=2 dual-seed
+/// pattern to inlen=5 GGAs by performing inlen·(inlen+1)/2 N=2 launches
+/// over the (i, j) i ≤ j upper triangle.
+///
+/// Output layout `[E, ∂/∂x_0, ..., ∂/∂x_{inlen-1}, ∂²/∂x_0∂x_0, ...]`
+/// matches `XCFunctional.cpp:589-612` verbatim.
+#[cfg(feature = "testing")]
+fn launch_and_accumulate_order2_general(
+    id_u32: u32,
+    vars_u32: u32,
+    inlen: usize,
+    input: &[f64],
+    weight: f64,
+    output: &mut [f64],
+) -> Result<(), XcError> {
+    let sz = 4_usize;
+
+    let mut last_out: Option<Vec<f64>> = None;
+    let mut k = inlen + 1;
+    let mut per_i_last_out: Vec<Option<Vec<f64>>> = vec![None; inlen];
+
+    for i in 0..inlen {
+        for j in i..inlen {
+            let mut flat = vec![0.0_f64; inlen * sz];
+            for kk in 0..inlen {
+                flat[kk * sz] = input[kk];
+            }
+            // in[i][VAR0] = 1.
+            flat[i * sz + 1] = 1.0;
+            // in[j][VAR1] = 1.
+            flat[j * sz + 2] = 1.0;
+
+            let out = run_launch(id_u32, vars_u32, 2, &flat, sz)?;
+            // VAR0|VAR1 = 3.
+            output[k] += weight * out[3];
+            k += 1;
+
+            per_i_last_out[i] = Some(out.clone());
+            last_out = Some(out);
+        }
+    }
+
+    for (i, last_i) in per_i_last_out.iter().enumerate() {
+        if let Some(out) = last_i {
+            output[i + 1] += weight * out[1];
+        }
+    }
+    if let Some(out) = last_out {
+        output[0] += weight * out[0];
+    }
+    Ok(())
 }
 
 /// Single launch: create input/output handles, build DensVarsDev buffers, run
@@ -462,97 +563,82 @@ fn run_launch(
 
     let arr_cnt = 1_usize << n;
 
+    // Macro to compress the boilerplate of each launch arm. Each invocation
+    // expands to a single `launch_eval_point::<ID, VARS, N>(...)` call with
+    // the standard 24-handle DensVarsDev array.
+    macro_rules! arm {
+        ($id:literal, $vars:literal, $n:literal) => {
+            launch_eval_point::<$id, $vars, $n>(
+                client,
+                in_h.clone(),
+                &[
+                    a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(),
+                    n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(),
+                    tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(),
+                    lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(),
+                    rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(),
+                    jpaa_h.clone(), jpbb_h.clone(),
+                ],
+                out_h.clone(),
+                flat_input.len(),
+                arr_cnt,
+                out_len,
+            )
+        };
+    }
     #[allow(unsafe_code)]
     unsafe {
-        // Dispatch on (n, id, vars) — cubecl monomorphises per comptime tuple.
+        // Dispatch on (id, vars, n) — cubecl monomorphises per comptime tuple.
         //
-        // Phase 2 supports (vars, n) ∈ { (2, 0), (2, 1), (2, 2) } for LDA XC_A_B.
-        // Other combinations reject upstream via `supports()`.
-        //
-        // Because `#[cube(launch_unchecked)]` requires comptime integer values
-        // at the call site, we match on each (id, n) pair supported in Phase 2.
-        match (id_u32, n) {
-            (0, 0) => launch_eval_point::<0, 2, 0>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (0, 1) => launch_eval_point::<0, 2, 1>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (0, 2) => launch_eval_point::<0, 2, 2>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (2, 0) => launch_eval_point::<2, 2, 0>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (2, 1) => launch_eval_point::<2, 2, 1>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (2, 2) => launch_eval_point::<2, 2, 2>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (3, 0) => launch_eval_point::<3, 2, 0>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (3, 1) => launch_eval_point::<3, 2, 1>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (3, 2) => launch_eval_point::<3, 2, 2>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (13, 0) => launch_eval_point::<13, 2, 0>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (13, 1) => launch_eval_point::<13, 2, 1>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (13, 2) => launch_eval_point::<13, 2, 2>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (14, 0) => launch_eval_point::<14, 2, 0>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (14, 1) => launch_eval_point::<14, 2, 1>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (14, 2) => launch_eval_point::<14, 2, 2>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (15, 0) => launch_eval_point::<15, 2, 0>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (15, 1) => launch_eval_point::<15, 2, 1>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (15, 2) => launch_eval_point::<15, 2, 2>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (24, 0) => launch_eval_point::<24, 2, 0>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (24, 1) => launch_eval_point::<24, 2, 1>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (24, 2) => launch_eval_point::<24, 2, 2>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (28, 0) => launch_eval_point::<28, 2, 0>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (28, 1) => launch_eval_point::<28, 2, 1>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (28, 2) => launch_eval_point::<28, 2, 2>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (55, 0) => launch_eval_point::<55, 2, 0>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (55, 1) => launch_eval_point::<55, 2, 1>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
-            (55, 2) => launch_eval_point::<55, 2, 2>(
-                client, in_h, &[a_h.clone(), b_h.clone(), gaa_h.clone(), gab_h.clone(), gbb_h.clone(), n_h.clone(), s_h.clone(), gnn_h.clone(), gns_h.clone(), gss_h.clone(), tau_h.clone(), taua_h.clone(), taub_h.clone(), lapa_h.clone(), lapb_h.clone(), lapn_h.clone(), laps_h.clone(), zeta_h.clone(), rs_h.clone(), nm13_h.clone(), a43_h.clone(), b43_h.clone(), jpaa_h.clone(), jpbb_h.clone()], out_h, flat_input.len(), arr_cnt, out_len,
-            ),
+        // Phase 2 supports (id, vars=2, n) for 11 LDAs.
+        // Phase 3 plan 03-03 absorbs the Wave-2 INCONCLUSIVE escalation by
+        // adding (id, vars=6, n) arms for the 27 GGAs (17 Wave-2 + 10 Wave-3)
+        // that consume Vars::A_B_GAA_GAB_GBB (inlen=5).
+        match (id_u32, vars_u32, n) {
+            // ===== Phase 2: 11 LDA ids × 3 orders, vars=2 (XC_A_B). =====
+            (0,  2, 0) => arm!(0,  2, 0),  (0,  2, 1) => arm!(0,  2, 1),  (0,  2, 2) => arm!(0,  2, 2),
+            (2,  2, 0) => arm!(2,  2, 0),  (2,  2, 1) => arm!(2,  2, 1),  (2,  2, 2) => arm!(2,  2, 2),
+            (3,  2, 0) => arm!(3,  2, 0),  (3,  2, 1) => arm!(3,  2, 1),  (3,  2, 2) => arm!(3,  2, 2),
+            (13, 2, 0) => arm!(13, 2, 0),  (13, 2, 1) => arm!(13, 2, 1),  (13, 2, 2) => arm!(13, 2, 2),
+            (14, 2, 0) => arm!(14, 2, 0),  (14, 2, 1) => arm!(14, 2, 1),  (14, 2, 2) => arm!(14, 2, 2),
+            (15, 2, 0) => arm!(15, 2, 0),  (15, 2, 1) => arm!(15, 2, 1),  (15, 2, 2) => arm!(15, 2, 2),
+            (24, 2, 0) => arm!(24, 2, 0),  (24, 2, 1) => arm!(24, 2, 1),  (24, 2, 2) => arm!(24, 2, 2),
+            (28, 2, 0) => arm!(28, 2, 0),  (28, 2, 1) => arm!(28, 2, 1),  (28, 2, 2) => arm!(28, 2, 2),
+            (55, 2, 0) => arm!(55, 2, 0),  (55, 2, 1) => arm!(55, 2, 1),  (55, 2, 2) => arm!(55, 2, 2),
+
+            // ===== Phase 3 Wave-2 GGAs: 17 ids × 3 orders, vars=6 (XC_A_B_GAA_GAB_GBB). =====
+            // Plan 03-03 absorbs the Wave-2 INCONCLUSIVE escalation by wiring all 17 Wave-2
+            // ids at vars=6 here.
+            ( 4, 6, 0) => arm!( 4, 6, 0),  ( 4, 6, 1) => arm!( 4, 6, 1),  ( 4, 6, 2) => arm!( 4, 6, 2),
+            ( 5, 6, 0) => arm!( 5, 6, 0),  ( 5, 6, 1) => arm!( 5, 6, 1),  ( 5, 6, 2) => arm!( 5, 6, 2),
+            ( 6, 6, 0) => arm!( 6, 6, 0),  ( 6, 6, 1) => arm!( 6, 6, 1),  ( 6, 6, 2) => arm!( 6, 6, 2),
+            ( 7, 6, 0) => arm!( 7, 6, 0),  ( 7, 6, 1) => arm!( 7, 6, 1),  ( 7, 6, 2) => arm!( 7, 6, 2),
+            ( 8, 6, 0) => arm!( 8, 6, 0),  ( 8, 6, 1) => arm!( 8, 6, 1),  ( 8, 6, 2) => arm!( 8, 6, 2),
+            ( 9, 6, 0) => arm!( 9, 6, 0),  ( 9, 6, 1) => arm!( 9, 6, 1),  ( 9, 6, 2) => arm!( 9, 6, 2),
+            (16, 6, 0) => arm!(16, 6, 0),  (16, 6, 1) => arm!(16, 6, 1),  (16, 6, 2) => arm!(16, 6, 2),
+            (19, 6, 0) => arm!(19, 6, 0),  (19, 6, 1) => arm!(19, 6, 1),  (19, 6, 2) => arm!(19, 6, 2),
+            (20, 6, 0) => arm!(20, 6, 0),  (20, 6, 1) => arm!(20, 6, 1),  (20, 6, 2) => arm!(20, 6, 2),
+            (21, 6, 0) => arm!(21, 6, 0),  (21, 6, 1) => arm!(21, 6, 1),  (21, 6, 2) => arm!(21, 6, 2),
+            (22, 6, 0) => arm!(22, 6, 0),  (22, 6, 1) => arm!(22, 6, 1),  (22, 6, 2) => arm!(22, 6, 2),
+            (69, 6, 0) => arm!(69, 6, 0),  (69, 6, 1) => arm!(69, 6, 1),  (69, 6, 2) => arm!(69, 6, 2),
+            (71, 6, 0) => arm!(71, 6, 0),  (71, 6, 1) => arm!(71, 6, 1),  (71, 6, 2) => arm!(71, 6, 2),
+            (72, 6, 0) => arm!(72, 6, 0),  (72, 6, 1) => arm!(72, 6, 1),  (72, 6, 2) => arm!(72, 6, 2),
+            (73, 6, 0) => arm!(73, 6, 0),  (73, 6, 1) => arm!(73, 6, 1),  (73, 6, 2) => arm!(73, 6, 2),
+            (74, 6, 0) => arm!(74, 6, 0),  (74, 6, 1) => arm!(74, 6, 1),  (74, 6, 2) => arm!(74, 6, 2),
+            (76, 6, 0) => arm!(76, 6, 0),  (76, 6, 1) => arm!(76, 6, 1),  (76, 6, 2) => arm!(76, 6, 2),
+
+            // ===== Phase 3 Wave-3 GGAs: 10 ids × 3 orders, vars=6. =====
+            ( 1, 6, 0) => arm!( 1, 6, 0),  ( 1, 6, 1) => arm!( 1, 6, 1),  ( 1, 6, 2) => arm!( 1, 6, 2),
+            (17, 6, 0) => arm!(17, 6, 0),  (17, 6, 1) => arm!(17, 6, 1),  (17, 6, 2) => arm!(17, 6, 2),
+            (18, 6, 0) => arm!(18, 6, 0),  (18, 6, 1) => arm!(18, 6, 1),  (18, 6, 2) => arm!(18, 6, 2),
+            (26, 6, 0) => arm!(26, 6, 0),  (26, 6, 1) => arm!(26, 6, 1),  (26, 6, 2) => arm!(26, 6, 2),
+            (27, 6, 0) => arm!(27, 6, 0),  (27, 6, 1) => arm!(27, 6, 1),  (27, 6, 2) => arm!(27, 6, 2),
+            (56, 6, 0) => arm!(56, 6, 0),  (56, 6, 1) => arm!(56, 6, 1),  (56, 6, 2) => arm!(56, 6, 2),
+            (57, 6, 0) => arm!(57, 6, 0),  (57, 6, 1) => arm!(57, 6, 1),  (57, 6, 2) => arm!(57, 6, 2),
+            (67, 6, 0) => arm!(67, 6, 0),  (67, 6, 1) => arm!(67, 6, 1),  (67, 6, 2) => arm!(67, 6, 2),
+            (68, 6, 0) => arm!(68, 6, 0),  (68, 6, 1) => arm!(68, 6, 1),  (68, 6, 2) => arm!(68, 6, 2),
+            (77, 6, 0) => arm!(77, 6, 0),  (77, 6, 1) => arm!(77, 6, 1),  (77, 6, 2) => arm!(77, 6, 2),
+
             _ => {
                 let _ = vars_u32;
                 return Err(XcError::NotConfigured);
