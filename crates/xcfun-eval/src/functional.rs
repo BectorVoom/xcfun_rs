@@ -30,7 +30,7 @@
 
 use cubecl::prelude::*;
 use cubecl_cpu::CpuRuntime;
-use xcfun_core::{FunctionalId, Mode, Vars, XcError, taylorlen};
+use xcfun_core::{Dependency, FUNCTIONAL_DESCRIPTORS, FunctionalId, Mode, Vars, XcError, taylorlen};
 
 use crate::density_vars::DensVarsDev;
 use crate::density_vars::build::build_densvars;
@@ -159,6 +159,118 @@ impl Functional {
             return Err(XcError::Runtime);
         }
         Ok(())
+    }
+
+    /// Aggregate `Dependency` bitflags across every functional in `self.weights`.
+    /// Used by `eval_setup` to decide whether `Mode::Potential` is applicable
+    /// (metaGGA-class deps reject) and which `Vars` arms are acceptable.
+    ///
+    /// Port of `xcfun-master/src/XCFunctional.cpp:~430` `fun->depends` aggregation.
+    pub fn dependencies(&self) -> Dependency {
+        self.weights
+            .iter()
+            .map(|(id, _)| FUNCTIONAL_DESCRIPTORS[*id as usize].depends)
+            .fold(Dependency::DENSITY, |acc, d| acc | d)
+    }
+
+    /// Number of `f64` values written to `output[]` for the given
+    /// `(vars, mode, order)` tuple.
+    ///
+    /// Port of `xcfun-master/src/XCFunctional.cpp:482-490` per D-15:
+    /// ```cpp
+    /// if (mode == XC_POTENTIAL) {
+    ///     if (vars == XC_A || vars == XC_A_2ND_TAYLOR) return 2;
+    ///     return 3;  // all spin-resolved cases
+    /// }
+    /// ```
+    ///
+    /// `Mode::PartialDerivatives` returns `taylorlen(inlen, order)` per MODE-04.
+    /// `Mode::Contracted` and `Mode::Unset` are rejected (`XcError::InvalidMode`
+    /// / `XcError::NotConfigured`).
+    pub fn output_length(
+        vars: Vars,
+        mode: Mode,
+        order: u32,
+    ) -> Result<usize, XcError> {
+        match mode {
+            Mode::PartialDerivatives => Ok(taylorlen(
+                Self::input_length(vars),
+                order as usize,
+            )),
+            Mode::Potential => {
+                // D-15 + XCFunctional.cpp:482-490 — single-spin variants return 2,
+                // every spin-resolved variant returns 3.
+                match vars {
+                    Vars::A | Vars::A_2ND_TAYLOR => Ok(2),
+                    _ => Ok(3),
+                }
+            }
+            Mode::Contracted => Err(XcError::InvalidMode {
+                mode,
+                depends: Dependency::DENSITY,
+            }),
+            Mode::Unset => Err(XcError::NotConfigured),
+        }
+    }
+
+    /// Host-side setup validation. Port of `xcfun-master/src/XCFunctional.cpp:437-490`
+    /// per D-13. Rejects invalid `(mode, vars, order, dependencies)` tuples
+    /// BEFORE any kernel launch, so the kernel body can assume valid input.
+    ///
+    /// Rejection matrix:
+    /// - `Mode::Potential` + `Dependency::{LAPLACIAN, KINETIC}` → `InvalidMode`
+    ///   (metaGGA-class functionals cannot produce a potential at GGA tier).
+    /// - `Mode::Potential` + `Dependency::GRADIENT` + non-`_2ND_TAYLOR` Vars →
+    ///   `InvalidVars` (GGA potential requires the 2nd-Taylor-seeded density
+    ///   input variants to compute ∇·(∂e/∂∇ρ)).
+    /// - `Mode::Unset` → `NotConfigured`.
+    /// - `Mode::Contracted` → `InvalidMode` (Phase 2 carryover — contract deferred
+    ///   to later phases).
+    ///
+    /// D-25 resolution: no new `XcError` variants; reuses `InvalidMode` +
+    /// `InvalidVars` already present since Phase 2.
+    pub fn eval_setup(
+        &self,
+        vars: Vars,
+        mode: Mode,
+        _order: u32,
+    ) -> Result<(), XcError> {
+        let deps = self.dependencies();
+        match mode {
+            Mode::Unset => Err(XcError::NotConfigured),
+            Mode::Contracted => Err(XcError::InvalidMode {
+                mode,
+                depends: deps,
+            }),
+            Mode::PartialDerivatives => Ok(()),
+            Mode::Potential => {
+                // metaGGA-class deps cannot produce a potential at GGA tier.
+                if deps.contains(Dependency::LAPLACIAN)
+                    || deps.contains(Dependency::KINETIC)
+                {
+                    return Err(XcError::InvalidMode {
+                        mode,
+                        depends: deps,
+                    });
+                }
+                // GGA deps require 2nd-Taylor Vars for divergence construction.
+                if deps.contains(Dependency::GRADIENT) {
+                    match vars {
+                        Vars::A_2ND_TAYLOR
+                        | Vars::A_B_2ND_TAYLOR
+                        | Vars::N_2ND_TAYLOR
+                        | Vars::N_S_2ND_TAYLOR => {}
+                        _ => {
+                            return Err(XcError::InvalidVars {
+                                vars,
+                                required: Dependency::GRADIENT,
+                            });
+                        }
+                    }
+                }
+                Ok(())
+            }
+        }
     }
 }
 
@@ -613,5 +725,162 @@ mod tests {
         let mut out = vec![99.0_f64; 1];
         assert!(f.eval(&[1.0, 0.5], &mut out).is_ok());
         assert_eq!(out[0], 0.0, "eval must zero-fill the output on success");
+    }
+
+    // -----------------------------------------------------------------------
+    //  Plan 03-01 Task 3 tests — `output_length` + `eval_setup` rejection paths
+    //  for Mode::Potential (D-13 + D-15 + D-25).
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn output_length_potential_nspin1() {
+        // D-15: single-spin Mode::Potential returns 2.
+        assert_eq!(
+            Functional::output_length(Vars::A, Mode::Potential, 0).unwrap(),
+            2
+        );
+        assert_eq!(
+            Functional::output_length(Vars::A_2ND_TAYLOR, Mode::Potential, 0).unwrap(),
+            2
+        );
+    }
+
+    #[test]
+    fn output_length_potential_nspin2() {
+        // D-15: spin-resolved Mode::Potential returns 3.
+        assert_eq!(
+            Functional::output_length(Vars::A_B, Mode::Potential, 0).unwrap(),
+            3
+        );
+        assert_eq!(
+            Functional::output_length(Vars::N_S, Mode::Potential, 0).unwrap(),
+            3
+        );
+        assert_eq!(
+            Functional::output_length(Vars::N_S_2ND_TAYLOR, Mode::Potential, 0).unwrap(),
+            3
+        );
+        assert_eq!(
+            Functional::output_length(Vars::A_B_2ND_TAYLOR, Mode::Potential, 0).unwrap(),
+            3
+        );
+    }
+
+    #[test]
+    fn output_length_partial_derivatives_matches_taylorlen() {
+        // Sanity: PartialDerivatives branch unchanged from Phase 2.
+        assert_eq!(
+            Functional::output_length(Vars::A_B, Mode::PartialDerivatives, 0).unwrap(),
+            taylorlen(2, 0)
+        );
+        assert_eq!(
+            Functional::output_length(Vars::A_B, Mode::PartialDerivatives, 2).unwrap(),
+            taylorlen(2, 2)
+        );
+    }
+
+    #[test]
+    fn eval_setup_rejects_metagga_potential() {
+        // M05X carries Dependency::KINETIC — must reject Mode::Potential (D-13).
+        let f = Functional {
+            weights: &[(FunctionalId::XC_M05X, 1.0)],
+            vars: Vars::A_B_2ND_TAYLOR,
+            mode: Mode::Potential,
+            order: 0,
+        };
+        assert!(matches!(
+            f.eval_setup(Vars::A_B_2ND_TAYLOR, Mode::Potential, 0),
+            Err(XcError::InvalidMode { .. })
+        ));
+    }
+
+    #[test]
+    fn eval_setup_rejects_laplacian_potential() {
+        // BRX carries Dependency::LAPLACIAN — must reject Mode::Potential.
+        let f = Functional {
+            weights: &[(FunctionalId::XC_BRX, 1.0)],
+            vars: Vars::A_B_2ND_TAYLOR,
+            mode: Mode::Potential,
+            order: 0,
+        };
+        assert!(matches!(
+            f.eval_setup(Vars::A_B_2ND_TAYLOR, Mode::Potential, 0),
+            Err(XcError::InvalidMode { .. })
+        ));
+    }
+
+    #[test]
+    fn eval_setup_rejects_gga_non_2nd_taylor_potential() {
+        // PBEX carries GRADIENT only. For Mode::Potential we must require one of
+        // the _2ND_TAYLOR Vars arms; using XC_A_B_GAA_GAB_GBB must reject.
+        let f = Functional {
+            weights: &[(FunctionalId::XC_PBEX, 1.0)],
+            vars: Vars::A_B_GAA_GAB_GBB,
+            mode: Mode::Potential,
+            order: 0,
+        };
+        assert!(matches!(
+            f.eval_setup(Vars::A_B_GAA_GAB_GBB, Mode::Potential, 0),
+            Err(XcError::InvalidVars { .. })
+        ));
+    }
+
+    #[test]
+    fn eval_setup_accepts_gga_with_2nd_taylor_potential() {
+        // PBEX + A_B_2ND_TAYLOR is the valid combination — must pass.
+        let f = Functional {
+            weights: &[(FunctionalId::XC_PBEX, 1.0)],
+            vars: Vars::A_B_2ND_TAYLOR,
+            mode: Mode::Potential,
+            order: 0,
+        };
+        assert!(f
+            .eval_setup(Vars::A_B_2ND_TAYLOR, Mode::Potential, 0)
+            .is_ok());
+    }
+
+    #[test]
+    fn eval_setup_accepts_lda_with_any_vars_potential() {
+        // SLATERX is DENSITY only — any non-metaGGA Vars should pass Mode::Potential.
+        let f = Functional {
+            weights: &[(FunctionalId::XC_SLATERX, 1.0)],
+            vars: Vars::A_B,
+            mode: Mode::Potential,
+            order: 0,
+        };
+        assert!(f.eval_setup(Vars::A_B, Mode::Potential, 0).is_ok());
+    }
+
+    #[test]
+    fn eval_setup_rejects_unset_mode() {
+        let f = Functional {
+            weights: &[(FunctionalId::XC_SLATERX, 1.0)],
+            vars: Vars::A_B,
+            mode: Mode::Unset,
+            order: 0,
+        };
+        assert!(matches!(
+            f.eval_setup(Vars::A_B, Mode::Unset, 0),
+            Err(XcError::NotConfigured)
+        ));
+    }
+
+    #[test]
+    fn dependencies_aggregates_across_weights() {
+        // PBEX (GRADIENT) + SLATERX (DENSITY) — combined deps = DENSITY | GRADIENT.
+        let f = Functional {
+            weights: &[
+                (FunctionalId::XC_SLATERX, 0.5),
+                (FunctionalId::XC_PBEX, 0.5),
+            ],
+            vars: Vars::A_B_GAA_GAB_GBB,
+            mode: Mode::PartialDerivatives,
+            order: 0,
+        };
+        let deps = f.dependencies();
+        assert!(deps.contains(Dependency::DENSITY));
+        assert!(deps.contains(Dependency::GRADIENT));
+        assert!(!deps.contains(Dependency::KINETIC));
+        assert!(!deps.contains(Dependency::LAPLACIAN));
     }
 }

@@ -24,7 +24,7 @@ use cubecl::prelude::*;
 /// the root cause of SLATERX/PZ81C/TFK/LDAERFC/LDAERFC_JT order-2 tier-2 failures
 /// on regularize-stratum inputs (abs density < 1e-14). See 02-06 INCONCLUSIVE
 /// Bug #1 diagnosis.
-pub(crate) const TINY_DENSITY_F64: f64 = 1e-14_f64;
+pub const TINY_DENSITY_F64: f64 = 1e-14_f64;
 
 /// Clamp `x[0]` (CNST coefficient) to `>= TINY_DENSITY`. Higher-order coefficients
 /// `x[1..(1<<n)]` are LEFT UNCHANGED — that is the CORE-06 + D-22 contract.
