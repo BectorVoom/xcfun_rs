@@ -2,23 +2,18 @@
 // Stubs for cc-compile — every non-LDA functional ID needs a fundat_db
 // specialisation or xcint.cpp template recursion fails to link.
 //
-// Phase 3 plan 03-02 removes 17 GGA stubs (PBE×12 + Becke×4 + LYP×1) that now
-// link the real ENERGY_FUNCTION via their respective .cpp files compiled by
-// validation/build.rs. Stubs remaining: 67 - 17 = 50.
+// Phase 3 plan 03-02 removes 17 GGA stubs (PBE×12 + Becke×4 + LYP×1).
+// Phase 3 plan 03-03 removes 10 more stubs (OPTX×2 + PW86/91×4 + P86×2 + APBE×2).
+// Stubs remaining: 67 - 17 - 10 = 40.
 
 #include "functional.hpp"
 
 template <typename num> static num stub_unimpl(const densvars<num> &) { return num(0); }
 
-FUNCTIONAL(XC_PW86X) = {"stub", "stub", XC_DENSITY|XC_GRADIENT, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_BRX) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_LAPLACIAN|XC_KINETIC|XC_JP, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_BRC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_LAPLACIAN|XC_KINETIC|XC_JP, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_BRXC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_LAPLACIAN|XC_KINETIC|XC_JP, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_OPTX) = {"stub", "stub", XC_DENSITY|XC_GRADIENT, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_OPTXCORR) = {"stub", "stub", XC_DENSITY|XC_GRADIENT, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_KTX) = {"stub", "stub", XC_DENSITY|XC_GRADIENT, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_PW91X) = {"stub", "stub", XC_DENSITY|XC_GRADIENT, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_PW91K) = {"stub", "stub", XC_DENSITY|XC_GRADIENT, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_M05X) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_M05X2X) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_M06X) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
@@ -45,8 +40,6 @@ FUNCTIONAL(XC_R2SCANC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENE
 FUNCTIONAL(XC_R2SCANX) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_R4SCANC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_R4SCANX) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_P86C) = {"stub", "stub", XC_DENSITY|XC_GRADIENT, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_P86CORRC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_BTK) = {"stub", "stub", XC_DENSITY|XC_GRADIENT, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_B97X) = {"stub", "stub", XC_DENSITY|XC_GRADIENT, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_B97C) = {"stub", "stub", XC_DENSITY|XC_GRADIENT, ENERGY_FUNCTION(stub_unimpl)};
@@ -55,8 +48,5 @@ FUNCTIONAL(XC_B97_1C) = {"stub", "stub", XC_DENSITY|XC_GRADIENT, ENERGY_FUNCTION
 FUNCTIONAL(XC_B97_2X) = {"stub", "stub", XC_DENSITY|XC_GRADIENT, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_B97_2C) = {"stub", "stub", XC_DENSITY|XC_GRADIENT, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_CSC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_LAPLACIAN|XC_KINETIC|XC_JP, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_APBEC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_APBEX) = {"stub", "stub", XC_DENSITY|XC_GRADIENT, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_BLOCX) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_TPSSLOCC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_PW91C) = {"stub", "stub", XC_DENSITY|XC_GRADIENT, ENERGY_FUNCTION(stub_unimpl)};
