@@ -19,6 +19,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstddef>
+#include <cmath>
 #include <random>
 #include <vector>
 #include "ctaylor.hpp"
@@ -116,6 +117,27 @@ static void emit_erf_expand(double a) {
     std::vector<double> inputs = {a};
     std::vector<double> coeffs(t, t + N + 1);
     emit_record("erf_expand", N, inputs, coeffs);
+}
+
+// ---------------------------------------------------------------------------
+//  expm1_expand — inlined port of ctaylor_math.hpp:85-102 for fixture
+//  generation. Upstream has no standalone `expm1_expand` template in
+//  tmath.hpp (the stable-bracket correction lives inside ctaylor_math.hpp's
+//  `expm1(const ctaylor&)`); we mirror the Rust `expm1_expand` body here so
+//  the fixture records reflect exactly what the Rust kernel should produce.
+// ---------------------------------------------------------------------------
+template <int N>
+static void emit_expm1_expand(double x0) {
+    double t[N + 1];
+    exp_expand<double, N>(t, x0);
+    if (std::fabs(x0) > 1e-3) {
+        t[0] -= 1.0;
+    } else {
+        t[0] = 2.0 * std::exp(x0 / 2.0) * std::sinh(x0 / 2.0);
+    }
+    std::vector<double> inputs = {x0};
+    std::vector<double> coeffs(t, t + N + 1);
+    emit_record("expm1_expand", N, inputs, coeffs);
 }
 
 // ---------------------------------------------------------------------------
@@ -248,6 +270,37 @@ static void emit_ctaylor_powi(const double * x_in, int ie) {
     inputs.push_back(static_cast<double>(ie));
     std::vector<double> coeffs(y.c, y.c + SIZE);
     emit_record("ctaylor_powi", NVAR, inputs, coeffs);
+}
+
+// ---------------------------------------------------------------------------
+//  ctaylor_expm1 — calls ctaylor_math.hpp:85-102 `expm1` and emits the
+//  ctaylor output coefficients (length 1<<NVAR) under the `ctaylor_expm1` op.
+// ---------------------------------------------------------------------------
+template <int NVAR>
+static void emit_ctaylor_expm1(const double * x_in) {
+    const int SIZE = 1 << NVAR;
+    ctaylor<double, NVAR> x;
+    for (int i = 0; i < SIZE; i++) x.c[i] = x_in[i];
+    ctaylor<double, NVAR> y = expm1(x);
+    std::vector<double> inputs(x_in, x_in + SIZE);
+    std::vector<double> coeffs(y.c, y.c + SIZE);
+    emit_record("ctaylor_expm1", NVAR, inputs, coeffs);
+}
+
+// ---------------------------------------------------------------------------
+//  ctaylor_sqrtx_asinh_sqrtx — calls ctaylor_math.hpp:275-325
+//  `sqrtx_asinh_sqrtx` which chooses between direct and [8,8] Padé branch
+//  based on |x.c[0]| vs 0.5. Precondition x.c[0] > -0.5 (upstream assert).
+// ---------------------------------------------------------------------------
+template <int NVAR>
+static void emit_ctaylor_sqrtx_asinh_sqrtx(const double * x_in) {
+    const int SIZE = 1 << NVAR;
+    ctaylor<double, NVAR> x;
+    for (int i = 0; i < SIZE; i++) x.c[i] = x_in[i];
+    ctaylor<double, NVAR> y = sqrtx_asinh_sqrtx(x);
+    std::vector<double> inputs(x_in, x_in + SIZE);
+    std::vector<double> coeffs(y.c, y.c + SIZE);
+    emit_record("ctaylor_sqrtx_asinh_sqrtx", NVAR, inputs, coeffs);
 }
 
 int main() {
@@ -428,6 +481,176 @@ int main() {
             {
                 double x[8] = {input.x_cnst, input.x_var0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
                 emit_ctaylor_powi<3>(x, ie);
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------
+    //  Plan 03-00 Task 3 — expm1_expand stratified supplement.
+    //
+    //  500 x0 points × 5 orders (N ∈ {0,1,2,3,4}) = 2500 records.
+    //  Strata exercise the D-05 stable-bracket threshold (|x0| <= 1e-3)
+    //  as well as mid and large magnitudes, both signs. Seed fixed for
+    //  deterministic regeneration.
+    // -------------------------------------------------------------------
+    {
+        std::mt19937_64 rng_expm1(0xcafebabeULL);
+        std::vector<double> strata_x0;
+        strata_x0.reserve(500);
+
+        // Stratum 1 — near-zero |x0| in [1e-15, 1e-3], 100 samples
+        //   (EXERCISES the |x0| <= 1e-3 stable-bracket path).
+        {
+            std::uniform_real_distribution<double> s1_log(-15.0, -3.0);
+            for (int i = 0; i < 100; i++) {
+                double mag = std::pow(10.0, s1_log(rng_expm1));
+                double sign = (i % 2 == 0) ? 1.0 : -1.0;
+                strata_x0.push_back(sign * mag);
+            }
+        }
+        // Stratum 2 — small |x0| in [1e-3, 1], 100 samples.
+        {
+            std::uniform_real_distribution<double> s2_log(-3.0, 0.0);
+            for (int i = 0; i < 100; i++) {
+                double mag = std::pow(10.0, s2_log(rng_expm1));
+                double sign = (i % 2 == 0) ? 1.0 : -1.0;
+                strata_x0.push_back(sign * mag);
+            }
+        }
+        // Stratum 3 — mid |x0| in [1, 10], 100 samples.
+        {
+            std::uniform_real_distribution<double> s3_lin(1.0, 10.0);
+            for (int i = 0; i < 100; i++) {
+                double mag = s3_lin(rng_expm1);
+                double sign = (i % 2 == 0) ? 1.0 : -1.0;
+                strata_x0.push_back(sign * mag);
+            }
+        }
+        // Stratum 4 — large |x0| in [10, 50], 100 samples.
+        {
+            std::uniform_real_distribution<double> s4_lin(10.0, 50.0);
+            for (int i = 0; i < 100; i++) {
+                double mag = s4_lin(rng_expm1);
+                double sign = (i % 2 == 0) ? 1.0 : -1.0;
+                strata_x0.push_back(sign * mag);
+            }
+        }
+        // Stratum 5 — edge-around-threshold |x0| in [9e-4, 1.1e-3], 100 samples
+        //   (exercises the |x0| == 1e-3 bracket boundary transition).
+        {
+            std::uniform_real_distribution<double> s5_edge(9e-4, 1.1e-3);
+            for (int i = 0; i < 100; i++) {
+                double mag = s5_edge(rng_expm1);
+                double sign = (i % 2 == 0) ? 1.0 : -1.0;
+                strata_x0.push_back(sign * mag);
+            }
+        }
+
+        // Emit 500 × 5 = 2500 scalar records.
+        for (double x0 : strata_x0) {
+            emit_expm1_expand<0>(x0);
+            emit_expm1_expand<1>(x0);
+            emit_expm1_expand<2>(x0);
+            emit_expm1_expand<3>(x0);
+            emit_expm1_expand<4>(x0);
+        }
+
+        // Emit 500 × 4 = 2000 ctaylor_expm1 records (NVAR ∈ {0,1,2,3})
+        //   Composed-op fixture set: single-variable ctaylor with VAR0=1 and
+        //   higher-index slots zeroed. Mirrors the emit_ctaylor_<unary>
+        //   pattern used in Plan 01-06.
+        for (double x0 : strata_x0) {
+            {
+                double x[1] = {x0};
+                emit_ctaylor_expm1<0>(x);
+            }
+            {
+                double x[2] = {x0, 1.0};
+                emit_ctaylor_expm1<1>(x);
+            }
+            {
+                double x[4] = {x0, 1.0, 0.0, 0.0};
+                emit_ctaylor_expm1<2>(x);
+            }
+            {
+                double x[8] = {x0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+                emit_ctaylor_expm1<3>(x);
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------
+    //  Plan 03-00 Task 3 — sqrtx_asinh_sqrtx stratified supplement.
+    //
+    //  Upstream asserts x.c[0] > -0.5 (ctaylor_math.hpp:277). Domain here is
+    //  x0 > 0 to stay comfortably away from the assertion boundary and let
+    //  the Padé branch be the stress-tested path for small magnitudes.
+    //
+    //  500 x0 points × 4 NVAR values (0,1,2,3) = 2000 composed records
+    //  (NVAR=4 omitted because it would require extra SIZE=16 inputs and
+    //  the Padé branch proof is already covered by NVAR ∈ {0..3}; fixture
+    //  budget is 500 × 4 = 2000 records per plan's ≥ 2500 acceptance by
+    //  including the expm1 records above, total new = 4500 + 2000).
+    // -------------------------------------------------------------------
+    {
+        std::mt19937_64 rng_sas(0xb16b00b5ULL);
+        std::vector<double> strata_x0;
+        strata_x0.reserve(500);
+
+        // Stratum 1 — near-zero x0 in [1e-10, 1e-3], 100 samples.
+        //   Exercises Padé branch in its most precision-sensitive regime.
+        {
+            std::uniform_real_distribution<double> s1_log(-10.0, -3.0);
+            for (int i = 0; i < 100; i++) {
+                strata_x0.push_back(std::pow(10.0, s1_log(rng_sas)));
+            }
+        }
+        // Stratum 2 — Padé domain x0 in [1e-3, 0.4999], 100 samples.
+        {
+            std::uniform_real_distribution<double> s2_log(-3.0, std::log10(0.4999));
+            for (int i = 0; i < 100; i++) {
+                strata_x0.push_back(std::pow(10.0, s2_log(rng_sas)));
+            }
+        }
+        // Stratum 3 — Padé/unstable boundary x0 in [0.4, 0.6], 100 samples.
+        //   Exercises BOTH branches + branch-transition continuity.
+        {
+            std::uniform_real_distribution<double> s3_lin(0.4, 0.6);
+            for (int i = 0; i < 100; i++) {
+                strata_x0.push_back(s3_lin(rng_sas));
+            }
+        }
+        // Stratum 4 — unstable branch mid x0 in [0.6, 10], 100 samples.
+        {
+            std::uniform_real_distribution<double> s4_log(std::log10(0.6), 1.0);
+            for (int i = 0; i < 100; i++) {
+                strata_x0.push_back(std::pow(10.0, s4_log(rng_sas)));
+            }
+        }
+        // Stratum 5 — unstable branch large x0 in [10, 100], 100 samples.
+        {
+            std::uniform_real_distribution<double> s5_log(1.0, 2.0);
+            for (int i = 0; i < 100; i++) {
+                strata_x0.push_back(std::pow(10.0, s5_log(rng_sas)));
+            }
+        }
+
+        for (double x0 : strata_x0) {
+            {
+                double x[1] = {x0};
+                emit_ctaylor_sqrtx_asinh_sqrtx<0>(x);
+            }
+            {
+                double x[2] = {x0, 1.0};
+                emit_ctaylor_sqrtx_asinh_sqrtx<1>(x);
+            }
+            {
+                double x[4] = {x0, 1.0, 0.0, 0.0};
+                emit_ctaylor_sqrtx_asinh_sqrtx<2>(x);
+            }
+            {
+                double x[8] = {x0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+                emit_ctaylor_sqrtx_asinh_sqrtx<3>(x);
             }
         }
     }
