@@ -183,7 +183,7 @@ Pre-pivot plans (VOID — reverted by Wave 0 of the new plan, retained in git hi
 | 0. Workspace Scaffolding & CI Foundations | 0/0 | Not started | - |
 | 1. Taylor Algebra & AD Primitives | 7/7 | Complete | 2026-04-19 |
 | 2. Core Foundations + LDA Tier + Parity Harness | 7/7 | Complete (with caveats) | 2026-04-22[^acc04] |
-| 3. GGA Tier + `Mode::Potential` | 1/7 | In progress | - |
+| 3. GGA Tier + `Mode::Potential` | 2/7 | In progress | - |
 | 4. metaGGA Tier + `Mode::Contracted` + Aliases | 0/0 | Not started | - |
 | 5. Rust Facade + C ABI | 0/0 | Not started | - |
 | 6. Kernels + CPU Batch + CUDA + Wgpu Backends | 0/0 | Not started | - |
