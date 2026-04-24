@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: phase-3-planned-ready-to-execute
-last_updated: "2026-04-24T08:25:00.000Z"
+status: phase-3-executing
+last_updated: "2026-04-25T00:00:00.000Z"
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 21
-  completed_plans: 14
+  completed_plans: 15
   percent: 25
 ---
 
@@ -20,14 +20,14 @@ progress:
 
 **Core Value:** Every functional must produce numerical output matching C++ xcfun within relative error <= 1.0e-12, across all evaluation modes and derivative orders.
 
-**Current focus:** Phase 03 — gga-tier-mode-potential (ready to execute)
+**Current focus:** Phase 03 — gga-tier-mode-potential (Wave 0 complete — executing Wave 1)
 
 ## Current Position
 
-Phase: 03 (gga-tier-mode-potential) — PLANNED, READY TO EXECUTE
-Plans: 7 (03-00 substrate, 03-01 DensVars+shared scaffolding, 03-02 PBE+Becke+LYP, 03-03 OPTX+PW86/91+P86+APBE, 03-04 B97+KT+BTK, 03-05 Mode::Potential, 03-06 orders 3..=4 + ACC-04 re-run + sign-off)
+Phase: 03 (gga-tier-mode-potential) — EXECUTING (1/7 plans complete)
+Plans: 7 (03-00 ✓ substrate, 03-01 DensVars+shared scaffolding, 03-02 PBE+Becke+LYP, 03-03 OPTX+PW86/91+P86+APBE, 03-04 B97+KT+BTK, 03-05 Mode::Potential, 03-06 orders 3..=4 + ACC-04 re-run + sign-off)
 Scope: 36 GGA functional IDs (BRX/BRC/BRXC + CSC deferred to Phase 4 per D-01-A; LB94 deferred per D-19)
-Phase 2 SIGNED OFF (2026-04-22) with documented ACC-04 caveats. Next: `/gsd-execute-phase 3`.
+Wave 0 (03-00) COMPLETE 2026-04-25: `ctaylor_expm1` (D-05) + `ctaylor_sqrtx_asinh_sqrtx` (D-06 both branches) + 6500 golden fixtures GREEN at 1e-12. Unblocks Waves 1-4 (15 downstream GGA kernels).
 
 - **Milestone:** Initial v1 build-out
 - **Phase:** 02 (core-foundations-lda-tier-parity-harness) — **COMPLETE (2026-04-22)**
