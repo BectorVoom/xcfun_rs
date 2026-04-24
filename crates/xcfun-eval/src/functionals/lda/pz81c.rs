@@ -213,7 +213,7 @@ fn ehd<F: Float>(
 // ---------------------------------------------------------------------------
 
 #[cube]
-fn pz81_eps<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
+pub fn pz81_eps<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     let mut fz_val = Array::<F>::new(size);
