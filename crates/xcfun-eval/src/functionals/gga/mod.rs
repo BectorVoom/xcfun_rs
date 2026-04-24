@@ -28,6 +28,6 @@ pub mod pw91;
 pub mod p86;
 pub mod apbe;
 
-// Other family modules — populated in later waves of Phase 3:
-// pub mod b97;    // 03-04 (B97X, B97-1X, B97-2X, B97C, B97-1C, B97-2C, B97XC, …)
-// pub mod kt;     // 03-03 (KTX, BTK)
+// Wave 4 (03-04) ships B97 family (6) + KT (2: KTX + BTK; CSC deferred per D-01-A).
+pub mod b97;
+pub mod kt;

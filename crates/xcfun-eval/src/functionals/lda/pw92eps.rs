@@ -349,3 +349,55 @@ pub fn pw92_eps<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n:
     ctaylor_sub::<F>(&e0, &term_a, &mut tmp, n);
     ctaylor_add::<F>(&tmp, &term_b, out, n);
 }
+
+// ---------------------------------------------------------------------------
+//  pw92eps_polarized — port of pw92eps.hpp:63-67.
+//
+//  C++:
+//    template <typename num> static num pw92eps_polarized(const num & a) {
+//      const parameter TUVWXYP[3][7] = PW92C_PARAMS;
+//      num sqrt_r_s = pow(3 / (4 * M_PI * a), 1.0 / 6.0);
+//      return eopt(sqrt_r_s, TUVWXYP[1]);            // FERRO row
+//    }
+//
+//  Used by B97C / B97-1C / B97-2C `energy_b97c_par(...)` to compute the
+//  per-spin-channel paramagnetic LSDA correlation eps as a function of the
+//  single-spin density `a` (or `b`).
+// ---------------------------------------------------------------------------
+
+/// `pw92eps_polarized(a)` — single-spin-density polarized PW92 correlation eps.
+///
+/// Returns `eopt(sqrt_r_s, FERRO)` evaluated at `sqrt_r_s = (3 / (4·π·a))^(1/6)`.
+///
+/// 1:1 port of `pw92eps.hpp:63-67`. Operation order preserved verbatim.
+#[cube]
+pub fn pw92eps_polarized<F: Float>(a: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
+    let size = comptime!((1_u32 << n) as usize);
+
+    // sqrt_r_s = pow(3 / (4·π·a), 1/6) = pow((3/(4π))/a, 1/6).
+    //   (3 / (4·π)) = 0.23873241463784300... (precomputed in f64).
+    const THREE_OVER_4PI_F64: f64 = 0.238_732_414_637_843_f64;
+
+    // step 1: scaled = (3/(4π)) · (1/a). Implement as scalar_mul on (1/a).
+    let mut inv_a = Array::<F>::new(size);
+    ctaylor_reciprocal::<F>(a, &mut inv_a, n);
+    let mut scaled = Array::<F>::new(size);
+    ctaylor_scalar_mul::<F>(&inv_a, F::cast_from(THREE_OVER_4PI_F64), &mut scaled, n);
+
+    // step 2: sqrt_r_s = pow(scaled, 1/6).
+    let mut sqrt_r_s = Array::<F>::new(size);
+    ctaylor_pow::<F>(&scaled, F::cast_from(1.0_f64 / 6.0_f64), &mut sqrt_r_s, n);
+
+    // step 3: out = eopt(sqrt_r_s, FERRO).
+    eopt::<F>(
+        &sqrt_r_s,
+        F::cast_from(PW92_FERRO_T0),
+        F::cast_from(PW92_FERRO_T1),
+        F::cast_from(PW92_FERRO_T2),
+        F::cast_from(PW92_FERRO_T3),
+        F::cast_from(PW92_FERRO_T4),
+        F::cast_from(PW92_FERRO_T5),
+        out,
+        n,
+    );
+}
