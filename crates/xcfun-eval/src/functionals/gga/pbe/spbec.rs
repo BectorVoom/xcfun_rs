@@ -23,10 +23,10 @@ use crate::functionals::gga::shared::constants::PBEC_D2_PREFACTOR_F64;
 use crate::functionals::gga::shared::pbec_eps;
 use crate::functionals::lda::vwn_eps;
 
-// SPBEC paper constants (spbec.cpp:22-24).
+// SPBEC paper constants (spbec.cpp:22-24). Note: β = 0.031091 is
+// referenced only via the precomputed β/γ ratio; we keep the literal
+// 0.466006... to avoid ULP drift from a runtime division.
 const SPBEC_GAMM_F64: f64 = 0.066725_f64;
-const SPBEC_BETA_F64: f64 = 0.031091_f64;
-// β / γ ratio.
 const SPBEC_BETA_GAMMA_F64: f64 = 0.466_006_366_055_452_4_f64; // 0.031091 / 0.066725
 
 /// W5: We use the same numerical value as PBEC_D2_PREFACTOR_F64
