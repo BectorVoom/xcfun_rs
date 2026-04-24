@@ -56,6 +56,7 @@ use crate::expand::asinh::asinh_expand;
 use crate::expand::atan::atan_expand;
 use crate::expand::erf::erf_expand;
 use crate::expand::exp::exp_expand;
+use crate::expand::expm1::expm1_expand;
 use crate::expand::inv::inv_expand;
 use crate::expand::log::log_expand;
 use crate::expand::pow::pow_expand;
@@ -138,6 +139,39 @@ pub fn ctaylor_exp<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u3
     let mut scratch = Array::<F>::new(scratch_len);
 
     exp_expand::<F>(&mut scratch, x[0], n);
+    ctaylor_compose::<F>(out, x, &scratch, n);
+}
+
+// ---------------------------------------------------------------------------
+//  ctaylor_expm1 — out = exp(x) - 1.
+//  Port of ctaylor_math.hpp:85-102. Uses the upstream stable-bracket for
+//  |x[0]| <= 1e-3 (D-05). Consumed by PBEC / APBEC / SPBEC / PBEINTC /
+//  PBELOCC / ZVPBESOLC / ZVPBEINTC / VWN_PBEC / PW91C / RPBEX / BECKESRX /
+//  BECKECAMX (9 GGA bodies).
+// ---------------------------------------------------------------------------
+
+/// `out = exp(x) - 1`, Taylor-composed. Uses the upstream stable-bracket for
+/// `|x[0]| <= 1e-3` to preserve f64 precision as `x[0] → 0`.
+///
+/// Port of `ctaylor_math.hpp:85-102`:
+///
+/// ```cpp
+/// T tmp[Nvar + 1];
+/// exp_expand<T, Nvar>(tmp, t.c[0]);
+/// if (fabs(t.c[0]) > 1e-3) tmp[0] -= 1;
+/// else                     tmp[0] = 2 * exp(t.c[0] / 2) * sinh(t.c[0] / 2);
+/// ctaylor<T, Nvar> res;
+/// ctaylor_rec<T, Nvar>::compose(res.c, t.c, tmp);
+/// return res;
+/// ```
+///
+/// Precondition: none (`expm1` is analytic on all reals).
+#[cube]
+pub fn ctaylor_expm1<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
+    let scratch_len = comptime!((n + 1) as usize);
+    let mut scratch = Array::<F>::new(scratch_len);
+
+    expm1_expand::<F>(&mut scratch, x[0], n);
     ctaylor_compose::<F>(out, x, &scratch, n);
 }
 

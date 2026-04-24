@@ -33,6 +33,7 @@
 
 pub mod cbrt;
 pub mod exp;
+pub mod expm1;
 pub mod inv;
 pub mod log;
 pub mod pow;
