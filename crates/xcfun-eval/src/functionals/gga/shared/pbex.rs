@@ -19,10 +19,10 @@
 //! - `rho[0] > 0` (post-regularize — CNST coefficient above `TINY_DENSITY`).
 //! - `grad2[0] >= 0` (gradient squared is non-negative).
 //!
-//! # Wave 1 status (03-01)
-//! - `enhancement` — **FULL BODY** (primary consumer this plan).
-//! - `energy_pbe_ab` — **FULL BODY** (used by future PBEX/REVPBEX/PBESOLX kernels).
-//! - `enhancement_RPBE` — **SKELETON** (body lands in 03-02 Task 1 Step A, RPBEX consumer).
+//! # Status
+//! - `enhancement` — **FULL BODY** (Wave 1, plan 03-01).
+//! - `energy_pbe_ab` — **FULL BODY** (Wave 1, plan 03-01).
+//! - `enhancement_RPBE` — **FULL BODY** (Wave 2, plan 03-02 — W3 conversion).
 
 use cubecl::prelude::*;
 use xcfun_ad::ctaylor::ctaylor_scalar_mul;
