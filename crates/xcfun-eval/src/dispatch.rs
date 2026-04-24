@@ -3,7 +3,8 @@
 //!
 //! See RESEARCH.md §"Registry Shape + Circular-Dep Resolution" for rationale.
 //!
-//! Phase 2 dispatch arms (11 LDAs) + Phase 3 Wave-2 GGAs (17) + Wave-3 GGAs (10):
+//! Phase 2 dispatch arms (11 LDAs) + Phase 3 Wave-2 GGAs (17) + Wave-3 GGAs (10) +
+//! Phase 3 Wave-4 GGAs (8):
 //!   id ==  0 → XC_SLATERX     (Plan 02-04)
 //!   id ==  1 → XC_PW86X       (Plan 03-03 — Wave 3)
 //!   id ==  2 → XC_VWN3C       (Plan 02-04)
@@ -24,6 +25,7 @@
 //!   id == 20 → XC_RPBEX       (Plan 03-02 — Wave 2)
 //!   id == 21 → XC_SPBEC       (Plan 03-02 — Wave 2)
 //!   id == 22 → XC_VWN_PBEC    (Plan 03-02 — Wave 2)
+//!   id == 23 → XC_KTX         (Plan 03-04 — Wave 4)
 //!   id == 24 → XC_TFK         (Plan 02-04)
 //!   id == 25 → XC_TW          (Plan 02-05)
 //!   id == 26 → XC_PW91X       (Plan 03-03 — Wave 3)
@@ -32,7 +34,14 @@
 //!   id == 55 → XC_PZ81C       (Plan 02-04)
 //!   id == 56 → XC_P86C        (Plan 03-03 — Wave 3)
 //!   id == 57 → XC_P86CORRC    (Plan 03-03 — Wave 3)
+//!   id == 58 → XC_BTK         (Plan 03-04 — Wave 4)
 //!   id == 59 → XC_VWK         (Plan 02-05)
+//!   id == 60 → XC_B97X        (Plan 03-04 — Wave 4)
+//!   id == 61 → XC_B97C        (Plan 03-04 — Wave 4)
+//!   id == 62 → XC_B97_1X      (Plan 03-04 — Wave 4)
+//!   id == 63 → XC_B97_1C      (Plan 03-04 — Wave 4)
+//!   id == 64 → XC_B97_2X      (Plan 03-04 — Wave 4)
+//!   id == 65 → XC_B97_2C      (Plan 03-04 — Wave 4)
 //!   id == 67 → XC_APBEC       (Plan 03-03 — Wave 3)
 //!   id == 68 → XC_APBEX       (Plan 03-03 — Wave 3)
 //!   id == 69 → XC_ZVPBESOLC   (Plan 03-02 — Wave 2)
@@ -118,6 +127,9 @@ pub fn dispatch_kernel<F: Float>(
     } else if comptime!(id == 22) {
         // XC_VWN_PBEC
         crate::functionals::gga::pbe::vwn_pbec::vwn_pbec_kernel::<F>(d, out, n);
+    } else if comptime!(id == 23) {
+        // XC_KTX (Wave 4)
+        crate::functionals::gga::kt::ktx::ktx_kernel::<F>(d, out, n);
     } else if comptime!(id == 24) {
         // XC_TFK
         crate::functionals::lda::tfk::tfk_kernel::<F>(d, out, n);
@@ -142,9 +154,30 @@ pub fn dispatch_kernel<F: Float>(
     } else if comptime!(id == 57) {
         // XC_P86CORRC
         crate::functionals::gga::p86::p86corrc::p86corrc_kernel::<F>(d, out, n);
+    } else if comptime!(id == 58) {
+        // XC_BTK (Wave 4)
+        crate::functionals::gga::kt::btk::btk_kernel::<F>(d, out, n);
     } else if comptime!(id == 59) {
         // XC_VWK
         crate::functionals::lda::vwk::vwk_kernel::<F>(d, out, n);
+    } else if comptime!(id == 60) {
+        // XC_B97X (Wave 4)
+        crate::functionals::gga::b97::b97x::b97x_kernel::<F>(d, out, n);
+    } else if comptime!(id == 61) {
+        // XC_B97C (Wave 4)
+        crate::functionals::gga::b97::b97c::b97c_kernel::<F>(d, out, n);
+    } else if comptime!(id == 62) {
+        // XC_B97_1X (Wave 4)
+        crate::functionals::gga::b97::b97_1x::b97_1x_kernel::<F>(d, out, n);
+    } else if comptime!(id == 63) {
+        // XC_B97_1C (Wave 4)
+        crate::functionals::gga::b97::b97_1c::b97_1c_kernel::<F>(d, out, n);
+    } else if comptime!(id == 64) {
+        // XC_B97_2X (Wave 4)
+        crate::functionals::gga::b97::b97_2x::b97_2x_kernel::<F>(d, out, n);
+    } else if comptime!(id == 65) {
+        // XC_B97_2C (Wave 4)
+        crate::functionals::gga::b97::b97_2c::b97_2c_kernel::<F>(d, out, n);
     } else if comptime!(id == 67) {
         // XC_APBEC
         crate::functionals::gga::apbe::apbec::apbec_kernel::<F>(d, out, n);
@@ -180,9 +213,10 @@ pub fn dispatch_kernel<F: Float>(
 /// (67 - 17 = 50 non-implemented) return `XcError::NotConfigured`.
 ///
 /// Phase 2 ships 11 LDA ids; Phase 3 plan 03-02 adds 17 GGA ids; plan 03-03
-/// adds 10 more GGAs (OPTX×2 + PW86/91×4 + P86×2 + APBE×2):
-///   {1, 17, 18, 26, 27, 56, 57, 67, 68, 77}.
-/// Total: 38 functional ids supported.
+/// adds 10 more GGAs (OPTX×2 + PW86/91×4 + P86×2 + APBE×2); plan 03-04 adds
+/// 8 more GGAs (B97×6 + KTX + BTK):
+///   {23, 58, 60, 61, 62, 63, 64, 65}.
+/// Total: 46 functional ids supported. (CSC + BRX/BRC/BRXC + LB94 deferred.)
 pub fn supports(id: FunctionalId) -> bool {
     matches!(
         id as u32,
@@ -193,5 +227,7 @@ pub fn supports(id: FunctionalId) -> bool {
         | 69 | 71 | 72 | 73 | 74 | 76
         // Phase 3 Wave-3 GGAs (10)
         | 1 | 17 | 18 | 26 | 27 | 56 | 57 | 67 | 68 | 77
+        // Phase 3 Wave-4 GGAs (8: B97 family + KTX + BTK)
+        | 23 | 58 | 60 | 61 | 62 | 63 | 64 | 65
     )
 }

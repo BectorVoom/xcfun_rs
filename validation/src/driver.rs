@@ -272,6 +272,15 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
         (FunctionalId::XC_APBEX, "XC_APBEX", Vars::A_B_GAA_GAB_GBB),
         (FunctionalId::XC_APBEC, "XC_APBEC", Vars::A_B_GAA_GAB_GBB),
         (FunctionalId::XC_PW91C, "XC_PW91C", Vars::A_B_GAA_GAB_GBB),
+        // Phase-3 Wave-4 GGAs (8): B97×6 + KTX + BTK.
+        (FunctionalId::XC_KTX, "XC_KTX", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_BTK, "XC_BTK", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_B97X, "XC_B97X", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_B97C, "XC_B97C", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_B97_1X, "XC_B97_1X", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_B97_1C, "XC_B97_1C", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_B97_2X, "XC_B97_2X", Vars::A_B_GAA_GAB_GBB),
+        (FunctionalId::XC_B97_2C, "XC_B97_2C", Vars::A_B_GAA_GAB_GBB),
     ];
 
     for &(id, name, vars) in lda_targets {
