@@ -49,6 +49,14 @@ fn kernel_exp<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     math::ctaylor_exp::<F>(x, out, n);
 }
 #[cube(launch_unchecked)]
+fn kernel_expm1<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
+    math::ctaylor_expm1::<F>(x, out, n);
+}
+#[cube(launch_unchecked)]
+fn kernel_sqrtx_asinh_sqrtx<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
+    math::ctaylor_sqrtx_asinh_sqrtx::<F>(x, out, n);
+}
+#[cube(launch_unchecked)]
 fn kernel_log<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     math::ctaylor_log::<F>(x, out, n);
 }
@@ -142,6 +150,8 @@ fn eval_record(rec: &FixtureRecord) -> Vec<f64> {
         "ctaylor_reciprocal" => launch_unary!(kernel_reciprocal),
         "ctaylor_sqrt" => launch_unary!(kernel_sqrt),
         "ctaylor_exp" => launch_unary!(kernel_exp),
+        "ctaylor_expm1" => launch_unary!(kernel_expm1),
+        "ctaylor_sqrtx_asinh_sqrtx" => launch_unary!(kernel_sqrtx_asinh_sqrtx),
         "ctaylor_log" => launch_unary!(kernel_log),
         "ctaylor_erf" => launch_unary!(kernel_erf),
         "ctaylor_asinh" => launch_unary!(kernel_asinh),
@@ -262,4 +272,43 @@ fn composed_matches_cpp_reference() {
 
     assert!(count >= 96, "expected >= 96 composed records, got {count}");
     eprintln!("[golden_composed] validated {count} records: {per_op:?}");
+}
+
+/// Plan 03-00 Task 4 — dedicated ctaylor_expm1 fixture-gate.
+#[test]
+fn test_ctaylor_expm1() {
+    let bytes: &[u8] = include_bytes!("fixtures/composed.bincode");
+    let records: Vec<FixtureRecord> = bincode::deserialize(bytes)
+        .expect("deserialize tests/fixtures/composed.bincode");
+
+    let mut count = 0_usize;
+    for rec in records.iter().filter(|r| r.op == "ctaylor_expm1") {
+        let got = eval_record(rec);
+        assert_record_close(&got, rec);
+        count += 1;
+    }
+    assert!(count >= 2000, "expected >= 2000 ctaylor_expm1 records, got {count}");
+    eprintln!("[golden_composed::test_ctaylor_expm1] validated {count} records");
+}
+
+/// Plan 03-00 Task 4 — dedicated ctaylor_sqrtx_asinh_sqrtx fixture-gate.
+///
+/// Exercises BOTH branches of the D-06 port: |x0| >= 0.5 (direct
+/// composition) AND |x0| < 0.5 (unconditional [8,8] Padé). Fixture
+/// strata are generated in `xtask/assets/regen_ad_fixtures/driver.cpp`
+/// with seed `0xb16b00b5` across x0 in [1e-10, 100].
+#[test]
+fn test_sqrtx_asinh_sqrtx() {
+    let bytes: &[u8] = include_bytes!("fixtures/composed.bincode");
+    let records: Vec<FixtureRecord> = bincode::deserialize(bytes)
+        .expect("deserialize tests/fixtures/composed.bincode");
+
+    let mut count = 0_usize;
+    for rec in records.iter().filter(|r| r.op == "ctaylor_sqrtx_asinh_sqrtx") {
+        let got = eval_record(rec);
+        assert_record_close(&got, rec);
+        count += 1;
+    }
+    assert!(count >= 2000, "expected >= 2000 ctaylor_sqrtx_asinh_sqrtx records, got {count}");
+    eprintln!("[golden_composed::test_sqrtx_asinh_sqrtx] validated {count} records");
 }

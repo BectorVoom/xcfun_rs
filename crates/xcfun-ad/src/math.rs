@@ -56,10 +56,12 @@ use crate::expand::asinh::asinh_expand;
 use crate::expand::atan::atan_expand;
 use crate::expand::erf::erf_expand;
 use crate::expand::exp::exp_expand;
+use crate::expand::expm1::expm1_expand;
 use crate::expand::inv::inv_expand;
 use crate::expand::log::log_expand;
 use crate::expand::pow::pow_expand;
 use crate::expand::sqrt::sqrt_expand;
+use crate::tfuns::{tfuns_compose, tfuns_multo, tfuns_shift};
 
 // ---------------------------------------------------------------------------
 //  ctaylor_reciprocal — out = 1 / x
@@ -138,6 +140,39 @@ pub fn ctaylor_exp<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u3
     let mut scratch = Array::<F>::new(scratch_len);
 
     exp_expand::<F>(&mut scratch, x[0], n);
+    ctaylor_compose::<F>(out, x, &scratch, n);
+}
+
+// ---------------------------------------------------------------------------
+//  ctaylor_expm1 — out = exp(x) - 1.
+//  Port of ctaylor_math.hpp:85-102. Uses the upstream stable-bracket for
+//  |x[0]| <= 1e-3 (D-05). Consumed by PBEC / APBEC / SPBEC / PBEINTC /
+//  PBELOCC / ZVPBESOLC / ZVPBEINTC / VWN_PBEC / PW91C / RPBEX / BECKESRX /
+//  BECKECAMX (9 GGA bodies).
+// ---------------------------------------------------------------------------
+
+/// `out = exp(x) - 1`, Taylor-composed. Uses the upstream stable-bracket for
+/// `|x[0]| <= 1e-3` to preserve f64 precision as `x[0] → 0`.
+///
+/// Port of `ctaylor_math.hpp:85-102`:
+///
+/// ```cpp
+/// T tmp[Nvar + 1];
+/// exp_expand<T, Nvar>(tmp, t.c[0]);
+/// if (fabs(t.c[0]) > 1e-3) tmp[0] -= 1;
+/// else                     tmp[0] = 2 * exp(t.c[0] / 2) * sinh(t.c[0] / 2);
+/// ctaylor<T, Nvar> res;
+/// ctaylor_rec<T, Nvar>::compose(res.c, t.c, tmp);
+/// return res;
+/// ```
+///
+/// Precondition: none (`expm1` is analytic on all reals).
+#[cube]
+pub fn ctaylor_expm1<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
+    let scratch_len = comptime!((n + 1) as usize);
+    let mut scratch = Array::<F>::new(scratch_len);
+
+    expm1_expand::<F>(&mut scratch, x[0], n);
     ctaylor_compose::<F>(out, x, &scratch, n);
 }
 
@@ -537,4 +572,156 @@ pub fn ctaylor_powi<F: Float>(
     // specialise per-exponent before launch (the Plan 01-06 dispatch in the
     // golden_composed test file covers the fixture driver's exponent range
     // exhaustively).
+}
+
+// ---------------------------------------------------------------------------
+//  ctaylor_sqrtx_asinh_sqrtx — out = sqrt(x) * asinh(sqrt(x)).
+//  Port of ctaylor_math.hpp:275-325 (D-06). UNCONDITIONAL [8,8] Padé branch
+//  per B1 resolution: the |x[0]| < 0.5 path is REQUIRED, not optional. This
+//  primitive is consumed by PW91X / PW91K / BECKEX / BECKECORRX / BECKESRX /
+//  BECKECAMX (6 GGA bodies).
+// ---------------------------------------------------------------------------
+
+/// [8,8] Padé numerator coefficients for `y·asinh(sqrt(y))/sqrt(y)` at `y=0`.
+///
+/// Port of `xcfun-master/external/upstream/taylor/ctaylor_math.hpp:286-294`
+/// (D-06). DO NOT re-derive; these values are load-bearing for the 1e-14
+/// parity contract. ASINH_TABSIZE = 9 in the upstream header.
+pub(crate) const P_PADE_F64: [f64; 9] = [
+    0.0_f64,
+    3.510921856028398e3_f64,
+    1.23624388373212e4_f64,
+    1.734847003883674e4_f64,
+    1.235072285222234e4_f64,
+    4.691117148130619e3_f64,
+    9.119186273274577e2_f64,
+    7.815848629220836e1_f64,
+    1.96088643023654e0_f64,
+];
+
+/// [8,8] Padé denominator coefficients for `y·asinh(sqrt(y))/sqrt(y)` at `y=0`.
+///
+/// Port of `xcfun-master/external/upstream/taylor/ctaylor_math.hpp:295-303`
+/// (D-06).
+pub(crate) const Q_PADE_F64: [f64; 9] = [
+    3.510921856028398e3_f64,
+    1.29475924799926e4_f64,
+    1.924308297963337e4_f64,
+    1.474357149568687e4_f64,
+    6.176496729255528e3_f64,
+    1.379806958043824e3_f64,
+    1.471833349002349e2_f64,
+    5.666278232986776e0_f64,
+    2.865104054302032e-2_f64,
+];
+
+/// [8,8] Padé branch for `sqrt(x)·asinh(sqrt(x))` at `|x[0]| < 0.5`.
+///
+/// Port of `ctaylor_math.hpp:304-319` (D-06, B1 unconditional implementation):
+///
+/// ```cpp
+/// T tmp[Nvar + 1], pq[9];
+/// for (int i = 0; i < ASINH_TABSIZE; i++) pq[i] = Q[i];
+/// tfuns<T, ASINH_TABSIZE - 1>::shift(pq, t.c[0]);
+/// inv_expand<T, Nvar>(tmp, pq[0]);
+/// tfuns<T, Nvar>::compose(tmp, pq);
+/// for (int i = 0; i < ASINH_TABSIZE; i++) pq[i] = P[i];
+/// tfuns<T, ASINH_TABSIZE - 1>::shift(pq, t.c[0]);
+/// tfuns<T, Nvar>::multo(tmp, pq);
+/// ctaylor_rec<T, Nvar>::compose(res.c, t.c, tmp);
+/// ```
+///
+/// Precondition (upstream asserts `Nvar < ASINH_TABSIZE`): `n < 9`.
+/// Phase 3 ships orders 0..=4 only, so n ∈ {0,1,2,3,4} — always satisfied.
+/// Phase 1 caps tfuns_compose at n ≤ 6, which is also within the [8,8]
+/// Padé order envelope.
+#[cube]
+fn pade_8_8_sqrtx_asinh_sqrtx<F: Float>(
+    x: &Array<F>,
+    out: &mut Array<F>,
+    #[comptime] n: u32,
+) {
+    // tmath.hpp line 307 — T tmp[Nvar + 1], pq[9];
+    let scratch_len = comptime!((n + 1) as usize);
+    let mut tmp = Array::<F>::new(scratch_len);
+    // pq is a degree-8 scalar polynomial scratch (9 entries).
+    let mut pq = Array::<F>::new(9_usize);
+
+    // ctaylor_math.hpp:308-309 — load Q into pq.
+    #[unroll]
+    for i in 0_u32..9_u32 {
+        let ki = i as usize;
+        pq[ki] = F::cast_from(Q_PADE_F64[ki]);
+    }
+    // ctaylor_math.hpp:310 — tfuns<T, ASINH_TABSIZE - 1>::shift(pq, t.c[0]);
+    //   Shift Q polynomial by x[0]: pq(y) = Q(y + x[0]).
+    //   Comptime degree is 8 (ASINH_TABSIZE - 1).
+    tfuns_shift::<F>(&mut pq, x[0], 8_u32);
+
+    // ctaylor_math.hpp:311 — inv_expand<T, Nvar>(tmp, pq[0]);
+    //   tmp = Taylor series of 1/(pq[0] + y) around y = 0.
+    inv_expand::<F>(&mut tmp, pq[0], n);
+
+    // ctaylor_math.hpp:312 — tfuns<T, Nvar>::compose(tmp, pq);
+    //   Substitute y -> pq_1(y) := pq(y) - pq[0], giving tmp = 1 / pq(y).
+    //   tfuns_compose expects the inner polynomial to have x[0] = 0; the
+    //   implementation only reads pq[1..=n], so pq[0] is effectively
+    //   ignored (same behaviour as C++ tfuns::compose which reads indices
+    //   1..=N only).
+    tfuns_compose::<F>(&mut tmp, &pq, n);
+
+    // ctaylor_math.hpp:313-314 — reload P into pq.
+    #[unroll]
+    for i in 0_u32..9_u32 {
+        let ki = i as usize;
+        pq[ki] = F::cast_from(P_PADE_F64[ki]);
+    }
+    // ctaylor_math.hpp:315 — tfuns<T, ASINH_TABSIZE - 1>::shift(pq, t.c[0]);
+    //   Shift P by x[0]: pq(y) = P(y + x[0]).
+    tfuns_shift::<F>(&mut pq, x[0], 8_u32);
+
+    // ctaylor_math.hpp:316 — tfuns<T, Nvar>::multo(tmp, pq);
+    //   tmp *= pq  →  tmp = P(y + x[0]) / Q(y + x[0]).
+    tfuns_multo::<F>(&mut tmp, &pq, n);
+
+    // ctaylor_math.hpp:317-318 — ctaylor_rec<T, Nvar>::compose(res.c, t.c, tmp);
+    ctaylor_compose::<F>(out, x, &tmp, n);
+}
+
+/// `out = sqrt(x) * asinh(sqrt(x))`. Used by PW91X / PW91K enhancement and
+/// Becke B88 (D-06).
+///
+/// Port target: `xcfun-master/external/upstream/taylor/ctaylor_math.hpp:275-325`.
+///
+/// Precondition: `x[0] > -0.5` (upstream assert at ctaylor_math.hpp:277).
+///
+/// Two-branch strategy (same as C++ reference):
+///
+/// - `|x[0]| >= 0.5` → direct composition `sqrt(x) * asinh(sqrt(x))` via
+///   `ctaylor_sqrt`, `ctaylor_asinh`, `ctaylor_mul`. Numerically fine for
+///   `x[0]` away from zero.
+/// - `|x[0]| < 0.5` → UNCONDITIONAL [8,8] Padé branch via
+///   `pade_8_8_sqrtx_asinh_sqrtx`. Preserves 1e-14 precision as `x[0] → 0`
+///   where the direct form would produce NaN/∞ derivatives.
+#[cube]
+pub fn ctaylor_sqrtx_asinh_sqrtx<F: Float>(
+    x: &Array<F>,
+    out: &mut Array<F>,
+    #[comptime] n: u32,
+) {
+    let size = comptime!((1_u32 << n) as usize);
+    let threshold = F::cast_from(0.5_f64);
+    let abs_x0 = x[0].abs();
+
+    if abs_x0 >= threshold {
+        // Unstable branch (|x[0]| >= 0.5): direct composition.
+        let mut sx = Array::<F>::new(size);
+        let mut asx = Array::<F>::new(size);
+        ctaylor_sqrt::<F>(x, &mut sx, n);
+        ctaylor_asinh::<F>(&sx, &mut asx, n);
+        ctaylor_mul::<F>(&sx, &asx, out, n);
+    } else {
+        // Stable Padé branch (|x[0]| < 0.5): UNCONDITIONAL per D-06/B1.
+        pade_8_8_sqrtx_asinh_sqrtx::<F>(x, out, n);
+    }
 }

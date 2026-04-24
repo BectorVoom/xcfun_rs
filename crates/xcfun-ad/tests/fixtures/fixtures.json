@@ -1,19 +1,22 @@
 {
   "xcfun_version_git_sha": "8ec452fd8d40d11c5ce251f5efcf2c16c2e3605fa5de253edbdb080df613eeee",
-  "generated_at": "2026-04-19T21:36:42.419939354+00:00",
+  "generated_at": "2026-04-24T21:15:52.051951102+00:00",
   "per_op_counts": {
     "cbrt_expand": 21,
     "ctaylor_asinh": 12,
     "ctaylor_atan": 12,
     "ctaylor_erf": 12,
     "ctaylor_exp": 12,
+    "ctaylor_expm1": 2000,
     "ctaylor_log": 12,
     "ctaylor_pow": 12,
     "ctaylor_powi": 84,
     "ctaylor_reciprocal": 12,
     "ctaylor_sqrt": 12,
+    "ctaylor_sqrtx_asinh_sqrtx": 2000,
     "erf_expand": 21,
     "exp_expand": 21,
+    "expm1_expand": 2500,
     "gauss_expand": 21,
     "inv_expand": 21,
     "log_expand": 21,
@@ -21,6 +24,6 @@
     "pow_expand": 21,
     "sqrt_expand": 21
   },
-  "total_records": 598,
-  "driver_commit": "3bbcc5fa1796871c7038549358201b932fca7da7"
+  "total_records": 7098,
+  "driver_commit": "03bd9c0b25042bdbf3550fb6ae51e0e57f1d0615"
 }
