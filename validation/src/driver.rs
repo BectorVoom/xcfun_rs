@@ -23,11 +23,19 @@ use anyhow::Result;
 use serde::Serialize;
 use std::collections::BTreeMap;
 
-use xcfun_core::{FunctionalId, Mode, VARS_TABLE, Vars, taylorlen};
+use xcfun_core::{Dependency, FUNCTIONAL_DESCRIPTORS, FunctionalId, Mode, VARS_TABLE, Vars, taylorlen};
 use xcfun_eval::Functional;
 
 use crate::ffi::CppXcfun;
 use crate::fixtures::{GridPoint, REGULARIZE_CLAMP_STRATUM_BOUND};
+
+/// Phase 3 plan 03-05 — discriminator for the validation CLI's
+/// `--mode {partial_derivatives, potential}` flag.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HarnessMode {
+    PartialDerivatives,
+    Potential,
+}
 
 /// One tier-2 parity record — emitted per `(functional, vars, mode, order,
 /// point_idx, element_idx)` tuple. Serialized to `validation/report.jsonl`.
@@ -222,6 +230,21 @@ fn cpp_name(xc_name: &str) -> String {
         .strip_prefix("XC_")
         .unwrap_or(xc_name)
         .to_ascii_lowercase()
+}
+
+/// Phase 3 plan 03-05 entry point — `run` with explicit harness mode.
+/// Delegates to the existing `run` (PartialDerivatives) or to
+/// `run_potential` (Mode::Potential).
+pub fn run_with_mode(
+    grid: &[GridPoint],
+    max_order: u32,
+    filter: &regex::Regex,
+    mode: HarnessMode,
+) -> Result<Report> {
+    match mode {
+        HarnessMode::PartialDerivatives => run(grid, max_order, filter),
+        HarnessMode::Potential => run_potential(grid, filter),
+    }
 }
 
 /// Run tier-2 parity for all 11 Phase-2 LDA functionals at orders 0..=max_order≤2.
@@ -469,4 +492,248 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
         report.clamp_stratum_failures_total(),
     );
     Ok(report)
+}
+
+/// Phase 3 plan 03-05 — Mode::Potential tier-2 driver.
+///
+/// For every supported functional (excluding metaGGA-class deps), drives
+/// the Rust + C++ paths with `Mode::Potential` over the same 10k-point
+/// grid and asserts strict 1e-12 (D-14) relative error per output element.
+/// Per-functional vars are chosen by `eval_setup` rules:
+///   - LDA-only deps: Vars::A_B  (output = [E, pot_α, pot_β])
+///   - GRADIENT deps: Vars::A_B_2ND_TAYLOR (output = [E, pot_α, pot_β])
+///   - LAPLACIAN/KINETIC deps: SKIP (metaGGA, Phase 4 scope)
+///
+/// LDAERFX/LDAERFC/LDAERFC_JT inherit the Phase-2 D-24 1e-7 override (via
+/// `threshold_for`) since their cubecl `erf` polyfill drift survives
+/// across modes.
+pub fn run_potential(grid: &[GridPoint], filter: &regex::Regex) -> Result<Report> {
+    let mut report = Report::default();
+
+    // Same target list as `run` — but vars routed through `eval_setup` rules.
+    let lda_targets: &[(FunctionalId, &str)] = &[
+        // Phase-2 LDAs (11) — DENSITY (some + GRADIENT for TW/VWK).
+        (FunctionalId::XC_SLATERX, "XC_SLATERX"),
+        (FunctionalId::XC_VWN3C, "XC_VWN3C"),
+        (FunctionalId::XC_VWN5C, "XC_VWN5C"),
+        (FunctionalId::XC_PW92C, "XC_PW92C"),
+        (FunctionalId::XC_PZ81C, "XC_PZ81C"),
+        (FunctionalId::XC_LDAERFX, "XC_LDAERFX"),
+        (FunctionalId::XC_LDAERFC, "XC_LDAERFC"),
+        (FunctionalId::XC_LDAERFC_JT, "XC_LDAERFC_JT"),
+        (FunctionalId::XC_TFK, "XC_TFK"),
+        // TW + VWK use GRADIENT — exercised via Vars::A_B_2ND_TAYLOR below.
+        (FunctionalId::XC_TW, "XC_TW"),
+        (FunctionalId::XC_VWK, "XC_VWK"),
+        // Wave-2 GGAs (17)
+        (FunctionalId::XC_PBEX, "XC_PBEX"),
+        (FunctionalId::XC_PBEC, "XC_PBEC"),
+        (FunctionalId::XC_REVPBEX, "XC_REVPBEX"),
+        (FunctionalId::XC_RPBEX, "XC_RPBEX"),
+        (FunctionalId::XC_PBESOLX, "XC_PBESOLX"),
+        (FunctionalId::XC_PBEINTX, "XC_PBEINTX"),
+        (FunctionalId::XC_PBEINTC, "XC_PBEINTC"),
+        (FunctionalId::XC_SPBEC, "XC_SPBEC"),
+        (FunctionalId::XC_PBELOCC, "XC_PBELOCC"),
+        (FunctionalId::XC_ZVPBESOLC, "XC_ZVPBESOLC"),
+        (FunctionalId::XC_ZVPBEINTC, "XC_ZVPBEINTC"),
+        (FunctionalId::XC_VWN_PBEC, "XC_VWN_PBEC"),
+        (FunctionalId::XC_BECKEX, "XC_BECKEX"),
+        (FunctionalId::XC_BECKECORRX, "XC_BECKECORRX"),
+        (FunctionalId::XC_BECKESRX, "XC_BECKESRX"),
+        (FunctionalId::XC_BECKECAMX, "XC_BECKECAMX"),
+        (FunctionalId::XC_LYPC, "XC_LYPC"),
+        // Wave-3 GGAs (10)
+        (FunctionalId::XC_PW86X, "XC_PW86X"),
+        (FunctionalId::XC_OPTX, "XC_OPTX"),
+        (FunctionalId::XC_OPTXCORR, "XC_OPTXCORR"),
+        (FunctionalId::XC_PW91X, "XC_PW91X"),
+        (FunctionalId::XC_PW91K, "XC_PW91K"),
+        (FunctionalId::XC_P86C, "XC_P86C"),
+        (FunctionalId::XC_P86CORRC, "XC_P86CORRC"),
+        (FunctionalId::XC_APBEX, "XC_APBEX"),
+        (FunctionalId::XC_APBEC, "XC_APBEC"),
+        (FunctionalId::XC_PW91C, "XC_PW91C"),
+        // Wave-4 GGAs (8)
+        (FunctionalId::XC_KTX, "XC_KTX"),
+        (FunctionalId::XC_BTK, "XC_BTK"),
+        (FunctionalId::XC_B97X, "XC_B97X"),
+        (FunctionalId::XC_B97C, "XC_B97C"),
+        (FunctionalId::XC_B97_1X, "XC_B97_1X"),
+        (FunctionalId::XC_B97_1C, "XC_B97_1C"),
+        (FunctionalId::XC_B97_2X, "XC_B97_2X"),
+        (FunctionalId::XC_B97_2C, "XC_B97_2C"),
+    ];
+
+    for &(id, name) in lda_targets {
+        if !filter.is_match(&name.to_ascii_lowercase()) {
+            continue;
+        }
+        // Vars routing per eval_setup rules.
+        let descriptor = &FUNCTIONAL_DESCRIPTORS[id as usize];
+        let deps = descriptor.depends;
+        if deps.contains(Dependency::LAPLACIAN) || deps.contains(Dependency::KINETIC) {
+            // metaGGA — Mode::Potential not applicable per D-13.
+            tracing::warn!(
+                "Tier-2 SKIP {} under Mode::Potential — metaGGA-class deps",
+                name
+            );
+            continue;
+        }
+        let vars = if deps.contains(Dependency::GRADIENT) {
+            Vars::A_B_2ND_TAYLOR
+        } else {
+            Vars::A_B
+        };
+        let inlen = VARS_TABLE[vars as usize].len as usize;
+        // `output_length(vars, Mode::Potential, _)` returns 2 or 3 per D-15.
+        let outlen = match vars {
+            Vars::A | Vars::A_2ND_TAYLOR => 2,
+            _ => 3,
+        };
+        let threshold = threshold_for(name);
+        tracing::info!(
+            "Tier-2: {} (mode=Potential vars={:?} inlen={} outlen={} threshold={:.0e})",
+            name,
+            vars,
+            inlen,
+            outlen,
+            threshold
+        );
+
+        // C++ side: set up once per functional.
+        let mut cpp = CppXcfun::new();
+        let s = cpp.set(&cpp_name(name), 1.0);
+        if s != 0 {
+            anyhow::bail!("xcfun_set({}, 1.0) failed: status={}", cpp_name(name), s);
+        }
+        // mode=2 is XC_POTENTIAL.
+        let setup = cpp.eval_setup(vars as u32, 2, 0);
+        if setup != 0 {
+            anyhow::bail!(
+                "xcfun_eval_setup({}, {:?}, POTENTIAL) failed: status={}",
+                name,
+                vars,
+                setup
+            );
+        }
+        let cpp_inlen = cpp.input_length();
+        let cpp_outlen = cpp.output_length();
+        if cpp_inlen != inlen || cpp_outlen != outlen {
+            anyhow::bail!(
+                "Length mismatch for {} (Mode::Potential): rust inlen={} outlen={}; cpp inlen={} outlen={}",
+                name,
+                inlen,
+                outlen,
+                cpp_inlen,
+                cpp_outlen
+            );
+        }
+
+        // Rust side — leak weights[1] per the existing pattern.
+        let weights: &'static [(FunctionalId, f64)] = Box::leak(Box::new([(id, 1.0)]));
+        let rust_fun = Functional {
+            weights,
+            vars,
+            mode: Mode::Potential,
+            order: 0,
+            parameters: xcfun_eval::functional::DEFAULT_PARAMETERS,
+        };
+
+        for (point_idx, gp) in grid.iter().enumerate() {
+            let input = build_input_for_potential(gp, vars);
+            let mut rust_out = vec![0.0_f64; outlen];
+            let mut cpp_out = vec![0.0_f64; outlen];
+
+            let in_clamp_stratum = input.len() >= 2
+                && input[0].min(input[1]) <= REGULARIZE_CLAMP_STRATUM_BOUND;
+
+            cpp.eval(&input, &mut cpp_out);
+
+            let rust_err = rust_fun.eval(&input, &mut rust_out);
+            let rust_unavailable = rust_err.is_err();
+            if rust_unavailable {
+                for r in rust_out.iter_mut() {
+                    *r = f64::NAN;
+                }
+            }
+
+            for elem_idx in 0..outlen {
+                let r = rust_out[elem_idx];
+                let c = cpp_out[elem_idx];
+                let abs_err = (r - c).abs();
+                let rel_err = if rust_unavailable {
+                    f64::INFINITY
+                } else {
+                    abs_err / c.abs().max(1.0)
+                };
+                let pass = !rust_unavailable && rel_err <= threshold;
+                let rec = ReportRecord {
+                    functional: name.into(),
+                    vars: format!("{:?}", vars),
+                    mode: 2, // XC_POTENTIAL
+                    order: 0,
+                    point_idx,
+                    element_idx: elem_idx,
+                    input: input.clone(),
+                    rust: r,
+                    cpp: c,
+                    abs_err,
+                    rel_err,
+                    threshold,
+                    pass,
+                    rust_unavailable,
+                    excluded_by_upstream_spec: false,
+                    excluded_by_regularize_clamp_design: in_clamp_stratum,
+                };
+                report.push(rec);
+            }
+        }
+    }
+
+    tracing::info!(
+        "Tier-2 (Mode::Potential) done: {} records, {} failed",
+        report.total_records(),
+        report.failed_count()
+    );
+    Ok(report)
+}
+
+/// Build the Mode::Potential input vector for `vars`.
+/// - Vars::A_B (LDAs): `[a, b]`.
+/// - Vars::A_B_2ND_TAYLOR (GGAs): 20-slot 2nd-Taylor input. The α/β
+///   density values come from the grid; α/β gradients are derived from
+///   the existing grid `gaa/gab/gbb` slots by taking `√gaa, √gbb` along
+///   the x-axis as a 1D probe (matches the test fixture's Gaussian
+///   atom convention). Hessian slots use `gaa, gbb` along xx and zero
+///   elsewhere — mirroring the C++ `XCFunctional.cpp:683-713` per-direction
+///   seeding pattern with a deterministic radial probe.
+fn build_input_for_potential(gp: &GridPoint, vars: Vars) -> Vec<f64> {
+    match vars {
+        Vars::A_B => {
+            let (a, b) = gp.ab_from_ns();
+            vec![a, b]
+        }
+        Vars::A_B_2ND_TAYLOR => {
+            let (a, b) = gp.ab_from_ns();
+            // 1D radial probe: g_x = √gaa (positive root); g_y = g_z = 0.
+            // Hessian a_xx ≈ √gaa-derived; off-diagonals zero. The C++ side
+            // operates the same Mode::Potential dispatch over this synthetic
+            // input layout, so any drift indicates a kernel-port bug.
+            let gax = gp.gaa.max(0.0).sqrt();
+            let gbx = gp.gbb.max(0.0).sqrt();
+            let mut v = vec![0.0_f64; 20];
+            v[0] = a;
+            v[1] = gax;
+            v[4] = gp.gaa; // a_xx ≈ ∂(a_x)/∂x = a · (curvature factor); use gaa as a proxy
+            v[10] = b;
+            v[11] = gbx;
+            v[14] = gp.gbb;
+            v
+        }
+        other => panic!(
+            "Mode::Potential driver: unsupported vars {:?}",
+            other
+        ),
+    }
 }

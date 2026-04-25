@@ -42,12 +42,29 @@ path = "src/bin/check_cubecl_pin.rs"
 name = "validate"
 path = "src/bin/validate.rs"
 
+[[bin]]
+name = "gen-potential-fixtures"
+path = "src/bin/gen_potential_fixtures.rs"
+required-features = ["gen-potential-fixtures"]
+
+[features]
+default = []
+# Phase 3 plan 03-05 (B5): the gen-potential-fixtures bin pulls in
+# validation/'s CppXcfun (which compiles all of xcfun-master's C++
+# tree). Gated behind a feature flag so the standard xtask build
+# (fmt/clippy/check-no-anyhow/regen-registry) stays lean.
+gen-potential-fixtures = ["dep:validation"]
+
 [dependencies]
 anyhow = { workspace = true }
 cc = { workspace = true }
 bincode = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+# Phase 3 plan 03-05 (B5): optional dep providing CppXcfun + the
+# pre-cc-compiled xcfun-master tree for offline fixture generation.
+validation = { path = "../validation", optional = true }
+rand_xoshiro = { workspace = true, optional = false }
 # Plan 01-05 adds local (not-yet-in-workspace) deps needed by the
 # regen-ad-fixtures binary: SHA-256 hashing of xcfun-master header sources for
 # drift detection, timestamp for the fixture manifest. These live at the xtask

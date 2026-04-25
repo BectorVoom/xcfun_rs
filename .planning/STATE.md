@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: phase-3-executing
-last_updated: "2026-04-25T07:41:00.000Z"
+status: executing
+last_updated: "2026-04-25T08:08:14.820Z"
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 21
-  completed_plans: 19
-  percent: 25
+  completed_plans: 20
+  percent: 95
 ---
 
 # Project State: xcfun_rs
@@ -20,11 +20,12 @@ progress:
 
 **Core Value:** Every functional must produce numerical output matching C++ xcfun within relative error <= 1.0e-12, across all evaluation modes and derivative orders.
 
-**Current focus:** Phase 03 — gga-tier-mode-potential (Waves 0-4 complete with D-19 forwards — paused before Wave 5)
+**Current focus:** Phase 03 — gga-tier-mode-potential
 
 ## Current Position
 
-Phase: 03 (gga-tier-mode-potential) — PAUSED before Wave 5 (5/7 plans complete; Wave 4 partial with D-19 forwards)
+Phase: 03 (gga-tier-mode-potential) — EXECUTING
+Plan: 1 of 7
 Plans: 7 (03-00 ✓, 03-01 ✓, 03-02 ✓, 03-03 ✓, 03-04 ✓ partial, 03-05 Mode::Potential, 03-06 orders 3..=4 + ACC-04 re-run + sign-off)
 Scope: 36 GGA functional IDs (BRX/BRC/BRXC + CSC deferred to Phase 4 per D-01-A; LB94 deferred per D-19)
 Wave 0 (03-00) COMPLETE: `ctaylor_expm1` (D-05) + `ctaylor_sqrtx_asinh_sqrtx` (D-06) + 6500 fixtures GREEN at 1e-12.

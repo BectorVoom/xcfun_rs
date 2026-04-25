@@ -4567,6 +4567,8 @@ dependencies = [
  "cubecl",
  "cubecl-cpu",
  "rstest",
+ "serde",
+ "serde_json",
  "thiserror",
  "xcfun-ad",
  "xcfun-core",
@@ -4586,12 +4588,14 @@ dependencies = [
  "bincode",
  "cc",
  "chrono",
+ "rand_xoshiro",
  "rustc-demangle",
  "serde",
  "serde_json",
  "sha2",
  "tempfile",
  "toml 0.8.23",
+ "validation",
  "walkdir",
 ]
 
