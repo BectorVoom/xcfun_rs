@@ -852,15 +852,20 @@ fn launch_and_accumulate(
             // Order 3 (Plan 03-06 Task 1, MODE-01 D-16). Triple-nested
             // (i ≤ j ≤ k) launch loop per XCFunctional.cpp:562-588.
             //
+            // C++ XCFunctional.cpp `case 3:` falls through to `case 2:` (NO
+            // break), populating outputs at orders 0/1/2 AND the new tier-3
+            // slots. We mirror that fall-through behaviour by recursing into
+            // launch_and_accumulate for order 2 first (which itself populates
+            // orders 0/1/2), THEN appending the tier-3 outputs.
+            //
             // Output slot offset starts after orders 0..=2 outputs:
             //   slot_start = inlen_triangle_count(inlen, 2)
             //              = 1 + inlen + inlen*(inlen+1)/2
             // Each (i, j, k) triple contributes one output: out[VAR0|VAR1|VAR2]
             // = out[7] of the kernel's CTaylor<F, 3> result.
-            //
-            // OPERATION-ORDER NOTE: launches happen in lex-major (i, j, k)
-            // order, output slot increments monotonically. This matches the
-            // C++ slot-counter pattern at XCFunctional.cpp:585-586.
+            launch_and_accumulate(
+                id_u32, vars_u32, 2, inlen, input, weight, output,
+            )?;
             let mut slot = inlen_triangle_count(inlen, 2);
             for i in 0..inlen {
                 for j in i..inlen {
@@ -880,9 +885,17 @@ fn launch_and_accumulate(
             // Order 4 (Plan 03-06 Task 1, MODE-01 D-16). Quadruple-nested
             // (i ≤ j ≤ k ≤ m) launch loop per XCFunctional.cpp:600-612.
             //
-            // Output slot offset starts after orders 0..=3 outputs.
-            // Each (i, j, k, m) quadruple contributes one output:
-            // out[VAR0|VAR1|VAR2|VAR3] = out[15] of the CTaylor<F, 4> result.
+            // C++ does NOT support order 4 in xcfun_eval (XCFunctional.cpp
+            // hits `xcfun::die` at the `default:` arm — no fall-through from
+            // 4 → 3 → 2). Rust uniquely supports order 4 via its CTaylor<F,4>
+            // generic kernel; tier-2 parity at order 4 is therefore
+            // unattainable (no C++ reference). The driver caps at order 3.
+            //
+            // For Rust self-consistency we still mirror C++'s case-3 layout
+            // pattern: populate orders 0/1/2/3 first, then the tier-4 slots.
+            launch_and_accumulate(
+                id_u32, vars_u32, 3, inlen, input, weight, output,
+            )?;
             let mut slot = inlen_triangle_count(inlen, 3);
             for i in 0..inlen {
                 for j in i..inlen {
