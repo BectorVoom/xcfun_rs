@@ -42,28 +42,47 @@ fn main() -> Result<()> {
         ),
     };
 
+    // Phase 3 plan 03-06 — `--grid {default, supplemental}` flag.
+    // `default` retains the Phase-2 10k-point seeded grid (seed 0x1234abcd).
+    // `supplemental` extends with the 400-point GGA-stratified supplement
+    // (seed 0xdeadbeef per PATTERNS.md J2).
+    let grid_name = parse_arg(&args, "--grid").unwrap_or("default");
+
     if backend != "cpu" {
         anyhow::bail!(
             "Phase 2 only supports --backend cpu; got {} (D-23)",
             backend
         );
     }
-    // Phase 3 plan 03-05 — Mode::Potential ignores the --order flag (its
+    // Phase 3 plan 03-06 — Mode::PartialDerivatives orders extended to 0..=4
+    // per MODE-01 D-16. Mode::Potential ignores the --order flag (its
     // `output_length` is fixed at 2 or 3 per D-15).
-    if mode == validation::driver::HarnessMode::PartialDerivatives && order > 2 {
-        anyhow::bail!("Phase 2 only supports order ≤ 2 (D-23); got {}", order);
+    if mode == validation::driver::HarnessMode::PartialDerivatives && order > 4 {
+        anyhow::bail!("Phase 3 supports order ≤ 4 (MODE-01 D-16); got {}", order);
     }
 
     let regex = regex::Regex::new(filter).context("invalid --filter regex")?;
     tracing::info!(
-        "Tier-2 harness: backend={} mode={} order={} filter={}",
+        "Tier-2 harness: backend={} mode={} order={} filter={} grid={}",
         backend,
         mode_str,
         order,
-        filter
+        filter,
+        grid_name
     );
 
-    let grid = validation::fixtures::generate_grid();
+    let grid = match grid_name {
+        "default" => validation::fixtures::generate_grid(),
+        "supplemental" => {
+            let mut g = validation::fixtures::generate_grid();
+            g.extend(validation::fixtures::gga_stratified_supplement());
+            g
+        }
+        other => anyhow::bail!(
+            "--grid must be 'default' or 'supplemental'; got {}",
+            other
+        ),
+    };
     tracing::info!("Generated grid: {} points", grid.len());
 
     let report = validation::driver::run_with_mode(&grid, order, &regex, mode)?;

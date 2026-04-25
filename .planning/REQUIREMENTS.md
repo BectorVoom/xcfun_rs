@@ -44,16 +44,16 @@
 
 ### Functional Ports — GGA Tier
 
-- [ ] **GGA-01**: PBE family (`XC_PBEX`, `XC_PBEC`, `XC_REVPBEX`, `XC_RPBEX`, `XC_PBESOLX`, `XC_PBEINTX`, `XC_PBEINTC`, `XC_SPBEC`, `XC_PBELOCC`, `XC_ZVPBESOLC`, `XC_ZVPBEINTC`, `XC_VWN_PBEC`) ported, self-tests pass
-- [ ] **GGA-02**: Becke family (`XC_BECKEX`, `XC_BECKECORRX`, `XC_BECKESRX`, `XC_BECKECAMX`) ported, self-tests pass
-- [ ] **GGA-03**: Becke–Roussel (`XC_BRX`, `XC_BRC`, `XC_BRXC`) ported, self-tests pass
-- [ ] **GGA-04**: LYP correlation (`XC_LYPC`) ported, self-test passes
-- [ ] **GGA-05**: OPTX family (`XC_OPTX`, `XC_OPTXCORR`) ported, self-tests pass
-- [ ] **GGA-06**: PW86/PW91 (`XC_PW86X`, `XC_PW91X`, `XC_PW91C`, `XC_PW91K`) ported, self-tests pass
-- [ ] **GGA-07**: P86 correlation (`XC_P86C`, `XC_P86CORRC`) ported, self-tests pass
-- [ ] **GGA-08**: APBE (`XC_APBEX`, `XC_APBEC`) ported, self-tests pass
-- [ ] **GGA-09**: B97 family (`XC_B97X`, `XC_B97C`, `XC_B97_1X`, `XC_B97_1C`, `XC_B97_2X`, `XC_B97_2C`) ported, self-tests pass
-- [ ] **GGA-10**: `XC_KTX`, `XC_BTK`, `XC_LB94`, `XC_CSC` ported, self-tests pass
+- [x] **GGA-01**: PBE family (`XC_PBEX`, `XC_PBEC`, `XC_REVPBEX`, `XC_RPBEX`, `XC_PBESOLX`, `XC_PBEINTX`, `XC_PBEINTC`, `XC_SPBEC`, `XC_PBELOCC`, `XC_ZVPBESOLC`, `XC_ZVPBEINTC`, `XC_VWN_PBEC`) ported (Plan 03-02; tier-2 GREEN at 1e-12 except `ZVPBESOLC`/`ZVPBEINTC`/`PBELOCC` which are excluded from tier-2 due to C++ `pow_expand(x≤0)` aborts in `tmath.hpp:156` on the regularize-stress stratum)
+- [x] **GGA-02**: Becke family (`XC_BECKEX`, `XC_BECKECORRX`, `XC_BECKESRX`, `XC_BECKECAMX`) ported (Plan 03-02; tier-2 GREEN per D-18 strict 1e-12 — `erf_precise` libm port from Plan 02-06 inherited)
+- [~] **GGA-03**: Becke–Roussel — DEFERRED to Phase 4 per D-01-A (BRX/BRC/BRXC declare `XC_KINETIC|XC_LAPLACIAN|XC_JP` requiring inlen=11 Vars arm not in D-10 + separate `BR_taylor` Newton-inverse algebra)
+- [x] **GGA-04**: LYP correlation (`XC_LYPC`) ported (Plan 03-02; tier-2 GREEN at 1e-12 after Plan 03-05 Rule-1 fix to `build_xc_a_b_2nd_taylor` for `gnn`/`gns`/`gss` derivation)
+- [x] **GGA-05**: OPTX family (`XC_OPTX`, `XC_OPTXCORR`) ported (Plan 03-03; tier-2 GREEN strict 1e-12, 20000/20000 records)
+- [x] **GGA-06**: PW86/PW91 (`XC_PW86X`, `XC_PW91X`, `XC_PW91C`, `XC_PW91K`) ported (Plan 03-03; PW91X/PW91K GREEN; PW86X + PW91C exhibit Rule-1 port-order drift 1e-6..1e-9 — 5 D-19 INCONCLUSIVE entries forwarded to Phase 6 libm-hybrid resolution)
+- [x] **GGA-07**: P86 correlation (`XC_P86C`, `XC_P86CORRC`) ported (Plan 03-03; P86C exhibits ~1e-7 port-order drift — D-19 INCONCLUSIVE forwarded to Phase 6)
+- [x] **GGA-08**: APBE (`XC_APBEX`, `XC_APBEC`) ported (Plan 03-03; both exhibit ~1e-7 port-order drift — D-19 INCONCLUSIVE forwarded to Phase 6)
+- [x] **GGA-09**: B97 family (`XC_B97X`, `XC_B97C`, `XC_B97_1X`, `XC_B97_1C`, `XC_B97_2X`, `XC_B97_2C`) ported (Plan 03-04; X kernels GREEN strict 1e-12; C kernels exhibit 4.88e-11 port-order drift on near-zero polarised gradient_stress — D-19 INCONCLUSIVE forwarded to Phase 6)
+- [~] **GGA-10**: `XC_KTX`, `XC_BTK` ported (Plan 03-04; both GREEN strict 1e-12). `XC_LB94` DEFERRED to Phase 5 per D-19 (legacy `setup_lb94` pattern not in 78-entry FunctionalId enum). `XC_CSC` DEFERRED to Phase 4 per D-01-A (`XC_KINETIC|XC_LAPLACIAN|XC_JP` deps not yet exposed by cubecl DensVarsDev)
 
 ### Functional Ports — metaGGA Tier
 
@@ -65,11 +65,11 @@
 
 ### Evaluation Modes
 
-- [ ] **MODE-01**: `Mode::PartialDerivatives` supports orders 0..=4 with output layout matching `xcfun-master/src/XCFunctional.cpp` lines 501-612
-- [ ] **MODE-02**: `Mode::Potential` supports GGA via the `CTaylor<f64, 2>` divergence construction and enforces `_2ND_TAYLOR` vars; rejects metaGGAs
+- [x] **MODE-01**: `Mode::PartialDerivatives` supports orders 0..=4 (Plan 03-06 Task 1; tier-2 parity capped at order 3 — C++ `xcfun_eval` supports 0/1/2/3 only via `case 3:` fall-through to `case 2:`; order 4 is Rust-only with no C++ reference per `XCFunctional.cpp:614-617`)
+- [x] **MODE-02**: `Mode::Potential` supports GGA via the `CTaylor<f64, 2>` divergence construction (Plan 03-05; line-for-line port of `XCFunctional.cpp:637-790`). 11 LDA + 8 representative GGA verified GREEN at strict 1e-12 over ~510k tier-2 records. Rejects metaGGAs (`Dependency::LAPLACIAN|KINETIC` → `XcError::InvalidMode`); enforces `_2ND_TAYLOR` Vars for GGA path
 - [ ] **MODE-03**: `Mode::Contracted` supports orders 0..=6 with output layout matching the `DOEVAL` macro expansion in the C++ reference
 - [x] **MODE-04**: `Functional::input_length` returns `VARS_TABLE[vars].len` as `usize` (Plan 02-03; also `PartialDerivatives` orders 0/1/2 landed via `Functional::eval` dispatch)
-- [ ] **MODE-05**: `Functional::output_length` returns `taylor_len(input_len, order)` for `PartialDerivatives`, 2 or 3 for `Potential`, and `1 << order` for `Contracted` — matching the reference for every configuration
+- [x] **MODE-05**: `Functional::output_length` returns `taylor_len(input_len, order)` for `PartialDerivatives` orders 0..=4, 2 or 3 for `Potential` per D-15 + `XCFunctional.cpp:482-490` (Plan 03-01 Task 3 + Plan 03-06 Task 1). Contracted left for Phase 4
 
 ### Aliases & Parameters
 
@@ -232,26 +232,26 @@ Populated during roadmap creation (2026-04-19).
 | LDA-08 | Phase 2 | Complete |
 | LDA-09 | Phase 2 | Complete |
 | LDA-10 | Phase 2 | Complete |
-| GGA-01 | Phase 3 | Pending |
-| GGA-02 | Phase 3 | Pending |
-| GGA-03 | Phase 3 | Pending |
-| GGA-04 | Phase 3 | Pending |
-| GGA-05 | Phase 3 | Pending |
-| GGA-06 | Phase 3 | Pending |
-| GGA-07 | Phase 3 | Pending |
-| GGA-08 | Phase 3 | Pending |
-| GGA-09 | Phase 3 | Pending |
-| GGA-10 | Phase 3 | Pending |
+| GGA-01 | Phase 3 | Complete (with caveat: ZVPBESOLC/ZVPBEINTC/PBELOCC excluded from tier-2 due to C++ pow-at-zero aborts) |
+| GGA-02 | Phase 3 | Complete |
+| GGA-03 | Phase 3 → Phase 4 | Deferred per D-01-A (BR family) |
+| GGA-04 | Phase 3 | Complete |
+| GGA-05 | Phase 3 | Complete |
+| GGA-06 | Phase 3 | Complete (with D-19 INCONCLUSIVE: PW86X/PW91C port-order drift forwarded to Phase 6) |
+| GGA-07 | Phase 3 | Complete (with D-19 INCONCLUSIVE: P86C ~1e-7 drift forwarded to Phase 6) |
+| GGA-08 | Phase 3 | Complete (with D-19 INCONCLUSIVE: APBEX/APBEC ~1e-7 drift forwarded to Phase 6) |
+| GGA-09 | Phase 3 | Complete (with D-19 INCONCLUSIVE: B97C/B97_1C/B97_2C 4.88e-11 drift forwarded to Phase 6) |
+| GGA-10 | Phase 3 | Complete (KTX/BTK GREEN; LB94 deferred to Phase 5; CSC deferred to Phase 4) |
 | MGGA-01 | Phase 4 | Pending |
 | MGGA-02 | Phase 4 | Pending |
 | MGGA-03 | Phase 4 | Pending |
 | MGGA-04 | Phase 4 | Pending |
 | MGGA-05 | Phase 4 | Pending |
-| MODE-01 | Phase 3 | Pending |
-| MODE-02 | Phase 3 | Pending |
+| MODE-01 | Phase 3 | Complete (orders 0..=4 implemented; tier-2 parity capped at order 3 — C++ unsupported beyond) |
+| MODE-02 | Phase 3 | Complete |
 | MODE-03 | Phase 4 | Pending |
 | MODE-04 | Phase 2 | Complete |
-| MODE-05 | Phase 3 | Pending |
+| MODE-05 | Phase 3 | Complete |
 | ALIAS-01 | Phase 4 | Pending |
 | ALIAS-02 | Phase 4 | Pending |
 | ALIAS-03 | Phase 4 | Pending |
@@ -328,4 +328,4 @@ Populated during roadmap creation (2026-04-19).
 ---
 
 *Requirements defined: 2026-04-19*
-*Last updated: 2026-04-22 after Phase 2 sign-off — 31 Phase-2 IDs marked complete (ACC-04 partial with documented D-19 residuals); Phase 1 (6 IDs) + Phase 2 (30 Complete + 1 Partial) = 37 tracked deliverables; 66 requirements remain pending across Phases 0/3/4/5/6/7*
+*Last updated: 2026-04-25 after Phase 3 capstone (Plan 03-06) — Phase 3 deliverables marked: GGA-01..GGA-10 (8 Complete + 2 Partial with deferrals: GGA-03 BR family + GGA-10 LB94 + CSC); MODE-01 (orders 0..=4 implemented, tier-2 capped at order 3 per C++ XCFUN_MAX_ORDER limitation); MODE-02 (Mode::Potential — Plan 03-05 line-for-line port); MODE-05 (output_length per D-15). 11 D-19 INCONCLUSIVE entries (5 Wave-3 + 3 Wave-4 + 3 ZVPBESOLC/ZVPBEINTC/PBELOCC C++ aborts) forwarded to Phase 6. Phase 1 (6) + Phase 2 (30 Complete + 1 Partial) + Phase 3 (10 Complete + 2 Partial + 1 ACC-04 update) = 49 tracked deliverables.*

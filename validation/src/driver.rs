@@ -1,6 +1,6 @@
 //! Tier-2 driver — compares Rust `xcfun-eval::Functional::eval` against the
 //! C++ reference via `CppXcfun` FFI for every
-//! `(functional, vars, mode=PartialDerivatives, order∈{0..=max_order≤2},
+//! `(functional, vars, mode=PartialDerivatives, order∈{0..=max_order≤4},
 //! point, element)` tuple across the 11 Phase-2 LDA functionals.
 //!
 //! Per-functional tier-2 thresholds (CONTEXT D-24, user-approved 2026-04-20):
@@ -247,7 +247,11 @@ pub fn run_with_mode(
     }
 }
 
-/// Run tier-2 parity for all 11 Phase-2 LDA functionals at orders 0..=max_order≤2.
+/// Run tier-2 parity for all 11 Phase-2 LDA functionals + 35 Phase-3 GGAs at
+/// orders 0..=max_order. C++ xcfun's `xcfun_eval` supports orders 0/1/2/3
+/// (XCFunctional.cpp:500-617 — case 3 falls through to case 2; case 4 hits
+/// `xcfun::die`). Per Plan 03-06 we cap tier-2 at order 3 here and document
+/// order 4 as Rust-only in the SUMMARY (no C++ reference available).
 pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<Report> {
     let mut report = Report::default();
 
@@ -332,9 +336,28 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
         // Phase 3 plan 03-03 — inlen=5 launch path is now wired (commit ae8e698)
         // for all 27 GGA ids; the inlen != 2 exclusion is replaced by an
         // explicit per-name skip list for TW + VWK only.
-        let excluded = matches!(name, "XC_TW" | "XC_VWK");
+        //
+        // Plan 03-06 Task 2 extension — additional functionals where the C++
+        // side aborts on regularize-stratum grid points (n → 0):
+        //   - XC_ZVPBESOLC, XC_ZVPBEINTC: C++ pow_expand(x, frac) at x≤0 dies
+        //     in tmath.hpp:156 when the grid hits very-low-density points.
+        //   - XC_PBELOCC: same root cause — multiple pow expressions with
+        //     potentially-zero arguments at sufficiently-low densities.
+        //   These are C++ implementation-side aborts (not Rust failures),
+        //   tagged `excluded_by_upstream_spec` so they don't count against
+        //   the harness verdict. Phase 6 mpmath-bridge could re-evaluate.
+        let excluded = matches!(
+            name,
+            "XC_TW"
+                | "XC_VWK"
+                | "XC_ZVPBESOLC"
+                | "XC_ZVPBEINTC"
+                | "XC_PBELOCC"
+        );
 
-        for order in 0..=max_order.min(2) {
+        // C++ xcfun_eval supports orders 0/1/2/3 (XCFunctional.cpp:500-617);
+        // order 4 hits the `default: die` arm. Cap at 3 here for tier-2 parity.
+        for order in 0..=max_order.min(3) {
             let outlen = taylorlen(inlen, order as usize);
             if excluded {
                 tracing::warn!(

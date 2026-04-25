@@ -158,6 +158,186 @@ fn generate_polarised(rng: &mut Xoshiro256PlusPlus, count: usize) -> Vec<GridPoi
         .collect()
 }
 
+/// Phase 3 plan 03-06 — supplemental 400-point GGA-stratified grid.
+///
+/// Per PATTERNS.md J2: 4 strata × 100 points = 400 points, fixed seed `0xdeadbeef`
+/// for cross-machine determinism. Strata exercise GGA-specific failure modes:
+///
+///   1. enhancement_sweep — Pade enhancement F(s²) regime (s ∈ [0, 5]).
+///   2. low_density_high_gradient — small ρ + large |∇ρ| (clamp + grad stress).
+///   3. high_polarisation — |zeta| ∈ [0.9, 0.999] cancellation regime.
+///   4. rs_sweep — wide r_s coverage [1e-2, 1e6] for correlation kernels.
+///
+/// The supplemental grid is intended to be APPENDED to the standard 10k grid
+/// via the validation CLI's `--grid supplemental` flag (Plan 03-06 Task 2).
+pub const SUPPLEMENT_SEED: u64 = 0xdeadbeef;
+pub const SUPPLEMENT_TOTAL: usize = 400;
+
+/// 400-point supplemental GGA-stratified grid generator (PATTERNS.md J2).
+pub fn gga_stratified_supplement() -> Vec<GridPoint> {
+    let mut rng = Xoshiro256PlusPlus::seed_from_u64(SUPPLEMENT_SEED);
+    let mut out = Vec::with_capacity(SUPPLEMENT_TOTAL);
+    out.extend(enhancement_sweep(&mut rng, 100));
+    out.extend(low_density_high_gradient(&mut rng, 100));
+    out.extend(high_polarisation(&mut rng, 100));
+    out.extend(rs_sweep(&mut rng, 100));
+    out
+}
+
+/// Stratum S1 — 100-point enhancement-factor sweep.
+///
+/// Sample `n_total ∈ [0.1, 10.0]` (log-uniform); `zeta ∈ [-0.95, 0.95]`.
+/// Synthesise gradients such that `s = |∇ρ| / (2·(3π²)^(1/3)·ρ^(4/3))` lies
+/// in `[0, 5]` — exercises the F(s²) Padé / exp branches of PBE/RPBE/PBESOL.
+fn enhancement_sweep(rng: &mut Xoshiro256PlusPlus, n: usize) -> Vec<GridPoint> {
+    // C_S = 2 · (3π²)^(1/3) ≈ 6.18733... — the s-normalisation prefactor.
+    let c_s = 2.0_f64 * (3.0_f64 * std::f64::consts::PI.powi(2)).powf(1.0 / 3.0);
+    (0..n)
+        .map(|_| {
+            let u = next_uniform_01(rng);
+            let n_total = 0.1 * 10.0_f64.powf(2.0 * u); // log-uniform [0.1, 10]
+            let z = (next_uniform_01(rng) * 2.0 - 1.0) * 0.95;
+            let s = z * n_total;
+            let s_target = 5.0 * next_uniform_01(rng); // s ∈ [0, 5]
+            // |∇ρ|² so that s_target = |∇ρ| / (c_s · ρ^(4/3))
+            let grad_mag = s_target * c_s * n_total.powf(4.0 / 3.0);
+            let grad_sq = grad_mag * grad_mag;
+            // Distribute between α and β proportional to |a|/|b|.
+            let a = (n_total + s).max(1e-30) * 0.5;
+            let b = (n_total - s).max(1e-30) * 0.5;
+            let split = a / (a + b);
+            let gaa = grad_sq * split * split;
+            let gbb = grad_sq * (1.0 - split) * (1.0 - split);
+            let gab = (gaa * gbb).sqrt() * (next_uniform_01(rng) * 2.0 - 1.0);
+            let gnn = gaa + 2.0 * gab + gbb;
+            let gss = gaa - 2.0 * gab + gbb;
+            let gns = gaa - gbb;
+            GridPoint {
+                n: n_total,
+                s,
+                gnn,
+                gns,
+                gss,
+                gaa,
+                gab,
+                gbb,
+            }
+        })
+        .collect()
+}
+
+/// Stratum S2 — 100-point low-density / high-gradient regime.
+///
+/// `α/β ∈ [1e-10, 1e-4]` (log-uniform); `|∇ρ|²` log-uniform on `[1, 1e6]`.
+/// Exercises the regularize-clamp boundary + gradient-large term cancellation
+/// in correlation kernels (PBEC, LYPC, PW91C).
+fn low_density_high_gradient(rng: &mut Xoshiro256PlusPlus, n: usize) -> Vec<GridPoint> {
+    (0..n)
+        .map(|_| {
+            let u_a = next_uniform_01(rng);
+            let u_b = next_uniform_01(rng);
+            let a = 1e-10 * 10.0_f64.powf(6.0 * u_a); // [1e-10, 1e-4]
+            let b = 1e-10 * 10.0_f64.powf(6.0 * u_b);
+            let n_total = a + b;
+            let s = a - b;
+            let v = next_uniform_01(rng);
+            let grad_sq = 10.0_f64.powf(6.0 * v); // [1, 1e6]
+            let theta = next_uniform_01(rng) * std::f64::consts::PI;
+            let gaa = grad_sq * theta.cos().powi(2);
+            let gbb = grad_sq * theta.sin().powi(2);
+            let gab = (gaa * gbb).sqrt() * (next_uniform_01(rng) * 2.0 - 1.0);
+            let gnn = gaa + 2.0 * gab + gbb;
+            let gss = gaa - 2.0 * gab + gbb;
+            let gns = gaa - gbb;
+            GridPoint {
+                n: n_total,
+                s,
+                gnn,
+                gns,
+                gss,
+                gaa,
+                gab,
+                gbb,
+            }
+        })
+        .collect()
+}
+
+/// Stratum S3 — 100-point high-polarisation regime (|zeta| ∈ [0.9, 0.999]).
+///
+/// Total density `[0.1, 10]`; `|∇ρ|² ∈ [0.01, 1e4]`. Exercises the
+/// `(1 - zeta^4)` + `pw92eps_polarized` FERRO-branch cancellation in B97
+/// correlation kernels (the Wave-4 D-19 forward stratum).
+fn high_polarisation(rng: &mut Xoshiro256PlusPlus, n: usize) -> Vec<GridPoint> {
+    (0..n)
+        .map(|_| {
+            let u = next_uniform_01(rng);
+            let n_total = 0.1 * 10.0_f64.powf(2.0 * u);
+            let z_abs = 0.9 + 0.099 * next_uniform_01(rng); // [0.9, 0.999]
+            let z_sign = if next_uniform_01(rng) < 0.5 { -1.0 } else { 1.0 };
+            let s = z_sign * z_abs * n_total;
+            let v = next_uniform_01(rng);
+            let grad_sq = 0.01 * 10.0_f64.powf(6.0 * v); // [0.01, 1e4]
+            let theta = next_uniform_01(rng) * std::f64::consts::PI;
+            let gaa = grad_sq * theta.cos().powi(2);
+            let gbb = grad_sq * theta.sin().powi(2);
+            let gab = (gaa * gbb).sqrt() * (next_uniform_01(rng) * 2.0 - 1.0);
+            let gnn = gaa + 2.0 * gab + gbb;
+            let gss = gaa - 2.0 * gab + gbb;
+            let gns = gaa - gbb;
+            GridPoint {
+                n: n_total,
+                s,
+                gnn,
+                gns,
+                gss,
+                gaa,
+                gab,
+                gbb,
+            }
+        })
+        .collect()
+}
+
+/// Stratum S4 — 100-point r_s sweep (wide Wigner-Seitz radius range).
+///
+/// `r_s ∈ [1e-2, 1e6]` (log-uniform), `zeta ∈ [-0.95, 0.95]`,
+/// `|∇ρ|² ∈ [0, 100]`. Exercises the LSDA baseline (`pw92eps`, `vwn5_eps`,
+/// `pz81_eps`) consumed by every GGA correlation kernel.
+///
+/// `n_total = 3 / (4π · r_s³)` from r_s definition.
+fn rs_sweep(rng: &mut Xoshiro256PlusPlus, n: usize) -> Vec<GridPoint> {
+    (0..n)
+        .map(|_| {
+            let u = next_uniform_01(rng);
+            let r_s = 1e-2 * 10.0_f64.powf(8.0 * u); // [1e-2, 1e6]
+            let n_total =
+                3.0 / (4.0 * std::f64::consts::PI * r_s.powi(3));
+            let z = (next_uniform_01(rng) * 2.0 - 1.0) * 0.95;
+            let s = z * n_total;
+            let v = next_uniform_01(rng);
+            let grad_sq = 100.0 * v; // [0, 100], uniform
+            let theta = next_uniform_01(rng) * std::f64::consts::PI;
+            let gaa = grad_sq * theta.cos().powi(2);
+            let gbb = grad_sq * theta.sin().powi(2);
+            let gab = (gaa * gbb).sqrt() * (next_uniform_01(rng) * 2.0 - 1.0);
+            let gnn = gaa + 2.0 * gab + gbb;
+            let gss = gaa - 2.0 * gab + gbb;
+            let gns = gaa - gbb;
+            GridPoint {
+                n: n_total,
+                s,
+                gnn,
+                gns,
+                gss,
+                gaa,
+                gab,
+                gbb,
+            }
+        })
+        .collect()
+}
+
 /// Stratum 4 (1000 points): gradient-stress.
 /// `n` log-uniform on `[1e-3, 10.0]`; `|∇ρ|²` log-uniform on `[1, 1e6]`.
 /// Phase 2 LDAs ignore gradient fields; TW + VWK consume `(gaa, gab, gbb)`.
@@ -275,5 +455,47 @@ mod tests {
         assert!((b - 0.75).abs() < 1e-15);
         assert!((a + b - gp.n).abs() < 1e-15);
         assert!((a - b - gp.s).abs() < 1e-15);
+    }
+
+    #[test]
+    fn supplement_size_is_400() {
+        let g = gga_stratified_supplement();
+        assert_eq!(g.len(), SUPPLEMENT_TOTAL);
+    }
+
+    #[test]
+    fn supplement_is_deterministic() {
+        let g1 = gga_stratified_supplement();
+        let g2 = gga_stratified_supplement();
+        assert_eq!(g1.len(), g2.len());
+        for (a, b) in g1.iter().zip(g2.iter()) {
+            assert_eq!(a.n.to_bits(), b.n.to_bits(), "supplement n bit-identity");
+            assert_eq!(a.s.to_bits(), b.s.to_bits(), "supplement s bit-identity");
+            assert_eq!(a.gaa.to_bits(), b.gaa.to_bits(), "supplement gaa bit-identity");
+            assert_eq!(a.gbb.to_bits(), b.gbb.to_bits(), "supplement gbb bit-identity");
+        }
+    }
+
+    #[test]
+    fn supplement_strata_split_evenly() {
+        // 4 × 100 strata.
+        let g = gga_stratified_supplement();
+        // S1 enhancement_sweep — n_total ∈ [0.1, 10].
+        for gp in g.iter().take(100) {
+            assert!(
+                gp.n >= 0.1 - 1e-12 && gp.n <= 10.0 + 1e-12,
+                "S1 n={} out of range",
+                gp.n
+            );
+        }
+        // S3 high_polarisation — |zeta| ∈ [0.9, 0.999].
+        for gp in g.iter().skip(200).take(100) {
+            let zeta_abs = (gp.s / gp.n).abs();
+            assert!(
+                zeta_abs >= 0.9 - 1e-12 && zeta_abs <= 0.999 + 1e-12,
+                "S3 |zeta|={} out of range",
+                zeta_abs
+            );
+        }
     }
 }
