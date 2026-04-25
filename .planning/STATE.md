@@ -2,30 +2,30 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-04-25T08:08:14.820Z"
+status: phase-3-complete
+last_updated: "2026-04-25T22:30:00.000Z"
 progress:
   total_phases: 8
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 21
-  completed_plans: 20
-  percent: 95
+  completed_plans: 21
+  percent: 100
 ---
 
 # Project State: xcfun_rs
 
-**Last updated:** 2026-04-25 (after Wave 4 finalisation via `/gsd:execute-phase 3` — 03-04-SUMMARY.md committed; 5/8 Wave-4 functionals GREEN strict 1e-12, 3/8 B97 correlation kernels PARTIAL with 4.88e-11 max rel_err forwarded to Wave 6 sign-off as new D-19 INCONCLUSIVE; I2 capstone wall-clock 4.10 s — no run_launch split applied; user paused execution per `--wave 4` choice)
+**Last updated:** 2026-04-25 (Phase 3 COMPLETE via `/gsd:execute-phase 3` — Waves 5 + 6 shipped; Mode::Potential GREEN strict 1e-12 at potential_parity_100 + 510k record sweep; orders 3+4 + tier-2 capstone at order 2 = 9.86M records; 13 D-19 INCONCLUSIVE entries forwarded to Phase 6 per D-18; Phase-3 verification status human_needed with 5/5 must-haves verified + 3 follow-up items in 03-HUMAN-UAT.md; user approved sign-off via /gsd:execute-phase checkpoint)
 
 ## Project Reference
 
 **Core Value:** Every functional must produce numerical output matching C++ xcfun within relative error <= 1.0e-12, across all evaluation modes and derivative orders.
 
-**Current focus:** Phase 03 — gga-tier-mode-potential
+**Current focus:** Phase 04 — metaGGA Tier + Mode::Contracted + Aliases (next)
 
 ## Current Position
 
-Phase: 03 (gga-tier-mode-potential) — EXECUTING
-Plan: 1 of 7
+Phase: 03 (gga-tier-mode-potential) — **COMPLETE (2026-04-25)** — verification status `human_needed` (5/5 must-haves, 3 follow-up items in 03-HUMAN-UAT.md), user-approved sign-off
+Plan: 7 of 7 complete
 Plans: 7 (03-00 ✓, 03-01 ✓, 03-02 ✓, 03-03 ✓, 03-04 ✓ partial, 03-05 Mode::Potential, 03-06 orders 3..=4 + ACC-04 re-run + sign-off)
 Scope: 36 GGA functional IDs (BRX/BRC/BRXC + CSC deferred to Phase 4 per D-01-A; LB94 deferred per D-19)
 Wave 0 (03-00) COMPLETE: `ctaylor_expm1` (D-05) + `ctaylor_sqrtx_asinh_sqrtx` (D-06) + 6500 fixtures GREEN at 1e-12.
@@ -33,12 +33,14 @@ Wave 1 (03-01) COMPLETE: `gga/` module + 6 shared helpers + 7 DensVarsDev Vars a
 Wave 2 (03-02) COMPLETE: 17 GGA kernels (PBE×12 + Becke×4 + LYP), 5 skeleton→FULL conversions, `Functional::parameters: [f64;4]`, dispatch 11→28, c_stubs 67→50.
 Wave 3 (03-03) COMPLETE: 10 GGA kernels (OPTX×2 + PW86/91×4 + P86×2 + APBE×2), W3+W7 FULL helpers, W8 pz81_eps pub, dispatch 28→38, c_stubs 50→40; Wave-2 INCONCLUSIVE ABSORBED (run_launch + launch_and_accumulate extended for inlen=5); OPTX GREEN at strict 1e-12. **NEW D-19 INCONCLUSIVE**: 5 functionals (PW86X, APBEX, APBEC, P86C, PW91C) show 1e-6 to 1e-9 port-order drift from C++ `pow` expression vs Rust `ctaylor_pow` chain — constants verified to 16 digits; forwarded to Wave 6 sign-off for Rule-1 fix decision.
 Wave 4 (03-04) COMPLETE WITH D-19 FORWARDS: 8 GGA kernels (B97 ×6 + KTX + BTK), W3 b97_poly FULL bodies (G6-safe explicit u² preserved), `pw92eps_polarized` LSDA helper (FERRO branch), dispatch 38→46 (8 new comptime arms), c_stubs 40→32, validation/build.rs +5 entries. **I2 CAPSTONE: 4.10 s** — clean `cargo build -p xcfun-eval --release` ≤ 45 s budget, NO per-Mode split applied per unconditional rule. **Tier-2 PARTIAL**: 5/8 GREEN strict 1e-12 (B97X, B97_1X, B97_2X, KTX, BTK); 3/8 (B97C 11 fails, B97_1C 11, B97_2C 41) max rel_err 4.88e-11 on near-zero polarised gradient_stress (point_idx 8246 stratum: a=1.6e-8, b=1.2e-3, gradients zero). Failures ~3 orders of magnitude TIGHTER than Wave 3 D-19 (4.88e-11 vs 1e-6..1e-9). Likely root-cause: `pw92eps_polarized` FERRO-branch composition order. Forwarded as 3 new D-19 INCONCLUSIVE entries to Wave 6 sign-off (mirroring Wave 3 protocol). 63 / 2,240,000 record failure rate = 2.81e-5.
+Wave 5 (03-05) COMPLETE: Mode::Potential routing per D-13 line-for-line port of XCFunctional.cpp:637-790. `launch_potential` (LDA N=1 single-pass + GGA N=2 two-pass divergence), `potential_lda_kernel` + `potential_gga_kernel` `#[cube] fn`s; 80 new (id, vars=28, n) match arms in run_launch covering all 38 supported ids at A_B_2ND_TAYLOR. **B5 path (a)**: new `xtask gen-potential-fixtures` binary drives cc-compiled C++ harness over deterministic 100-record grid (5 GGAs × 20 pts, seed 0xf00dbabe) → `potential_reference_100.json`. **potential_parity_100 GREEN strict 1e-12 100/100**. Tier-2 sweep 510k records GREEN across 11 LDAs (8 strict + 3 LDAERF at 1e-7 D-24) + 8 GGAs (incl. B97C — confirms Wave-4 D-19 forwards are Mode::PartialDerivatives-only). **Bonus Rule-1 fix** to `build_xc_a_b_2nd_taylor`: added missing gnn/gns/gss derivations (unblocks LYPC). MODE-02 + MODE-05 satisfied. Goal-complete for Mode::Potential.
+Wave 6 (03-06) COMPLETE WITH PHASE-3 SIGN-OFF: orders 3+4 + W9 pack helpers + 88 new run_launch arms (9 LDAs + 35 GGAs at n∈{3,4}); supplemental 400-pt GGA-stratified grid (seed 0xdeadbeef); C++ fall-through fix (recursive accumulation N→N-1 before tier-N append); Mode::PartialDerivatives raised from > 2 to > 4 per MODE-01 D-16. **Tier-2 capstone at order 2: 9.86M records, 516 MB report.jsonl committed**. ACC-04 re-run on Phase-2 LDA residuals: orders 0/1 GREEN, order 2 unchanged from Phase-2 baseline → forward UNCHANGED to Phase 6 per I3. C++-abort exclusions added to skip list: ZVPBESOLC, ZVPBEINTC, PBELOCC. **Collective D-19 INCONCLUSIVE sign-off — 13 entries forwarded to Phase 6**: 5 Wave-3 (PW86X/APBEX/APBEC/P86C/PW91C) + 3 Wave-4 (B97C/B97_1C/B97_2C) + 5 NEW from full-matrix (SPBEC/PBEINTC/PW91K/P86CORRC/BECKESRX). Order-3 full-matrix run interrupted mid-execution (usage-limit) — forwarded as Phase-6 prereq with structural cover via W9 unit tests + C++ fall-through fix + lib unit tests (17/17 GREEN). REQUIREMENTS.md GGA-01..10 + MODE-01/02/05 marked Complete with per-functional caveats. **All 36 of 40 GGA functional IDs ship; BR×3 + CSC → Phase 4, LB94 → Phase 5.**
 
 - **Milestone:** Initial v1 build-out
-- **Phase:** 02 (core-foundations-lda-tier-parity-harness) — **COMPLETE (2026-04-22)**
-- **Plan:** 02-07 complete. All 7 Phase-2 plans shipped (Wave 0 → Wave 4); 30 of 31 Phase-2 requirement IDs fully satisfied + 1 Partial (ACC-04) with documented D-19 INCONCLUSIVE residuals forwarded to Phase 3 (VWN/PW/PZ near-clamp precision) and Phase 6 (LDAERF bracket cancellation; Rust = mpmath truth, C++ has own 6.7% cancellation at LDAERFX failing point).
-- **Status:** Executing Phase 03
-- **Progress:** [██▌       ] 25% (14/14 plans across 2 phases complete; 6/8 phases remaining)
+- **Phase:** 03 (gga-tier-mode-potential) — **COMPLETE (2026-04-25)**
+- **Plan:** 03-06 complete. All 7 Phase-3 plans shipped (Wave 0 → Wave 6); 13 of 13 Phase-3 requirement IDs satisfied (10 GGA + 3 MODE) with 13 D-19 INCONCLUSIVE entries explicitly forwarded to Phase 6 + 3 follow-up items in 03-HUMAN-UAT.md (order-3 capstone re-run, BECKESRX D-18 forensics, full 36-GGA Mode::Potential sweep).
+- **Status:** Phase 3 complete; ready for Phase 4 (metaGGA Tier + Mode::Contracted + Aliases)
+- **Progress:** [███▊      ] 37.5% (21/21 plans across 3 phases complete; 5/8 phases remaining)
 
 ## Performance Metrics
 

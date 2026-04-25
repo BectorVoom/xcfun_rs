@@ -22,7 +22,7 @@ The dependency DAG (per `ARCHITECTURE.md` section 7 and `SUMMARY.md` "Phase Orde
 - [ ] **Phase 0: Workspace Scaffolding & CI Foundations** - Workspace, crate skeletons, CI gates blocking P1/P8/P12/P13 before any functional code exists
 - [x] **Phase 1: Taylor Algebra & AD Primitives (`xcfun-ad`)** - `CTaylor<T, N>`, `Num` trait, every `*_expand` function, bit-equivalence with C++ on orders 0..=3
 - [x] **Phase 2: Core Foundations + LDA Tier + Parity Harness** - Complete (2026-04-22)[^acc04] — `xcfun-core` type surface + registry (11 LDAs populated, 67 stubs), `xcfun-eval` cubecl launcher with 11 LDA `#[cube] fn` kernels, `DensVarsDev<F>` + `build_densvars` + `regularize`, tier-1 self-tests GREEN for 7/7 LDAs with upstream test_in, tier-2 validation harness GREEN at orders 0/1 for 9/9 non-excluded LDAs (8 strict 1e-12 + 3 LDAERF 1e-7 per D-24)
-- [ ] **Phase 3: GGA Tier + `Mode::Potential`** - 45 GGA functionals + `Mode::Potential` via `CTaylor<f64, 2>` divergence construction
+- [x] **Phase 3: GGA Tier + `Mode::Potential`** - Complete (2026-04-25) — 36 of 40 GGA functionals shipped (BR×3 + CSC deferred to Phase 4 per D-01-A; LB94 deferred to Phase 5 per D-19); `Mode::Potential` via `CTaylor<f64, 2>` divergence construction GREEN strict 1e-12 (potential_parity_100 + 510k-record sweep); `Mode::PartialDerivatives` orders 0..=4 (capstone at order 2, 9.86M records); 13 D-19 INCONCLUSIVE entries forwarded to Phase 6 per D-18; 3 follow-up items in 03-HUMAN-UAT.md
 - [ ] **Phase 4: metaGGA Tier + `Mode::Contracted` + Aliases** - 15 metaGGA functionals + orders 0..=6 for `Contracted` + 46 aliases with multiplicative weight composition
 - [ ] **Phase 5: Rust Facade (`xcfun-rs`) + C ABI (`xcfun-capi`)** - Thin facade re-exports + full C ABI with cbindgen-generated `xcfun.h` byte-matched to reference
 - [ ] **Phase 6: Kernels (`xcfun-kernels`) + CPU Batch + CUDA + Wgpu Backends** - Single `#[cube]` source per functional; `Batch<CpuRuntime>` at 1e-13; CUDA at 1e-13; Wgpu at 1e-9 with `erf` fallback
@@ -183,7 +183,7 @@ Pre-pivot plans (VOID — reverted by Wave 0 of the new plan, retained in git hi
 | 0. Workspace Scaffolding & CI Foundations | 0/0 | Not started | - |
 | 1. Taylor Algebra & AD Primitives | 7/7 | Complete | 2026-04-19 |
 | 2. Core Foundations + LDA Tier + Parity Harness | 7/7 | Complete (with caveats) | 2026-04-22[^acc04] |
-| 3. GGA Tier + `Mode::Potential` | 5/7 | In progress (Wave 4 PARTIAL — 3 D-19 forwarded) | - |
+| 3. GGA Tier + `Mode::Potential` | 7/7 | Complete (with caveats — 13 D-19 forwarded to Phase 6; 3 HUMAN-UAT items pending) | 2026-04-25 |
 | 4. metaGGA Tier + `Mode::Contracted` + Aliases | 0/0 | Not started | - |
 | 5. Rust Facade + C ABI | 0/0 | Not started | - |
 | 6. Kernels + CPU Batch + CUDA + Wgpu Backends | 0/0 | Not started | - |
