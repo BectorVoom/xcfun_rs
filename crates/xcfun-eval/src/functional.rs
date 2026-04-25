@@ -103,12 +103,18 @@ impl Functional {
     /// Output length must match `taylorlen(input_length, order)` for
     /// `Mode::PartialDerivatives`. Returns `XcError` on length mismatch,
     /// unsupported mode, unsupported order, or unsupported vars/functional.
+    ///
+    /// # Phase 3 plan 03-05 — Mode::Potential routing (D-13)
+    ///
+    /// `Mode::Potential` is now routed to `launch_potential` (line-for-line
+    /// port of `XCFunctional.cpp:637-790`). `Mode::Contracted` is still
+    /// rejected with `XcError::InvalidMode` (Phase 4 scope).
     pub fn eval(&self, input: &[f64], output: &mut [f64]) -> Result<(), XcError> {
-        // 1. Validate mode (Phase 2 = PartialDerivatives only).
+        // 1. Validate mode.  Phase 3 plan 03-05 wires Mode::Potential.
         match self.mode {
             Mode::Unset => return Err(XcError::NotConfigured),
-            Mode::PartialDerivatives => {}
-            Mode::Potential | Mode::Contracted => {
+            Mode::PartialDerivatives | Mode::Potential => {}
+            Mode::Contracted => {
                 return Err(XcError::InvalidMode {
                     mode: self.mode,
                     depends: xcfun_core::Dependency::DENSITY,
@@ -123,16 +129,22 @@ impl Functional {
                 got: input.len(),
             });
         }
-        // 3. Validate order (Phase 2 = 0..=2).
-        if self.order > 2 {
+        // 3. Validate order (Phase 2 = 0..=2; Mode::Potential uses order 0
+        //    by convention — the LDA loop runs at N=1, GGA at N=2; the host
+        //    `order` field is informational).
+        if self.mode == Mode::PartialDerivatives && self.order > 2 {
             return Err(XcError::InvalidOrder {
                 order: self.order,
                 mode: self.mode,
                 n_vars: expected_inlen,
             });
         }
-        // 4. Validate output length per MODE-04 + RESEARCH §"Mode::PartialDerivatives Output Layout".
-        let expected_outlen = taylorlen(expected_inlen, self.order as usize);
+        // 4. Validate output length per MODE-04 + RESEARCH.
+        let expected_outlen = match self.mode {
+            Mode::PartialDerivatives => taylorlen(expected_inlen, self.order as usize),
+            Mode::Potential => Self::output_length(self.vars, self.mode, self.order)?,
+            _ => unreachable!(),
+        };
         if output.len() != expected_outlen {
             return Err(XcError::OutputLengthMismatch {
                 expected: expected_outlen,
@@ -145,26 +157,36 @@ impl Functional {
                 return Err(XcError::NotConfigured);
             }
         }
+        // 5b. Mode::Potential — defense-in-depth host gate (eval_setup re-run).
+        if self.mode == Mode::Potential {
+            self.eval_setup(self.vars, self.mode, self.order)?;
+        }
 
         output.fill(0.0);
 
-        // 6. Per-(FunctionalId, weight) launch loop — accumulate weighted
-        //    contributions into `output`. For Phase 2 (inlen = 2 for all LDAs
-        //    that use XC_A_B; LDAERFC_JT has no upstream test_in), we support
-        //    inlen = 2 at full fidelity.
+        // 6. Per-(FunctionalId, weight) launch loop.
         #[cfg(feature = "testing")]
         {
-            for &(id, weight) in self.weights {
-                let id_u32 = id as u32;
-                launch_and_accumulate(
-                    id_u32,
-                    self.vars as u32,
-                    self.order,
-                    expected_inlen,
-                    input,
-                    weight,
-                    output,
-                )?;
+            match self.mode {
+                Mode::PartialDerivatives => {
+                    for &(id, weight) in self.weights {
+                        let id_u32 = id as u32;
+                        launch_and_accumulate(
+                            id_u32,
+                            self.vars as u32,
+                            self.order,
+                            expected_inlen,
+                            input,
+                            weight,
+                            output,
+                        )?;
+                    }
+                }
+                Mode::Potential => {
+                    // D-13: line-for-line XCFunctional.cpp:637-790.
+                    self.launch_potential(input, output)?;
+                }
+                _ => unreachable!(),
             }
         }
         #[cfg(not(feature = "testing"))]
@@ -289,6 +311,329 @@ impl Functional {
                 Ok(())
             }
         }
+    }
+
+    // -----------------------------------------------------------------------
+    //  Mode::Potential host-side launchers (Phase 3 plan 03-05).
+    //  Line-for-line port of `xcfun-master/src/XCFunctional.cpp:637-790`
+    //  per D-13.
+    //
+    //  Two-pass structure (XCFunctional.cpp:671 — no `else` between the LDA
+    //  block and the `if (fun->depends & XC_GRADIENT)` GGA block):
+    //    Pass 1 (always)   — `launch_potential_lda` populates
+    //                         `out[0] = energy`,
+    //                         `out[j+1] = ∂E/∂ρ_{α/β}` (LDA-direct term).
+    //    Pass 2 (GGA only) — `launch_potential_gga` subtracts
+    //                         `Σ_dir Σ_id w_id · out[VAR0|VAR1]`
+    //                         (= ∇·(∂E/∂g)) IN PLACE from `out[j+1]`.
+    // -----------------------------------------------------------------------
+
+    /// Mode::Potential entry point.  Routes the active functional set to the
+    /// LDA + (optional) GGA divergence loops per `XCFunctional.cpp:637-790`.
+    /// Defense-in-depth: rejects metaGGA-class deps even though `eval_setup`
+    /// already gated them.
+    #[cfg(feature = "testing")]
+    pub fn launch_potential(&self, input: &[f64], out: &mut [f64]) -> Result<(), XcError> {
+        let deps = self.dependencies();
+
+        if deps.contains(Dependency::LAPLACIAN) || deps.contains(Dependency::KINETIC) {
+            return Err(XcError::InvalidMode {
+                mode: self.mode,
+                depends: deps,
+            });
+        }
+
+        // Pass 1 (XCFunctional.cpp:653-670): ALWAYS run the LDA N=1 loop
+        // first.  Populates out[0] = energy, out[j+1] = ∂E/∂ρ (LDA-direct).
+        self.launch_potential_lda(input, out)?;
+
+        // Pass 2 (XCFunctional.cpp:671-791): if GRADIENT, subtract divergence
+        // IN PLACE from out[j+1] (XCFunctional.cpp:720 / :785-787).
+        if deps.contains(Dependency::GRADIENT) {
+            self.launch_potential_gga(input, out)?;
+        }
+
+        Ok(())
+    }
+
+    /// Stub for non-testing builds (mirrors the `eval` non-testing guard).
+    #[cfg(not(feature = "testing"))]
+    pub fn launch_potential(&self, _input: &[f64], _out: &mut [f64]) -> Result<(), XcError> {
+        Err(XcError::Runtime)
+    }
+
+    /// Port of `XCFunctional.cpp:637-670` — LDA path at N=1.  ALWAYS runs
+    /// (even for GGA functionals) to populate the LDA-direct potential term
+    /// before the GGA block subtracts divergence.
+    ///
+    /// The C++ block:
+    /// ```cpp
+    /// int inlen = xcint_vars[fun->vars].len;
+    /// int npot, inpos = 0;
+    /// if (inlen == 1 || inlen == 10) npot = 1;
+    /// else { npot = 2; if (inlen == 2) inpos = 1; else if (inlen == 20) inpos = 10; }
+    /// typedef ctaylor<ireal_t, 1> ttype;
+    /// ttype in[XC_MAX_INVARS], out = 0;
+    /// for (int i = 0; i < inlen; i++) in[i] = input[i];
+    /// for (int j = 0; j < npot; j++) {
+    ///   in[j*inpos].set(VAR0, 1);
+    ///   densvars<ttype> d(fun, in);
+    ///   out = 0;
+    ///   for (int i = 0; i < fun->nr_active_functionals; i++)
+    ///     out += fun->settings[...] * fun->active_functionals[i]->fp1(d);
+    ///   in[j*inpos] = input[j*inpos];        // reset seed
+    ///   output[j+1] = out.get(VAR0);
+    /// }
+    /// output[0] = out.get(CNST);
+    /// ```
+    #[cfg(feature = "testing")]
+    fn launch_potential_lda(&self, input: &[f64], out: &mut [f64]) -> Result<(), XcError> {
+        // Mirrors XCFunctional.cpp:639-652.
+        let inlen = Self::input_length(self.vars);
+        let (npot, inpos) = match inlen {
+            1 | 10 => (1_usize, 0_usize), // nspin = 1
+            2 => (2, 1),
+            20 => (2, 10),
+            _ => {
+                return Err(XcError::InvalidVars {
+                    vars: self.vars,
+                    required: Dependency::DENSITY,
+                });
+            }
+        };
+
+        // CTaylor<f64, 1> size = 1 << 1 = 2 coefficients per slot (CNST, VAR0).
+        const SIZE_N1: usize = 2;
+        let mut ct_in = vec![0.0_f64; inlen * SIZE_N1];
+        let mut energy_accum = 0.0_f64;
+
+        for j in 0..npot {
+            // Re-pack the flat ct_in: every slot's CNST = input[l]; VAR0 = 0.
+            for l in 0..inlen {
+                ct_in[l * SIZE_N1] = input[l];
+                ct_in[l * SIZE_N1 + 1] = 0.0;
+            }
+            // Seed VAR0 = 1 on density slot j*inpos (XCFunctional.cpp:659).
+            ct_in[(j * inpos) * SIZE_N1 + 1] = 1.0;
+
+            // Launch potential_lda_kernel for each active (id, weight) and
+            // accumulate weighted out[CNST] (energy) + out[VAR0] (potential).
+            let mut weighted_energy = 0.0_f64;
+            let mut weighted_pot = 0.0_f64;
+            let mut kernel_out = vec![0.0_f64; SIZE_N1];
+            for &(id, w) in self.weights {
+                self.launch_potential_kernel_n1(id as u32, &ct_in, &mut kernel_out)?;
+                weighted_energy += w * kernel_out[0];
+                weighted_pot += w * kernel_out[1];
+            }
+
+            // Output slot j+1 receives the LDA-direct potential
+            // (XCFunctional.cpp:666). For GGA functionals,
+            // launch_potential_gga subtracts divergence from this slot.
+            out[j + 1] = weighted_pot;
+            // Energy is the same across j for LDA (XCFunctional.cpp:669
+            // takes it from the LAST out.get(CNST) — same value).
+            energy_accum = weighted_energy;
+        }
+
+        out[0] = energy_accum;
+        Ok(())
+    }
+
+    /// Port of `XCFunctional.cpp:671-791` — GGA path at N=2.  Subtracts the
+    /// divergence `∇·(∂E/∂g)` IN PLACE from the LDA-direct potential term
+    /// already written to `out[j+1]` by `launch_potential_lda`.
+    ///
+    /// XCFunctional.cpp:671 structural invariant: this fn does NOT
+    /// re-compute the LDA-direct term — it only subtracts the divergence.
+    #[cfg(feature = "testing")]
+    fn launch_potential_gga(&self, input: &[f64], out: &mut [f64]) -> Result<(), XcError> {
+        // CTaylor<f64, 2> size = 1 << 2 = 4 coefficients per slot.
+        const SIZE_N2: usize = 4;
+
+        // Per-direction Hessian-slot table — direct transcription of the
+        // C++ assignments at XCFunctional.cpp:683-713 (single-spin) and
+        // :736-784 (spin-resolved):
+        //
+        //   For the single-spin block (n gx gy gz xx xy xz yy yz zz):
+        //     d/dx: in[0].VAR0 = input[1] (gx)
+        //           in[1].VAR0 = input[4] (xx)   src=1 → 4
+        //           in[2].VAR0 = input[5] (xy)   src=2 → 5
+        //           in[3].VAR0 = input[6] (xz)   src=3 → 6
+        //     d/dy: in[0].VAR0 = input[2] (gy)
+        //           in[1].VAR0 = input[5] (xy)   src=1 → 5
+        //           in[2].VAR0 = input[7] (yy)   src=2 → 7
+        //           in[3].VAR0 = input[8] (yz)   src=3 → 8
+        //     d/dz: in[0].VAR0 = input[3] (gz)
+        //           in[1].VAR0 = input[6] (xz)   src=1 → 6
+        //           in[2].VAR0 = input[8] (yz)   src=2 → 8
+        //           in[3].VAR0 = input[9] (zz)   src=3 → 9
+        //
+        // HESS_SLOT[src - 1][dir] gives the input slot index for the
+        // VAR0 coefficient of `in[src]` along direction dir ∈ {0, 1, 2}.
+        const HESS_SLOT: [[usize; 3]; 3] = [
+            // src=1 (gx): x → xx(4), y → xy(5), z → xz(6)
+            [4, 5, 6],
+            // src=2 (gy): x → xy(5), y → yy(7), z → yz(8)
+            [5, 7, 8],
+            // src=3 (gz): x → xz(6), y → yz(8), z → zz(9)
+            [6, 8, 9],
+        ];
+
+        let inlen = Self::input_length(self.vars);
+        let nspin = match inlen {
+            10 => 1_usize,
+            20 => 2,
+            _ => {
+                return Err(XcError::InvalidVars {
+                    vars: self.vars,
+                    required: Dependency::GRADIENT,
+                });
+            }
+        };
+
+        // Flat CTaylor<f64, 2> block: inlen slots × 4 coefficients each.
+        let mut ct_in = vec![0.0_f64; inlen * SIZE_N2];
+
+        for j in 0..nspin {
+            let offset = if nspin == 2 { 10_usize } else { 0 };
+            let active_offset = offset * j; // 0 for α, 10 for β
+
+            // Per-j divergence accumulator — Σ_dir Σ_id w_id · out[VAR0|VAR1].
+            // Mirrors the C++ accumulation `out += ... fp2(d)` over 3
+            // direction blocks, then `output[j+1] -= out.get(VAR0|VAR1)`.
+            let mut divergence_accum = 0.0_f64;
+
+            for dir in 0..3_usize {
+                // Zero ct_in completely; per XCFunctional.cpp:686-687/744-745
+                // slots 4..9 (and β-side 14..19) are explicitly zeroed.
+                for slot in 0..(inlen * SIZE_N2) {
+                    ct_in[slot] = 0.0;
+                }
+
+                // Populate spin channels (always BOTH for spin-resolved —
+                // only the VAR1=1 seed picks which channel the divergence
+                // belongs to).
+                let spin_offsets: &[usize] = if nspin == 2 { &[0, 10] } else { &[0] };
+                for &off in spin_offsets {
+                    // in[0 + off].CNST = input[0 + off] (density)
+                    ct_in[(0 + off) * SIZE_N2] = input[off];
+                    // in[0 + off].VAR0 = input[(1 + dir) + off] (1st-order density gradient)
+                    ct_in[(0 + off) * SIZE_N2 + 1] = input[(1 + dir) + off];
+
+                    // in[src + off] for src = 1..=3 (gx/gy/gz):
+                    //   CNST = input[src + off]
+                    //   VAR0 = input[HESS_SLOT[src-1][dir] + off]
+                    for src in 1_usize..=3 {
+                        ct_in[(src + off) * SIZE_N2] = input[src + off];
+                        ct_in[(src + off) * SIZE_N2 + 1] =
+                            input[HESS_SLOT[src - 1][dir] + off];
+                    }
+                    // Slots 4..9 (and 14..19) on this spin remain zero per
+                    // XCFunctional.cpp:686-687 / :744-745
+                    // (`for (int i = 4; i < 10; i++) in[i] = 0;`).
+                    // verify bit-for-bit at integration test (Task 3)
+                    // that A_B_2ND_TAYLOR parity holds for the β channel.
+                }
+
+                // Seed VAR1 = 1 on the gradient-direction slot
+                // (XCFunctional.cpp:688/701/713 + :746/762/778):
+                //   var1_slot = (1 + dir) + active_offset
+                let var1_slot = (1 + dir) + active_offset;
+                ct_in[var1_slot * SIZE_N2 + 2 /* VAR1 */] = 1.0;
+
+                // Launch potential_gga_kernel for each active (id, weight)
+                // and accumulate weighted out[VAR0|VAR1] (slot 3 = 0b11).
+                let mut kernel_out = vec![0.0_f64; SIZE_N2];
+                for &(id, w) in self.weights {
+                    self.launch_potential_kernel_n2(id as u32, &ct_in, &mut kernel_out)?;
+                    divergence_accum += w * kernel_out[3];
+                }
+            }
+
+            // XCFunctional.cpp:720 (single-spin) / :785-787 (spin-resolved):
+            //   output[j + 1] -= out.get(VAR0 | VAR1);
+            //
+            // out[j+1] was populated by launch_potential_lda with the
+            // LDA-direct ∂E/∂ρ term; here we subtract the accumulated
+            // divergence in place.
+            out[j + 1] -= divergence_accum;
+        }
+
+        Ok(())
+    }
+
+    /// Stub for non-testing builds.
+    #[cfg(not(feature = "testing"))]
+    fn launch_potential_lda(&self, _input: &[f64], _out: &mut [f64]) -> Result<(), XcError> {
+        Err(XcError::Runtime)
+    }
+
+    /// Stub for non-testing builds.
+    #[cfg(not(feature = "testing"))]
+    fn launch_potential_gga(&self, _input: &[f64], _out: &mut [f64]) -> Result<(), XcError> {
+        Err(XcError::Runtime)
+    }
+
+    /// Build flat ct_in + launch the per-functional kernel at N=1.
+    ///
+    /// Body delegates to the existing `run_launch` infrastructure at
+    /// `crates/xcfun-eval/src/functional.rs:288-484` specialised to N=1
+    /// (out_len = 2 = 1 << 1).  The `(id, vars, n=1)` arms in `run_launch`'s
+    /// match are extended in this plan to cover Mode::Potential dispatch.
+    #[cfg(feature = "testing")]
+    fn launch_potential_kernel_n1(
+        &self,
+        id: u32,
+        ct_in: &[f64],
+        kernel_out: &mut [f64],
+    ) -> Result<(), XcError> {
+        const OUT_LEN_N1: usize = 2; // 1 << 1
+        let out_vec = run_launch(id, self.vars as u32, 1, ct_in, OUT_LEN_N1)?;
+        debug_assert_eq!(out_vec.len(), OUT_LEN_N1);
+        kernel_out.copy_from_slice(&out_vec);
+        Ok(())
+    }
+
+    /// Stub for non-testing builds.
+    #[cfg(not(feature = "testing"))]
+    fn launch_potential_kernel_n1(
+        &self,
+        _id: u32,
+        _ct_in: &[f64],
+        _kernel_out: &mut [f64],
+    ) -> Result<(), XcError> {
+        Err(XcError::Runtime)
+    }
+
+    /// Build flat ct_in + launch the per-functional kernel at N=2.
+    ///
+    /// Mirrors `launch_potential_kernel_n1` but at N=2 (out_len = 4).
+    /// The `(id, vars=27..30, n=2)` arms in `run_launch` are extended in
+    /// this plan to cover the GGA divergence path.
+    #[cfg(feature = "testing")]
+    fn launch_potential_kernel_n2(
+        &self,
+        id: u32,
+        ct_in: &[f64],
+        kernel_out: &mut [f64],
+    ) -> Result<(), XcError> {
+        const OUT_LEN_N2: usize = 4; // 1 << 2
+        let out_vec = run_launch(id, self.vars as u32, 2, ct_in, OUT_LEN_N2)?;
+        debug_assert_eq!(out_vec.len(), OUT_LEN_N2);
+        kernel_out.copy_from_slice(&out_vec);
+        Ok(())
+    }
+
+    /// Stub for non-testing builds.
+    #[cfg(not(feature = "testing"))]
+    fn launch_potential_kernel_n2(
+        &self,
+        _id: u32,
+        _ct_in: &[f64],
+        _kernel_out: &mut [f64],
+    ) -> Result<(), XcError> {
+        Err(XcError::Runtime)
     }
 }
 
@@ -651,6 +996,75 @@ fn run_launch(
             (64, 6, 0) => arm!(64, 6, 0),  (64, 6, 1) => arm!(64, 6, 1),  (64, 6, 2) => arm!(64, 6, 2),
             (65, 6, 0) => arm!(65, 6, 0),  (65, 6, 1) => arm!(65, 6, 1),  (65, 6, 2) => arm!(65, 6, 2),
 
+            // ===== Phase 3 Wave-5 (Mode::Potential, plan 03-05) =====
+            //
+            // 38 supported ids × vars=28 (XC_A_B_2ND_TAYLOR) × {n=1, n=2}.
+            //
+            // Mode::Potential canonical Vars is A_B_2ND_TAYLOR (D-15 +
+            // XCFunctional.cpp:482-490). The LDA loop runs at N=1; the GGA
+            // divergence loop runs at N=2. For LDA functionals these arms
+            // are also reachable when the harness drives Mode::Potential on
+            // a pure-LDA functional with the spin-resolved 2ND_TAYLOR vars
+            // (legal per `eval_setup`).
+            //
+            // 11 LDAs + 17 W2 GGAs + 10 W3 GGAs + 8 W4 GGAs = 46 total ids,
+            // but only 38 are wired into dispatch_kernel (CSC + BRX/BRC/BRXC
+            // + LB94 deferred per D-01-A and D-19).
+            //
+            // ----- 11 LDA + LDA-class ids -----
+            ( 0, 28, 1) => arm!( 0, 28, 1),  ( 0, 28, 2) => arm!( 0, 28, 2),
+            ( 2, 28, 1) => arm!( 2, 28, 1),  ( 2, 28, 2) => arm!( 2, 28, 2),
+            ( 3, 28, 1) => arm!( 3, 28, 1),  ( 3, 28, 2) => arm!( 3, 28, 2),
+            (13, 28, 1) => arm!(13, 28, 1),  (13, 28, 2) => arm!(13, 28, 2),
+            (14, 28, 1) => arm!(14, 28, 1),  (14, 28, 2) => arm!(14, 28, 2),
+            (15, 28, 1) => arm!(15, 28, 1),  (15, 28, 2) => arm!(15, 28, 2),
+            (24, 28, 1) => arm!(24, 28, 1),  (24, 28, 2) => arm!(24, 28, 2),
+            (25, 28, 1) => arm!(25, 28, 1),  (25, 28, 2) => arm!(25, 28, 2),
+            (28, 28, 1) => arm!(28, 28, 1),  (28, 28, 2) => arm!(28, 28, 2),
+            (55, 28, 1) => arm!(55, 28, 1),  (55, 28, 2) => arm!(55, 28, 2),
+            (59, 28, 1) => arm!(59, 28, 1),  (59, 28, 2) => arm!(59, 28, 2),
+
+            // ----- 17 Wave-2 GGAs -----
+            ( 4, 28, 1) => arm!( 4, 28, 1),  ( 4, 28, 2) => arm!( 4, 28, 2),
+            ( 5, 28, 1) => arm!( 5, 28, 1),  ( 5, 28, 2) => arm!( 5, 28, 2),
+            ( 6, 28, 1) => arm!( 6, 28, 1),  ( 6, 28, 2) => arm!( 6, 28, 2),
+            ( 7, 28, 1) => arm!( 7, 28, 1),  ( 7, 28, 2) => arm!( 7, 28, 2),
+            ( 8, 28, 1) => arm!( 8, 28, 1),  ( 8, 28, 2) => arm!( 8, 28, 2),
+            ( 9, 28, 1) => arm!( 9, 28, 1),  ( 9, 28, 2) => arm!( 9, 28, 2),
+            (16, 28, 1) => arm!(16, 28, 1),  (16, 28, 2) => arm!(16, 28, 2),
+            (19, 28, 1) => arm!(19, 28, 1),  (19, 28, 2) => arm!(19, 28, 2),
+            (20, 28, 1) => arm!(20, 28, 1),  (20, 28, 2) => arm!(20, 28, 2),
+            (21, 28, 1) => arm!(21, 28, 1),  (21, 28, 2) => arm!(21, 28, 2),
+            (22, 28, 1) => arm!(22, 28, 1),  (22, 28, 2) => arm!(22, 28, 2),
+            (69, 28, 1) => arm!(69, 28, 1),  (69, 28, 2) => arm!(69, 28, 2),
+            (71, 28, 1) => arm!(71, 28, 1),  (71, 28, 2) => arm!(71, 28, 2),
+            (72, 28, 1) => arm!(72, 28, 1),  (72, 28, 2) => arm!(72, 28, 2),
+            (73, 28, 1) => arm!(73, 28, 1),  (73, 28, 2) => arm!(73, 28, 2),
+            (74, 28, 1) => arm!(74, 28, 1),  (74, 28, 2) => arm!(74, 28, 2),
+            (76, 28, 1) => arm!(76, 28, 1),  (76, 28, 2) => arm!(76, 28, 2),
+
+            // ----- 10 Wave-3 GGAs -----
+            ( 1, 28, 1) => arm!( 1, 28, 1),  ( 1, 28, 2) => arm!( 1, 28, 2),
+            (17, 28, 1) => arm!(17, 28, 1),  (17, 28, 2) => arm!(17, 28, 2),
+            (18, 28, 1) => arm!(18, 28, 1),  (18, 28, 2) => arm!(18, 28, 2),
+            (26, 28, 1) => arm!(26, 28, 1),  (26, 28, 2) => arm!(26, 28, 2),
+            (27, 28, 1) => arm!(27, 28, 1),  (27, 28, 2) => arm!(27, 28, 2),
+            (56, 28, 1) => arm!(56, 28, 1),  (56, 28, 2) => arm!(56, 28, 2),
+            (57, 28, 1) => arm!(57, 28, 1),  (57, 28, 2) => arm!(57, 28, 2),
+            (67, 28, 1) => arm!(67, 28, 1),  (67, 28, 2) => arm!(67, 28, 2),
+            (68, 28, 1) => arm!(68, 28, 1),  (68, 28, 2) => arm!(68, 28, 2),
+            (77, 28, 1) => arm!(77, 28, 1),  (77, 28, 2) => arm!(77, 28, 2),
+
+            // ----- 8 Wave-4 GGAs -----
+            (23, 28, 1) => arm!(23, 28, 1),  (23, 28, 2) => arm!(23, 28, 2),
+            (58, 28, 1) => arm!(58, 28, 1),  (58, 28, 2) => arm!(58, 28, 2),
+            (60, 28, 1) => arm!(60, 28, 1),  (60, 28, 2) => arm!(60, 28, 2),
+            (61, 28, 1) => arm!(61, 28, 1),  (61, 28, 2) => arm!(61, 28, 2),
+            (62, 28, 1) => arm!(62, 28, 1),  (62, 28, 2) => arm!(62, 28, 2),
+            (63, 28, 1) => arm!(63, 28, 1),  (63, 28, 2) => arm!(63, 28, 2),
+            (64, 28, 1) => arm!(64, 28, 1),  (64, 28, 2) => arm!(64, 28, 2),
+            (65, 28, 1) => arm!(65, 28, 1),  (65, 28, 2) => arm!(65, 28, 2),
+
             _ => {
                 let _ = vars_u32;
                 return Err(XcError::NotConfigured);
@@ -747,23 +1161,9 @@ mod tests {
     }
 
     #[test]
-    fn eval_rejects_potential_mode_in_phase2() {
-        let f = Functional {
-            weights: &[],
-            vars: Vars::A_B,
-            mode: Mode::Potential,
-            order: 0,
-            parameters: DEFAULT_PARAMETERS,
-        };
-        let mut out = vec![0.0; 1];
-        assert!(matches!(
-            f.eval(&[1.0, 0.5], &mut out),
-            Err(XcError::InvalidMode { .. })
-        ));
-    }
-
-    #[test]
-    fn eval_rejects_contracted_mode_in_phase2() {
+    fn eval_rejects_contracted_mode_active() {
+        // Phase 3 plan 03-05 wires Mode::Potential — Mode::Contracted remains
+        // rejected (Phase 4 scope).
         let f = Functional {
             weights: &[],
             vars: Vars::A_B,
