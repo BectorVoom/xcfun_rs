@@ -29,6 +29,18 @@ fn main() -> Result<()> {
         .parse()
         .context("--order must be u32")?;
     let filter = parse_arg(&args, "--filter").unwrap_or(".*");
+    // Phase 3 plan 03-05 — `--mode {partial_derivatives,potential}` flag.
+    // Default `partial_derivatives` keeps Phase-2 CLI behaviour intact.
+    let mode_str = parse_arg(&args, "--mode").unwrap_or("partial_derivatives");
+    let mode = match mode_str {
+        "partial_derivatives" => validation::driver::HarnessMode::PartialDerivatives,
+        "potential" => validation::driver::HarnessMode::Potential,
+        "contracted" => anyhow::bail!("--mode contracted is Phase 4 scope (MODE-03)"),
+        other => anyhow::bail!(
+            "--mode must be 'partial_derivatives' or 'potential'; got {}",
+            other
+        ),
+    };
 
     if backend != "cpu" {
         anyhow::bail!(
@@ -36,14 +48,17 @@ fn main() -> Result<()> {
             backend
         );
     }
-    if order > 2 {
+    // Phase 3 plan 03-05 — Mode::Potential ignores the --order flag (its
+    // `output_length` is fixed at 2 or 3 per D-15).
+    if mode == validation::driver::HarnessMode::PartialDerivatives && order > 2 {
         anyhow::bail!("Phase 2 only supports order ≤ 2 (D-23); got {}", order);
     }
 
     let regex = regex::Regex::new(filter).context("invalid --filter regex")?;
     tracing::info!(
-        "Tier-2 harness: backend={} order={} filter={}",
+        "Tier-2 harness: backend={} mode={} order={} filter={}",
         backend,
+        mode_str,
         order,
         filter
     );
@@ -51,7 +66,7 @@ fn main() -> Result<()> {
     let grid = validation::fixtures::generate_grid();
     tracing::info!("Generated grid: {} points", grid.len());
 
-    let report = validation::driver::run(&grid, order, &regex)?;
+    let report = validation::driver::run_with_mode(&grid, order, &regex, mode)?;
     validation::report::write_html(&report, "validation/report.html")?;
     validation::report::write_jsonl(&report, "validation/report.jsonl")?;
 

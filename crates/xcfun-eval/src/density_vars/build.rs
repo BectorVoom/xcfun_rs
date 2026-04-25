@@ -650,6 +650,28 @@ pub fn build_xc_a_b_2nd_taylor<F: Float>(
     ctaylor_add::<F>(&axbx, &ayby, &mut gab_xy, n);
     ctaylor_add::<F>(&gab_xy, &azbz, &mut out.gab, n);
 
+    // --- Derived gradient combinations (Rule 1 fix - Plan 03-05) ---
+    //
+    // Mirrors `build_xc_a_b_gaa_gab_gbb` (densvars/build.rs:246-258) so
+    // GGA kernels that read d.gnn / d.gns / d.gss (e.g. LYPC) work
+    // correctly under Mode::Potential. Without this block the
+    // 2ND_TAYLOR launch path leaves gnn/gns/gss = 0 (defensive zero-init
+    // from build_densvars), causing LYPC to drift by ~1e-2 rel_err
+    // against the C++ reference (potential_parity_100 60-record
+    // failure with this fix absent).
+    //
+    // gnn = gaa + 2·gab + gbb (left-to-right, no mul_add per ACC-06)
+    let mut t1 = Array::<F>::new(size);
+    let mut t2 = Array::<F>::new(size);
+    ctaylor_scalar_mul::<F>(&out.gab, F::cast_from(2.0_f64), &mut t1, n); // t1 = 2·gab
+    ctaylor_add::<F>(&out.gaa, &t1, &mut t2, n); // t2 = gaa + 2·gab
+    ctaylor_add::<F>(&t2, &out.gbb, &mut out.gnn, n);
+    // gss = gaa - 2·gab + gbb (reuse t1 = 2·gab)
+    ctaylor_sub::<F>(&out.gaa, &t1, &mut t2, n);
+    ctaylor_add::<F>(&t2, &out.gbb, &mut out.gss, n);
+    // gns = gaa - gbb
+    ctaylor_sub::<F>(&out.gaa, &out.gbb, &mut out.gns, n);
+
     // Explicit chain: build_xc_a_b reads slots 0 and 10 (α-CNST, β-CNST) and
     // derives n, s. NOTE: for 2ND_TAYLOR the α lives at slot 10*size (not size).
     // We replicate the Phase-2 pattern by directly copying α and β CNST blocks.

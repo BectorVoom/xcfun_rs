@@ -22,3 +22,7 @@ thiserror = { workspace = true }
 xcfun-ad = { path = "../xcfun-ad", features = ["testing"] }
 approx = { workspace = true }
 rstest = { workspace = true }
+# Phase 3 plan 03-05 — `tests/potential_parity.rs` loads the
+# offline-generated potential_reference_100.json fixture.
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
