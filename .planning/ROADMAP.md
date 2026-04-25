@@ -116,7 +116,7 @@ Pre-pivot plans (VOID — reverted by Wave 0 of the new plan, retained in git hi
 - [x] 03-03-PLAN.md — Wave 3: 10 kernels (OPTX ×2 + PW86/PW91 ×4 + P86 ×2 + APBE ×2)
 - [x] 03-04-PLAN.md — Wave 4: 8 kernels (B97 ×6 + KTX + BTK) per D-01-C; compile-time capstone (Pitfall G10)
 - [x] 03-05-PLAN.md — Wave 5: Mode::Potential (LDA + GGA 3-direction divergence per XCFunctional.cpp:637-790)
-- [ ] 03-06-PLAN.md — Wave 6: Mode::PartialDerivatives orders 3..=4 + tier-2 full-matrix + Phase-2 ACC-04 re-run + Phase-3 sign-off
+- [x] 03-06-PLAN.md — Wave 6: Mode::PartialDerivatives orders 3..=4 + tier-2 full-matrix + Phase-2 ACC-04 re-run + Phase-3 sign-off
 
 **Scope amendments (planner 2026-04-24):**
 - **BRX/BRC/BRXC (GGA-03) + CSC (part of GGA-10) deferred to Phase 4** per D-01-A — these declare `Dependency::KINETIC|LAPLACIAN|JP` (metaGGA-class) requiring inlen=11 Vars arm + a separate `BR_taylor` Newton-inverse xcfun-ad primitive.
