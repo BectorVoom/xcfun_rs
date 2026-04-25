@@ -71,7 +71,8 @@ pub struct Functional {
     pub vars: Vars,
     /// Evaluation mode. Phase 2 supports `Mode::PartialDerivatives` only.
     pub mode: Mode,
-    /// Derivative order. Phase 2 supports 0..=2 per D-23.
+    /// Derivative order. Phase 2 supported 0..=2 per D-23; Plan 03-06 Task 1
+    /// extends to 0..=4 per MODE-01 D-16.
     pub order: u32,
     /// B3 — Range-separation / CAM parameters per
     /// `xcfun-master/src/functionals/common_parameters.cpp:17-29`.
@@ -129,10 +130,10 @@ impl Functional {
                 got: input.len(),
             });
         }
-        // 3. Validate order (Phase 2 = 0..=2; Mode::Potential uses order 0
-        //    by convention — the LDA loop runs at N=1, GGA at N=2; the host
-        //    `order` field is informational).
-        if self.mode == Mode::PartialDerivatives && self.order > 2 {
+        // 3. Validate order (Phase 3 plan 03-06 extends to 0..=4 per MODE-01
+        //    D-16; Mode::Potential uses order 0 by convention — the LDA loop
+        //    runs at N=1, GGA at N=2; the host `order` field is informational).
+        if self.mode == Mode::PartialDerivatives && self.order > 4 {
             return Err(XcError::InvalidOrder {
                 order: self.order,
                 mode: self.mode,
@@ -638,6 +639,123 @@ impl Functional {
 }
 
 // ---------------------------------------------------------------------------
+//  W9 — Order 3 + 4 input-packing helpers (Plan 03-06 Task 1).
+//
+//  Each pack helper produces a flat `Vec<f64>` representing `inlen` slots of
+//  CTaylor<f64, N> coefficients (size `1 << N` per slot). VAR0..VAR3 bit-flag
+//  seeds are placed per the layout in `xcfun-master/src/XCFunctional.cpp:562-612`.
+//
+//  Bit-flag mapping (matches `crates/xcfun-ad/src/index.rs`):
+//    CNST = 0  (0b0000)
+//    VAR0 = 1  (0b0001)
+//    VAR1 = 2  (0b0010)
+//    VAR2 = 4  (0b0100)
+//    VAR3 = 8  (0b1000)
+//
+//  These helpers are `pub` so they can be unit-tested from
+//  `crates/xcfun-eval/tests/pack_ctaylor_inputs.rs`. They are also used by
+//  `launch_and_accumulate` orders 3 and 4 below.
+// ---------------------------------------------------------------------------
+
+/// Pack a flat CTaylor<f64, 3> input block for order-3 seeding (W9).
+///
+/// Layout per XCFunctional.cpp:562-588:
+///   - Each slot l ∈ 0..inlen occupies 8 consecutive f64s (size = 1 << 3 = 8).
+///   - Coefficient[CNST=0]       = input[l]
+///   - Coefficient[VAR0=1]       = 1.0 iff l == i
+///   - Coefficient[VAR1=2]       = 1.0 iff l == j
+///   - Coefficient[VAR2=4]       = 1.0 iff l == k
+///   - All cross-terms (VAR0|VAR1 = 3, VAR0|VAR2 = 5, VAR1|VAR2 = 6,
+///     VAR0|VAR1|VAR2 = 7) start at 0.0.
+///
+/// NOTE: Bit-flag semantics — VAR0 = 0b001, VAR1 = 0b010, VAR2 = 0b100.
+/// So coefficient index 1 = VAR0-only, index 2 = VAR1-only, index 4 = VAR2-only.
+/// Seeds at those three indices — NEVER at indices 3, 5, 6, or 7.
+pub fn pack_ctaylor_inputs_order3(
+    input: &[f64],
+    inlen: usize,
+    i: usize,
+    j: usize,
+    k: usize,
+) -> Vec<f64> {
+    const SIZE_N3: usize = 8; // 1 << 3
+    const VAR0: usize = 1;
+    const VAR1: usize = 2;
+    const VAR2: usize = 4;
+
+    debug_assert!(input.len() >= inlen);
+    debug_assert!(i < inlen && j < inlen && k < inlen);
+
+    let mut flat = vec![0.0_f64; inlen * SIZE_N3];
+    for l in 0..inlen {
+        flat[l * SIZE_N3 /* CNST */] = input[l];
+    }
+    flat[i * SIZE_N3 + VAR0] = 1.0;
+    flat[j * SIZE_N3 + VAR1] = 1.0;
+    flat[k * SIZE_N3 + VAR2] = 1.0;
+    flat
+}
+
+/// Pack a flat CTaylor<f64, 4> input block for order-4 seeding (W9).
+///
+/// Layout per XCFunctional.cpp:600-612 (analogous to order 3):
+///   - Each slot occupies 16 f64s (size = 1 << 4 = 16).
+///   - Coefficient[VAR0=1]  = 1.0 iff l == i
+///   - Coefficient[VAR1=2]  = 1.0 iff l == j
+///   - Coefficient[VAR2=4]  = 1.0 iff l == k
+///   - Coefficient[VAR3=8]  = 1.0 iff l == m
+///
+/// Readout: e.get(VAR0|VAR1|VAR2|VAR3) = flat_output[15].
+pub fn pack_ctaylor_inputs_order4(
+    input: &[f64],
+    inlen: usize,
+    i: usize,
+    j: usize,
+    k: usize,
+    m: usize,
+) -> Vec<f64> {
+    const SIZE_N4: usize = 16; // 1 << 4
+    const VAR0: usize = 1;
+    const VAR1: usize = 2;
+    const VAR2: usize = 4;
+    const VAR3: usize = 8;
+
+    debug_assert!(input.len() >= inlen);
+    debug_assert!(i < inlen && j < inlen && k < inlen && m < inlen);
+
+    let mut flat = vec![0.0_f64; inlen * SIZE_N4];
+    for l in 0..inlen {
+        flat[l * SIZE_N4 /* CNST */] = input[l];
+    }
+    flat[i * SIZE_N4 + VAR0] = 1.0;
+    flat[j * SIZE_N4 + VAR1] = 1.0;
+    flat[k * SIZE_N4 + VAR2] = 1.0;
+    flat[m * SIZE_N4 + VAR3] = 1.0;
+    flat
+}
+
+/// C(n, k) = n!/(k!(n-k)!). Helper for `inlen_triangle_count`.
+fn binomial(n: usize, k: usize) -> usize {
+    if k > n {
+        return 0;
+    }
+    let k = k.min(n - k);
+    (0..k).fold(1_usize, |acc, i| acc * (n - i) / (i + 1))
+}
+
+/// `taylor_len` up to and including order `max_order` for `inlen` variables.
+/// For one slot + order N, the layout has `C(inlen + max_order, max_order)`
+/// outputs per XCFunctional.cpp:501-612.
+///
+/// Used by `launch_and_accumulate` orders 3 + 4 to compute the starting
+/// output slot index for each new derivative-order tier.
+pub(crate) fn inlen_triangle_count(inlen: usize, max_order: usize) -> usize {
+    (0..=max_order)
+        .map(|k| binomial(inlen + k - 1, k))
+        .sum()
+}
+
+// ---------------------------------------------------------------------------
 //  Host-side launch helpers (feature = "testing" only — cpu_client is
 //  test-scoped per Plan 02-03 Wave-1B-2).
 // ---------------------------------------------------------------------------
@@ -729,6 +847,59 @@ fn launch_and_accumulate(
                 );
             }
             launch_and_accumulate_order2_general(id_u32, vars_u32, inlen, input, weight, output)
+        }
+        3 => {
+            // Order 3 (Plan 03-06 Task 1, MODE-01 D-16). Triple-nested
+            // (i ≤ j ≤ k) launch loop per XCFunctional.cpp:562-588.
+            //
+            // Output slot offset starts after orders 0..=2 outputs:
+            //   slot_start = inlen_triangle_count(inlen, 2)
+            //              = 1 + inlen + inlen*(inlen+1)/2
+            // Each (i, j, k) triple contributes one output: out[VAR0|VAR1|VAR2]
+            // = out[7] of the kernel's CTaylor<F, 3> result.
+            //
+            // OPERATION-ORDER NOTE: launches happen in lex-major (i, j, k)
+            // order, output slot increments monotonically. This matches the
+            // C++ slot-counter pattern at XCFunctional.cpp:585-586.
+            let mut slot = inlen_triangle_count(inlen, 2);
+            for i in 0..inlen {
+                for j in i..inlen {
+                    for k in j..inlen {
+                        let flat = pack_ctaylor_inputs_order3(input, inlen, i, j, k);
+                        // CTaylor<f64, 3> coefficient block size = 1 << 3 = 8.
+                        let out = run_launch(id_u32, vars_u32, 3, &flat, 8)?;
+                        // VAR0 | VAR1 | VAR2 = 1 | 2 | 4 = 7.
+                        output[slot] += weight * out[7];
+                        slot += 1;
+                    }
+                }
+            }
+            Ok(())
+        }
+        4 => {
+            // Order 4 (Plan 03-06 Task 1, MODE-01 D-16). Quadruple-nested
+            // (i ≤ j ≤ k ≤ m) launch loop per XCFunctional.cpp:600-612.
+            //
+            // Output slot offset starts after orders 0..=3 outputs.
+            // Each (i, j, k, m) quadruple contributes one output:
+            // out[VAR0|VAR1|VAR2|VAR3] = out[15] of the CTaylor<F, 4> result.
+            let mut slot = inlen_triangle_count(inlen, 3);
+            for i in 0..inlen {
+                for j in i..inlen {
+                    for k in j..inlen {
+                        for m in k..inlen {
+                            let flat =
+                                pack_ctaylor_inputs_order4(input, inlen, i, j, k, m);
+                            // CTaylor<f64, 4> coefficient block size = 1 << 4 = 16.
+                            let out = run_launch(id_u32, vars_u32, 4, &flat, 16)?;
+                            // VAR0 | VAR1 | VAR2 | VAR3 = 1 | 2 | 4 | 8 = 15.
+                            output[slot] += weight * out[15];
+                            slot += 1;
+                        }
+                    }
+                }
+            }
+            Ok(())
         }
         _ => Err(XcError::InvalidOrder {
             order,
@@ -1065,6 +1236,64 @@ fn run_launch(
             (64, 28, 1) => arm!(64, 28, 1),  (64, 28, 2) => arm!(64, 28, 2),
             (65, 28, 1) => arm!(65, 28, 1),  (65, 28, 2) => arm!(65, 28, 2),
 
+            // ===== Phase 3 Wave-6 (Plan 03-06): orders 3 + 4 (MODE-01 D-16) =====
+            //
+            // 9 LDAs at vars=2 (XC_A_B, inlen=2) × {n=3, n=4} = 18 arms.
+            // 35 GGAs at vars=6 (XC_A_B_GAA_GAB_GBB, inlen=5) × {n=3, n=4} = 70 arms.
+            // Total: 88 new comptime monomorphisations (G10 budget validated at I2 capstone).
+            //
+            // ----- 9 LDAs at vars=2, n ∈ {3, 4} -----
+            ( 0, 2, 3) => arm!( 0, 2, 3),  ( 0, 2, 4) => arm!( 0, 2, 4),
+            ( 2, 2, 3) => arm!( 2, 2, 3),  ( 2, 2, 4) => arm!( 2, 2, 4),
+            ( 3, 2, 3) => arm!( 3, 2, 3),  ( 3, 2, 4) => arm!( 3, 2, 4),
+            (13, 2, 3) => arm!(13, 2, 3),  (13, 2, 4) => arm!(13, 2, 4),
+            (14, 2, 3) => arm!(14, 2, 3),  (14, 2, 4) => arm!(14, 2, 4),
+            (15, 2, 3) => arm!(15, 2, 3),  (15, 2, 4) => arm!(15, 2, 4),
+            (24, 2, 3) => arm!(24, 2, 3),  (24, 2, 4) => arm!(24, 2, 4),
+            (28, 2, 3) => arm!(28, 2, 3),  (28, 2, 4) => arm!(28, 2, 4),
+            (55, 2, 3) => arm!(55, 2, 3),  (55, 2, 4) => arm!(55, 2, 4),
+
+            // ----- 17 Wave-2 GGAs at vars=6, n ∈ {3, 4} -----
+            ( 4, 6, 3) => arm!( 4, 6, 3),  ( 4, 6, 4) => arm!( 4, 6, 4),
+            ( 5, 6, 3) => arm!( 5, 6, 3),  ( 5, 6, 4) => arm!( 5, 6, 4),
+            ( 6, 6, 3) => arm!( 6, 6, 3),  ( 6, 6, 4) => arm!( 6, 6, 4),
+            ( 7, 6, 3) => arm!( 7, 6, 3),  ( 7, 6, 4) => arm!( 7, 6, 4),
+            ( 8, 6, 3) => arm!( 8, 6, 3),  ( 8, 6, 4) => arm!( 8, 6, 4),
+            ( 9, 6, 3) => arm!( 9, 6, 3),  ( 9, 6, 4) => arm!( 9, 6, 4),
+            (16, 6, 3) => arm!(16, 6, 3),  (16, 6, 4) => arm!(16, 6, 4),
+            (19, 6, 3) => arm!(19, 6, 3),  (19, 6, 4) => arm!(19, 6, 4),
+            (20, 6, 3) => arm!(20, 6, 3),  (20, 6, 4) => arm!(20, 6, 4),
+            (21, 6, 3) => arm!(21, 6, 3),  (21, 6, 4) => arm!(21, 6, 4),
+            (22, 6, 3) => arm!(22, 6, 3),  (22, 6, 4) => arm!(22, 6, 4),
+            (69, 6, 3) => arm!(69, 6, 3),  (69, 6, 4) => arm!(69, 6, 4),
+            (71, 6, 3) => arm!(71, 6, 3),  (71, 6, 4) => arm!(71, 6, 4),
+            (72, 6, 3) => arm!(72, 6, 3),  (72, 6, 4) => arm!(72, 6, 4),
+            (73, 6, 3) => arm!(73, 6, 3),  (73, 6, 4) => arm!(73, 6, 4),
+            (74, 6, 3) => arm!(74, 6, 3),  (74, 6, 4) => arm!(74, 6, 4),
+            (76, 6, 3) => arm!(76, 6, 3),  (76, 6, 4) => arm!(76, 6, 4),
+
+            // ----- 10 Wave-3 GGAs at vars=6, n ∈ {3, 4} -----
+            ( 1, 6, 3) => arm!( 1, 6, 3),  ( 1, 6, 4) => arm!( 1, 6, 4),
+            (17, 6, 3) => arm!(17, 6, 3),  (17, 6, 4) => arm!(17, 6, 4),
+            (18, 6, 3) => arm!(18, 6, 3),  (18, 6, 4) => arm!(18, 6, 4),
+            (26, 6, 3) => arm!(26, 6, 3),  (26, 6, 4) => arm!(26, 6, 4),
+            (27, 6, 3) => arm!(27, 6, 3),  (27, 6, 4) => arm!(27, 6, 4),
+            (56, 6, 3) => arm!(56, 6, 3),  (56, 6, 4) => arm!(56, 6, 4),
+            (57, 6, 3) => arm!(57, 6, 3),  (57, 6, 4) => arm!(57, 6, 4),
+            (67, 6, 3) => arm!(67, 6, 3),  (67, 6, 4) => arm!(67, 6, 4),
+            (68, 6, 3) => arm!(68, 6, 3),  (68, 6, 4) => arm!(68, 6, 4),
+            (77, 6, 3) => arm!(77, 6, 3),  (77, 6, 4) => arm!(77, 6, 4),
+
+            // ----- 8 Wave-4 GGAs at vars=6, n ∈ {3, 4} -----
+            (23, 6, 3) => arm!(23, 6, 3),  (23, 6, 4) => arm!(23, 6, 4),
+            (58, 6, 3) => arm!(58, 6, 3),  (58, 6, 4) => arm!(58, 6, 4),
+            (60, 6, 3) => arm!(60, 6, 3),  (60, 6, 4) => arm!(60, 6, 4),
+            (61, 6, 3) => arm!(61, 6, 3),  (61, 6, 4) => arm!(61, 6, 4),
+            (62, 6, 3) => arm!(62, 6, 3),  (62, 6, 4) => arm!(62, 6, 4),
+            (63, 6, 3) => arm!(63, 6, 3),  (63, 6, 4) => arm!(63, 6, 4),
+            (64, 6, 3) => arm!(64, 6, 3),  (64, 6, 4) => arm!(64, 6, 4),
+            (65, 6, 3) => arm!(65, 6, 3),  (65, 6, 4) => arm!(65, 6, 4),
+
             _ => {
                 let _ = vars_u32;
                 return Err(XcError::NotConfigured);
@@ -1179,15 +1408,16 @@ mod tests {
     }
 
     #[test]
-    fn eval_rejects_order_above_2() {
+    fn eval_rejects_order_above_4() {
+        // Plan 03-06 Task 1: order limit raised to 4 per MODE-01 D-16.
         let f = Functional {
             weights: &[],
             vars: Vars::A_B,
             mode: Mode::PartialDerivatives,
-            order: 3,
+            order: 5,
             parameters: DEFAULT_PARAMETERS,
         };
-        let mut out = vec![0.0; 10];
+        let mut out = vec![0.0; 21]; // taylorlen(2, 5) = 21
         assert!(matches!(
             f.eval(&[1.0, 0.5], &mut out),
             Err(XcError::InvalidOrder { .. })
