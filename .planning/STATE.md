@@ -3,34 +3,35 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: phase-3-executing
-last_updated: "2026-04-25T00:00:00.000Z"
+last_updated: "2026-04-25T07:41:00.000Z"
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 21
-  completed_plans: 18
+  completed_plans: 19
   percent: 25
 ---
 
 # Project State: xcfun_rs
 
-**Last updated:** 2026-04-24 (after `/gsd-plan-phase 3 --auto` completion — Phase 3 planned: 7 PLAN.md files shipped across 7 waves, checker GREEN on iteration 3, CONTEXT.md amended with D-01-A/B/C + D-10-A)
+**Last updated:** 2026-04-25 (after Wave 4 finalisation via `/gsd:execute-phase 3` — 03-04-SUMMARY.md committed; 5/8 Wave-4 functionals GREEN strict 1e-12, 3/8 B97 correlation kernels PARTIAL with 4.88e-11 max rel_err forwarded to Wave 6 sign-off as new D-19 INCONCLUSIVE; I2 capstone wall-clock 4.10 s — no run_launch split applied; user paused execution per `--wave 4` choice)
 
 ## Project Reference
 
 **Core Value:** Every functional must produce numerical output matching C++ xcfun within relative error <= 1.0e-12, across all evaluation modes and derivative orders.
 
-**Current focus:** Phase 03 — gga-tier-mode-potential (Waves 0-3 complete — executing Wave 4)
+**Current focus:** Phase 03 — gga-tier-mode-potential (Waves 0-4 complete with D-19 forwards — paused before Wave 5)
 
 ## Current Position
 
-Phase: 03 (gga-tier-mode-potential) — EXECUTING (4/7 plans complete)
-Plans: 7 (03-00 ✓, 03-01 ✓, 03-02 ✓, 03-03 ✓, 03-04 B97+KT+BTK, 03-05 Mode::Potential, 03-06 orders 3..=4 + ACC-04 re-run + sign-off)
+Phase: 03 (gga-tier-mode-potential) — PAUSED before Wave 5 (5/7 plans complete; Wave 4 partial with D-19 forwards)
+Plans: 7 (03-00 ✓, 03-01 ✓, 03-02 ✓, 03-03 ✓, 03-04 ✓ partial, 03-05 Mode::Potential, 03-06 orders 3..=4 + ACC-04 re-run + sign-off)
 Scope: 36 GGA functional IDs (BRX/BRC/BRXC + CSC deferred to Phase 4 per D-01-A; LB94 deferred per D-19)
 Wave 0 (03-00) COMPLETE: `ctaylor_expm1` (D-05) + `ctaylor_sqrtx_asinh_sqrtx` (D-06) + 6500 fixtures GREEN at 1e-12.
 Wave 1 (03-01) COMPLETE: `gga/` module + 6 shared helpers + 7 DensVarsDev Vars arms (D-10-A) + Mode::Potential host gates.
 Wave 2 (03-02) COMPLETE: 17 GGA kernels (PBE×12 + Becke×4 + LYP), 5 skeleton→FULL conversions, `Functional::parameters: [f64;4]`, dispatch 11→28, c_stubs 67→50.
 Wave 3 (03-03) COMPLETE: 10 GGA kernels (OPTX×2 + PW86/91×4 + P86×2 + APBE×2), W3+W7 FULL helpers, W8 pz81_eps pub, dispatch 28→38, c_stubs 50→40; Wave-2 INCONCLUSIVE ABSORBED (run_launch + launch_and_accumulate extended for inlen=5); OPTX GREEN at strict 1e-12. **NEW D-19 INCONCLUSIVE**: 5 functionals (PW86X, APBEX, APBEC, P86C, PW91C) show 1e-6 to 1e-9 port-order drift from C++ `pow` expression vs Rust `ctaylor_pow` chain — constants verified to 16 digits; forwarded to Wave 6 sign-off for Rule-1 fix decision.
+Wave 4 (03-04) COMPLETE WITH D-19 FORWARDS: 8 GGA kernels (B97 ×6 + KTX + BTK), W3 b97_poly FULL bodies (G6-safe explicit u² preserved), `pw92eps_polarized` LSDA helper (FERRO branch), dispatch 38→46 (8 new comptime arms), c_stubs 40→32, validation/build.rs +5 entries. **I2 CAPSTONE: 4.10 s** — clean `cargo build -p xcfun-eval --release` ≤ 45 s budget, NO per-Mode split applied per unconditional rule. **Tier-2 PARTIAL**: 5/8 GREEN strict 1e-12 (B97X, B97_1X, B97_2X, KTX, BTK); 3/8 (B97C 11 fails, B97_1C 11, B97_2C 41) max rel_err 4.88e-11 on near-zero polarised gradient_stress (point_idx 8246 stratum: a=1.6e-8, b=1.2e-3, gradients zero). Failures ~3 orders of magnitude TIGHTER than Wave 3 D-19 (4.88e-11 vs 1e-6..1e-9). Likely root-cause: `pw92eps_polarized` FERRO-branch composition order. Forwarded as 3 new D-19 INCONCLUSIVE entries to Wave 6 sign-off (mirroring Wave 3 protocol). 63 / 2,240,000 record failure rate = 2.81e-5.
 
 - **Milestone:** Initial v1 build-out
 - **Phase:** 02 (core-foundations-lda-tier-parity-harness) — **COMPLETE (2026-04-22)**
@@ -56,6 +57,11 @@ Wave 3 (03-03) COMPLETE: 10 GGA kernels (OPTX×2 + PW86/91×4 + P86×2 + APBE×2
 | 02    | 05   | ~10m     | 4     | 5     | 2026-04-21 |
 | 02    | 06   | ~6h      | 9     | 22    | 2026-04-21 |
 | 02    | 07   | ~25m     | 4     | 7     | 2026-04-22 |
+| 03    | 00   | ~?m      | 2     | 8     | 2026-04-25 |
+| 03    | 01   | ~?m      | 3     | 13    | 2026-04-25 |
+| 03    | 02   | ~?m      | 4     | 21    | 2026-04-25 |
+| 03    | 03   | ~75m     | 4     | 23    | 2026-04-25 |
+| 03    | 04   | ~10m     | 3     | 19    | 2026-04-25 (PARTIAL — 3 D-19 forward) |
 
 Will also track (as they accumulate):
 
