@@ -336,7 +336,24 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
         // Phase 3 plan 03-03 — inlen=5 launch path is now wired (commit ae8e698)
         // for all 27 GGA ids; the inlen != 2 exclusion is replaced by an
         // explicit per-name skip list for TW + VWK only.
-        let excluded = matches!(name, "XC_TW" | "XC_VWK");
+        //
+        // Plan 03-06 Task 2 extension — additional functionals where the C++
+        // side aborts on regularize-stratum grid points (n → 0):
+        //   - XC_ZVPBESOLC, XC_ZVPBEINTC: C++ pow_expand(x, frac) at x≤0 dies
+        //     in tmath.hpp:156 when the grid hits very-low-density points.
+        //   - XC_PBELOCC: same root cause — multiple pow expressions with
+        //     potentially-zero arguments at sufficiently-low densities.
+        //   These are C++ implementation-side aborts (not Rust failures),
+        //   tagged `excluded_by_upstream_spec` so they don't count against
+        //   the harness verdict. Phase 6 mpmath-bridge could re-evaluate.
+        let excluded = matches!(
+            name,
+            "XC_TW"
+                | "XC_VWK"
+                | "XC_ZVPBESOLC"
+                | "XC_ZVPBEINTC"
+                | "XC_PBELOCC"
+        );
 
         // C++ xcfun_eval supports orders 0/1/2/3 (XCFunctional.cpp:500-617);
         // order 4 hits the `default: die` arm. Cap at 3 here for tier-2 parity.
