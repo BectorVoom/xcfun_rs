@@ -193,8 +193,27 @@ fn main() -> std::io::Result<()> {
         build.file(format!("{}/src/functionals/{}.cpp", xcfun_root, f));
     }
 
+    // Phase 4 plan 04-03 — M0x family (12) + BLOCX (1) .cpp files.
+    for f in &[
+        "m05x",   // XC_M05X (29)
+        "m05x2x", // XC_M05X2X (30)
+        "m06x",   // XC_M06X (31)
+        "m06x2x", // XC_M06X2X (32)
+        "m06lx",  // XC_M06LX (33)
+        "m06hfx", // XC_M06HFX (34)
+        "m05x2c", // XC_M05X2C (35)
+        "m05c",   // XC_M05C (36)
+        "m06c",   // XC_M06C (37)
+        "m06hfc", // XC_M06HFC (38)
+        "m06lc",  // XC_M06LC (39)
+        "m06x2c", // XC_M06X2C (40)
+        "blocx",  // XC_BLOCX (70)
+    ] {
+        build.file(format!("{}/src/functionals/{}.cpp", xcfun_root, f));
+    }
+
     // Non-LDA stubs — TPSS stubs removed in plan 04-01 Wave 1; BR+CSC removed in Task 2;
-    // SCAN family removed in plan 04-02.
+    // SCAN family removed in plan 04-02; M0x+BLOCX removed in plan 04-03.
     build.file("c_stubs.cpp");
 
     println!("cargo:rerun-if-changed={}/src", xcfun_root);

@@ -277,6 +277,45 @@ pub fn dispatch_kernel<F: Float>(
     } else if comptime!(id == 54) {
         // XC_R4SCANX (Plan 04-02 Wave 2)
         crate::functionals::mgga::r4scanx::r4scanx_kernel::<F>(d, out, n);
+    } else if comptime!(id == 29) {
+        // XC_M05X (Plan 04-03 Wave 3)
+        crate::functionals::mgga::m05x::m05x_kernel::<F>(d, out, n);
+    } else if comptime!(id == 30) {
+        // XC_M05X2X (Plan 04-03 Wave 3)
+        crate::functionals::mgga::m05x2x::m05x2x_kernel::<F>(d, out, n);
+    } else if comptime!(id == 31) {
+        // XC_M06X (Plan 04-03 Wave 3)
+        crate::functionals::mgga::m06x::m06x_kernel::<F>(d, out, n);
+    } else if comptime!(id == 32) {
+        // XC_M06X2X (Plan 04-03 Wave 3)
+        crate::functionals::mgga::m06x2x::m06x2x_kernel::<F>(d, out, n);
+    } else if comptime!(id == 33) {
+        // XC_M06LX (Plan 04-03 Wave 3)
+        crate::functionals::mgga::m06lx::m06lx_kernel::<F>(d, out, n);
+    } else if comptime!(id == 34) {
+        // XC_M06HFX (Plan 04-03 Wave 3)
+        crate::functionals::mgga::m06hfx::m06hfx_kernel::<F>(d, out, n);
+    } else if comptime!(id == 35) {
+        // XC_M05X2C (Plan 04-03 Wave 3)
+        crate::functionals::mgga::m05x2c::m05x2c_kernel::<F>(d, out, n);
+    } else if comptime!(id == 36) {
+        // XC_M05C (Plan 04-03 Wave 3)
+        crate::functionals::mgga::m05c::m05c_kernel::<F>(d, out, n);
+    } else if comptime!(id == 37) {
+        // XC_M06C (Plan 04-03 Wave 3)
+        crate::functionals::mgga::m06c::m06c_kernel::<F>(d, out, n);
+    } else if comptime!(id == 38) {
+        // XC_M06HFC (Plan 04-03 Wave 3)
+        crate::functionals::mgga::m06hfc::m06hfc_kernel::<F>(d, out, n);
+    } else if comptime!(id == 39) {
+        // XC_M06LC (Plan 04-03 Wave 3)
+        crate::functionals::mgga::m06lc::m06lc_kernel::<F>(d, out, n);
+    } else if comptime!(id == 40) {
+        // XC_M06X2C (Plan 04-03 Wave 3)
+        crate::functionals::mgga::m06x2c::m06x2c_kernel::<F>(d, out, n);
+    } else if comptime!(id == 70) {
+        // XC_BLOCX (Plan 04-03 Wave 3)
+        crate::functionals::mgga::blocx::blocx_kernel::<F>(d, out, n);
     }
 }
 
@@ -294,7 +333,9 @@ pub fn dispatch_kernel<F: Float>(
 ///   {10, 11, 12, 66}.
 /// Phase 4 plan 04-02 Wave 2 adds SCAN family (10):
 ///   {45, 46, 47, 48, 49, 50, 51, 52, 53, 54}.
-/// Total: 65 functional ids supported.
+/// Phase 4 plan 04-03 Wave 3 adds M0x family (12) + BLOCX (1):
+///   {29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 70}.
+/// Total: 78 functional ids supported.
 pub fn supports(id: FunctionalId) -> bool {
     matches!(
         id as u32,
@@ -313,5 +354,7 @@ pub fn supports(id: FunctionalId) -> bool {
         | 10 | 11 | 12 | 66
         // Phase 4 Wave-2: SCAN family (10)
         | 45 | 46 | 47 | 48 | 49 | 50 | 51 | 52 | 53 | 54
+        // Phase 4 Wave-3: M0x family (12) + BLOCX (1)
+        | 29 | 30 | 31 | 32 | 33 | 34 | 35 | 36 | 37 | 38 | 39 | 40 | 70
     )
 }

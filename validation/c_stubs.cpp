@@ -8,22 +8,11 @@
 // Phase 4 plan 04-01 Wave 1 removes 5 metaGGA stubs (TPSS×3 + revTPSS×2).
 // Phase 4 plan 04-01 Task 2 removes 4 more stubs (BRX + BRC + BRXC + CSC).
 // Phase 4 plan 04-02 removes 10 SCAN-family stubs (SCAN×2 + rSCAN×2 + r++SCAN×2 + r2SCAN×2 + r4SCAN×2).
-// Stubs remaining: 67 - 17 - 10 - 8 - 5 - 4 - 10 = 13.
+// Phase 4 plan 04-03 removes 13 more stubs (M05×4 + M06×8 + BLOCX).
+// Stubs remaining: 67 - 17 - 10 - 8 - 5 - 4 - 10 - 13 = 0.
+//
+// All non-LDA functionals now have native ports compiled into the validation
+// harness. This file is intentionally empty (apart from the include) so the
+// `cc::Build::file("c_stubs.cpp")` call still has a valid translation unit.
 
 #include "functional.hpp"
-
-template <typename num> static num stub_unimpl(const densvars<num> &) { return num(0); }
-
-FUNCTIONAL(XC_M05X) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_M05X2X) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_M06X) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_M06X2X) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_M06LX) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_M06HFX) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_M05X2C) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_M05C) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_M06C) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_M06HFC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_M06LC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_M06X2C) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_BLOCX) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
