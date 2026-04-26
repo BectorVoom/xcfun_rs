@@ -158,6 +158,98 @@ fn generate_polarised(rng: &mut Xoshiro256PlusPlus, count: usize) -> Vec<GridPoi
         .collect()
 }
 
+/// Phase 4 plan 04-00 — metaGGA grid stratum (D-09-A).
+///
+/// 1000 points at sibling seed `0xc0ffee01`, generated INDEPENDENTLY from
+/// the canonical 10k grid (which stays at `0x1234abcd`). Each point includes
+/// metaGGA-specific fields: `taua`, `taub` (kinetic energy density,
+/// positive-definite, scaled by ρ^(2/3)), `lapa`, `lapb` (Laplacians, near
+/// zero), `jpaa`, `jpbb` (paramagnetic current density components, [-0.1, 0.1]).
+///
+/// Used by the metaGGA tier-2 parity harness in Wave 6 (Plan 04-06).
+pub const METAGGA_SEED: u64 = 0xc0ffee01;
+pub const METAGGA_TOTAL: usize = 1000;
+
+/// One metaGGA grid point — extends `GridPoint` with kinetic-energy and
+/// laplacian + paramagnetic-current fields.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct MetaGgaGridPoint {
+    pub n: f64,
+    pub s: f64,
+    pub gaa: f64,
+    pub gab: f64,
+    pub gbb: f64,
+    pub taua: f64,
+    pub taub: f64,
+    pub lapa: f64,
+    pub lapb: f64,
+    pub jpaa: f64,
+    pub jpbb: f64,
+}
+
+/// 1000-point metaGGA stratum generator (D-09-A).
+///
+/// Per CONTEXT D-09-A:
+/// - `tau_α`, `tau_β` ∈ [0, kF² · ρ_α^(2/3)] — physically reasonable
+///   positive-definite kinetic energy density. We sample from a uniform
+///   distribution scaled by `kF² = (3π²)^(2/3)` and the spin density.
+/// - `lap_α`, `lap_β` near zero (uniform [-0.01, 0.01] scaled by density).
+/// - `jp_αα`, `jp_ββ` ∈ [-0.1, 0.1] (paramagnetic current squared, sign-free
+///   physical interpretation).
+/// - Total density `n` log-uniform [0.1, 10] (typical chemistry range).
+/// - Spin polarisation `|zeta|` uniform [0, 0.95].
+pub fn generate_metagga_stratum() -> Vec<MetaGgaGridPoint> {
+    let mut rng = Xoshiro256PlusPlus::seed_from_u64(METAGGA_SEED);
+    let mut out = Vec::with_capacity(METAGGA_TOTAL);
+    // kF² · ρ^(2/3) prefactor: (3π²)^(2/3) ≈ 9.5703...
+    let kf2 = (3.0_f64 * std::f64::consts::PI.powi(2)).powf(2.0 / 3.0);
+    for _ in 0..METAGGA_TOTAL {
+        // n log-uniform [0.1, 10].
+        let u = next_uniform_01(&mut rng);
+        let n = 0.1_f64 * 10.0_f64.powf(2.0 * u);
+        // |zeta| uniform [0, 0.95].
+        let z_abs = 0.95 * next_uniform_01(&mut rng);
+        let z_sign = if next_uniform_01(&mut rng) < 0.5 { -1.0 } else { 1.0 };
+        let s = z_sign * z_abs * n;
+        let a = (n + s) * 0.5;
+        let b = (n - s) * 0.5;
+        // Gradient: small uniform-magnitude squared.
+        let v = next_uniform_01(&mut rng);
+        let grad_sq = 1.0_f64 * v; // [0, 1]
+        let theta = next_uniform_01(&mut rng) * std::f64::consts::PI;
+        let gaa = grad_sq * theta.cos().powi(2);
+        let gbb = grad_sq * theta.sin().powi(2);
+        let gab = (gaa * gbb).sqrt() * (next_uniform_01(&mut rng) * 2.0 - 1.0);
+        // tau_α, tau_β ∈ [0, kf2 · a^(2/3)].
+        let tau_max_a = kf2 * a.max(1e-30).powf(2.0 / 3.0);
+        let tau_max_b = kf2 * b.max(1e-30).powf(2.0 / 3.0);
+        let taua = tau_max_a * next_uniform_01(&mut rng);
+        let taub = tau_max_b * next_uniform_01(&mut rng);
+        // lap_α, lap_β ∈ [-0.01·n, 0.01·n].
+        let lapa =
+            (next_uniform_01(&mut rng) * 2.0 - 1.0) * 0.01 * a;
+        let lapb =
+            (next_uniform_01(&mut rng) * 2.0 - 1.0) * 0.01 * b;
+        // jp_αα, jp_ββ ∈ [-0.1, 0.1].
+        let jpaa = (next_uniform_01(&mut rng) * 2.0 - 1.0) * 0.1;
+        let jpbb = (next_uniform_01(&mut rng) * 2.0 - 1.0) * 0.1;
+        out.push(MetaGgaGridPoint {
+            n,
+            s,
+            gaa,
+            gab,
+            gbb,
+            taua,
+            taub,
+            lapa,
+            lapb,
+            jpaa,
+            jpbb,
+        });
+    }
+    out
+}
+
 /// Phase 3 plan 03-06 — supplemental 400-point GGA-stratified grid.
 ///
 /// Per PATTERNS.md J2: 4 strata × 100 points = 400 points, fixed seed `0xdeadbeef`

@@ -6,4 +6,5 @@
 
 pub mod lda;
 pub mod gga;
+pub mod mgga;
 pub mod potential;

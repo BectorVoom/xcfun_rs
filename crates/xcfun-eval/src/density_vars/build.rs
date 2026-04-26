@@ -113,6 +113,16 @@ pub fn build_densvars<F: Float>(
     } else if comptime!(vars == 30) {
         build_xc_n_s_2nd_taylor::<F>(input, out, n);
     }
+    // ----- Phase 4 plan 04-00 Wave 0 additions (D-03 + D-03-A) -----
+    else if comptime!(vars == 13) {
+        // XC_A_B_GAA_GAB_GBB_TAUA_TAUB (densvars.hpp:54-72). id=13, inlen=7.
+        // Primary metaGGA Vars used by TPSS / SCAN / M0x families.
+        build_xc_a_b_gaa_gab_gbb_taua_taub::<F>(input, out, n);
+    } else if comptime!(vars == 17) {
+        // XC_A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB (densvars.hpp:187-208).
+        // id=17, inlen=11. BR family (BRX/BRC/BRXC) + CSC carryover Vars.
+        build_xc_a_b_gaa_gab_gbb_lapa_lapb_taua_taub_jpaa_jpbb::<F>(input, out, n);
+    }
     // (Other arms guarded by host-side Functional::eval pre-launch check.)
 
     // Derived fields (densvars.hpp:213-217) — common to every variant, run after the variant arm.
@@ -858,4 +868,144 @@ pub fn build_xc_n_s_2nd_taylor<F: Float>(
     ctaylor_sub::<F>(&out.n, &out.s, &mut diff_ns, n);
     ctaylor_scalar_mul::<F>(&sum_ns, half, &mut out.a, n);
     ctaylor_scalar_mul::<F>(&diff_ns, half, &mut out.b, n);
+}
+
+// ----------------------------------------------------------------------------
+//  Phase 4 plan 04-00 Wave 0 additions (D-03 + D-03-A).
+//
+//  Two new mandatory arms covering the metaGGA Vars cluster:
+//   - id=13 XC_A_B_GAA_GAB_GBB_TAUA_TAUB (inlen=7)
+//   - id=17 XC_A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB (inlen=11)
+//
+//  Pattern: identical to Phase 3 D-10 + Plan 03-01 — explicit chains, no
+//  C-fallthrough, regularize-only-CNST invariant preserved.
+// ----------------------------------------------------------------------------
+
+/// `XC_A_B_GAA_GAB_GBB_TAUA_TAUB` variant arm (vars=13, inlen=7) — primary
+/// metaGGA Vars used by TPSS / SCAN / M0x families.
+///
+/// Input layout (pre-seeded CTaylor per Plan 02-04 Wave-1B-14a amendment):
+/// - `input[0..size]`        = coeffs of `a`
+/// - `input[size..2*size]`   = coeffs of `b`
+/// - `input[2*size..3*size]` = coeffs of `gaa`
+/// - `input[3*size..4*size]` = coeffs of `gab`
+/// - `input[4*size..5*size]` = coeffs of `gbb`
+/// - `input[5*size..6*size]` = coeffs of `taua`
+/// - `input[6*size..7*size]` = coeffs of `taub`
+///
+/// Derives:
+///   `gnn = gaa + 2·gab + gbb`
+///   `gss = gaa - 2·gab + gbb`
+///   `gns = gaa - gbb`
+///   `tau = taua + taub`
+///
+/// EXPLICIT chain to `build_xc_a_b_gaa_gab_gbb` (replaces C fallthrough at
+/// densvars.hpp:54-72).
+///
+/// Source: `xcfun-master/src/densvars.hpp:54-72`.
+#[cube]
+pub fn build_xc_a_b_gaa_gab_gbb_taua_taub<F: Float>(
+    input: &Array<F>,
+    out: &mut DensVarsDev<F>,
+    #[comptime] n: u32,
+) {
+    let size = comptime!((1_u32 << n) as usize);
+
+    // Copy taua from input[5*size..6*size] and taub from input[6*size..7*size].
+    #[unroll]
+    for i in 0..size {
+        out.taua[i] = input[5 * size + i];
+        out.taub[i] = input[6 * size + i];
+    }
+
+    // tau = taua + taub.
+    ctaylor_add::<F>(&out.taua, &out.taub, &mut out.tau, n);
+
+    // EXPLICIT chain: build_xc_a_b_gaa_gab_gbb populates gaa, gab, gbb,
+    // gnn, gss, gns, then chains into build_xc_a_b for a, b, n, s.
+    build_xc_a_b_gaa_gab_gbb::<F>(input, out, n);
+}
+
+/// `XC_A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB` variant arm
+/// (vars=17, inlen=11) — current-density metaGGA Vars; required by BR
+/// family (BRX/BRC/BRXC) + CSC.
+///
+/// Input layout (pre-seeded CTaylor):
+/// - `input[0..size]`         = coeffs of `a`
+/// - `input[size..2*size]`    = coeffs of `b`
+/// - `input[2*size..3*size]`  = coeffs of `gaa`
+/// - `input[3*size..4*size]`  = coeffs of `gab`
+/// - `input[4*size..5*size]`  = coeffs of `gbb`
+/// - `input[5*size..6*size]`  = coeffs of `lapa`
+/// - `input[6*size..7*size]`  = coeffs of `lapb`
+/// - `input[7*size..8*size]`  = coeffs of `taua`
+/// - `input[8*size..9*size]`  = coeffs of `taub`
+/// - `input[9*size..10*size]` = coeffs of `jpaa`
+/// - `input[10*size..11*size]`= coeffs of `jpbb`
+///
+/// Derives same gnn/gss/gns as `build_xc_a_b_gaa_gab_gbb` plus
+/// `tau = taua + taub`.
+///
+/// **Free-standing implementation** per RESEARCH PATTERNS B.1 — does NOT
+/// chain through id=16/id=13. Reads slots directly and chains into
+/// `build_xc_a_b` at the end for `a`, `b`, `n`, `s`. Algorithmic-identity
+/// rule favours mirroring C++ source structure verbatim.
+///
+/// Source: `xcfun-master/src/densvars.hpp:187-208`.
+#[cube]
+pub fn build_xc_a_b_gaa_gab_gbb_lapa_lapb_taua_taub_jpaa_jpbb<F: Float>(
+    input: &Array<F>,
+    out: &mut DensVarsDev<F>,
+    #[comptime] n: u32,
+) {
+    let size = comptime!((1_u32 << n) as usize);
+
+    // Copy slots 2..4 → gaa, gab, gbb.
+    #[unroll]
+    for i in 0..size {
+        out.gaa[i] = input[2 * size + i];
+        out.gab[i] = input[3 * size + i];
+        out.gbb[i] = input[4 * size + i];
+    }
+
+    // Copy slots 5..6 → lapa, lapb.
+    #[unroll]
+    for i in 0..size {
+        out.lapa[i] = input[5 * size + i];
+        out.lapb[i] = input[6 * size + i];
+    }
+
+    // Copy slots 7..8 → taua, taub.
+    #[unroll]
+    for i in 0..size {
+        out.taua[i] = input[7 * size + i];
+        out.taub[i] = input[8 * size + i];
+    }
+
+    // Copy slots 9..10 → jpaa, jpbb.
+    #[unroll]
+    for i in 0..size {
+        out.jpaa[i] = input[9 * size + i];
+        out.jpbb[i] = input[10 * size + i];
+    }
+
+    // tau = taua + taub.
+    ctaylor_add::<F>(&out.taua, &out.taub, &mut out.tau, n);
+
+    // gnn = gaa + 2·gab + gbb (left-to-right, no mul_add per ACC-06).
+    let mut t1 = Array::<F>::new(size);
+    let mut t2 = Array::<F>::new(size);
+    ctaylor_scalar_mul::<F>(&out.gab, F::cast_from(2.0_f64), &mut t1, n);
+    ctaylor_add::<F>(&out.gaa, &t1, &mut t2, n);
+    ctaylor_add::<F>(&t2, &out.gbb, &mut out.gnn, n);
+
+    // gss = gaa - 2·gab + gbb (reuse t1 = 2·gab).
+    ctaylor_sub::<F>(&out.gaa, &t1, &mut t2, n);
+    ctaylor_add::<F>(&t2, &out.gbb, &mut out.gss, n);
+
+    // gns = gaa - gbb.
+    ctaylor_sub::<F>(&out.gaa, &out.gbb, &mut out.gns, n);
+
+    // EXPLICIT chain to build_xc_a_b — populates a, b, n, s from input slots 0/1.
+    build_xc_a_b::<F>(input, out, n);
 }
