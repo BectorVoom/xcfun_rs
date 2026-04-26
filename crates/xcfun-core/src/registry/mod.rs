@@ -9,19 +9,21 @@
 mod generated {
     // Imports visible to every `include!`-d file below. The generated files
     // themselves carry no `use` lines; keeping imports in one place avoids
-    // duplicate-import compile errors when three files share the same scope.
-    use crate::enums::{Mode, Vars};
+    // duplicate-import compile errors when four files share the same scope.
+    use crate::enums::{Mode, ParameterId, Vars};
     use crate::functional_id::FunctionalId;
     use crate::traits::Dependency;
 
-    // The three generated registry files are inlined via `include!` so each
+    // The four generated registry files are inlined via `include!` so each
     // can be a self-contained `.rs` emitted by the extractor without needing
-    // its own `mod` header.
+    // its own `mod` header. Plan 04-04 adds `parameters.rs` (4 entries).
     include!("generated/FUNCTIONAL_DESCRIPTORS.rs");
     include!("generated/VARS_TABLE.rs");
     include!("generated/ALIASES.rs");
+    include!("generated/parameters.rs");
 }
 
 pub use self::generated::{
-    ALIASES, Alias, FUNCTIONAL_DESCRIPTORS, FunctionalDescriptor, VARS_TABLE, VarsRow,
+    ALIASES, Alias, FUNCTIONAL_DESCRIPTORS, FunctionalDescriptor, PARAMETERS, ParameterEntry,
+    VARS_TABLE, VarsRow,
 };

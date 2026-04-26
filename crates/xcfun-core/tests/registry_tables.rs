@@ -103,10 +103,10 @@ fn vars_table_xc_a_b_gaa_gab_gbb_anchor() {
 }
 
 #[test]
-fn aliases_empty_for_phase_2() {
-    // CORE-08: 46 aliases populate in Phase 4. Phase 2 ships an empty slice
-    // (no LDA-only aliases per D-12).
-    assert_eq!(ALIASES.len(), 0);
+fn aliases_populated_in_phase_4() {
+    // Phase 4 (Plan 04-04 D-04): 46 alias entries populated from
+    // xcfun-master/src/functionals/aliases.cpp:17-138.
+    assert_eq!(ALIASES.len(), 46);
 }
 
 #[test]

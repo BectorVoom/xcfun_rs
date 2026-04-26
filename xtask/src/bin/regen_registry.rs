@@ -590,16 +590,398 @@ fn emit_c_stubs_cpp(functionals: &[FunctionalRec]) -> (String, usize) {
     (out, count)
 }
 
-fn emit_aliases_rs() -> String {
+/// One parsed alias entry from `aliases.cpp`.
+#[derive(Debug, Clone)]
+struct AliasRec {
+    name: String,
+    description: String,
+    /// (term_name, weight) pairs in declaration order.
+    terms: Vec<(String, f64)>,
+}
+
+/// One parsed parameter entry from `common_parameters.cpp`.
+#[derive(Debug, Clone)]
+struct ParameterRec {
+    /// XC_ identifier as written, e.g. "XC_RANGESEP_MU".
+    xc_ident: String,
+    description: String,
+    default: f64,
+}
+
+/// Strip C++ `// ...` line comments and `/* ... */` block comments; helps
+/// the regex-free parsers below avoid pattern leakage from documentation.
+fn strip_cpp_comments(src: &str) -> String {
+    let mut out = String::with_capacity(src.len());
+    let bytes = src.as_bytes();
+    let mut i = 0usize;
+    let mut in_str = false;
+    let mut in_chr = false;
+    let mut esc = false;
+    while i < bytes.len() {
+        let b = bytes[i];
+        if in_str {
+            out.push(b as char);
+            if esc {
+                esc = false;
+            } else if b == b'\\' {
+                esc = true;
+            } else if b == b'"' {
+                in_str = false;
+            }
+            i += 1;
+            continue;
+        }
+        if in_chr {
+            out.push(b as char);
+            if esc {
+                esc = false;
+            } else if b == b'\\' {
+                esc = true;
+            } else if b == b'\'' {
+                in_chr = false;
+            }
+            i += 1;
+            continue;
+        }
+        if b == b'"' {
+            in_str = true;
+            out.push('"');
+            i += 1;
+            continue;
+        }
+        if b == b'\'' {
+            in_chr = true;
+            out.push('\'');
+            i += 1;
+            continue;
+        }
+        if b == b'/' && i + 1 < bytes.len() {
+            let nb = bytes[i + 1];
+            if nb == b'/' {
+                while i < bytes.len() && bytes[i] != b'\n' {
+                    i += 1;
+                }
+                continue;
+            }
+            if nb == b'*' {
+                i += 2;
+                while i + 1 < bytes.len() && !(bytes[i] == b'*' && bytes[i + 1] == b'/') {
+                    i += 1;
+                }
+                i = (i + 2).min(bytes.len());
+                continue;
+            }
+        }
+        out.push(b as char);
+        i += 1;
+    }
+    out
+}
+
+/// Parse a C-style `"..."` string literal starting at `pos` (the opening quote).
+/// Returns (decoded_string, pos_after_closing_quote).
+fn parse_c_string(src: &str, pos: usize) -> Result<(String, usize)> {
+    let bytes = src.as_bytes();
+    if pos >= bytes.len() || bytes[pos] != b'"' {
+        bail!("expected opening '\"' at byte {}", pos);
+    }
+    let mut i = pos + 1;
+    let mut out = String::new();
+    while i < bytes.len() {
+        let b = bytes[i];
+        if b == b'\\' && i + 1 < bytes.len() {
+            let nb = bytes[i + 1];
+            let ch = match nb {
+                b'n' => '\n',
+                b't' => '\t',
+                b'r' => '\r',
+                b'\\' => '\\',
+                b'"' => '"',
+                b'\'' => '\'',
+                b'0' => '\0',
+                other => other as char,
+            };
+            out.push(ch);
+            i += 2;
+        } else if b == b'"' {
+            return Ok((out, i + 1));
+        } else {
+            out.push(b as char);
+            i += 1;
+        }
+    }
+    bail!("unterminated string literal starting at byte {}", pos)
+}
+
+/// Parse an f64 literal token starting at `pos` (skipping leading whitespace
+/// already done by the caller). Accepts `1.0`, `0.576727`, `-0.006`, `1.`,
+/// `1e-3`, etc. Returns (value, pos_after_token).
+fn parse_f64_token(src: &str, mut pos: usize) -> Result<(f64, usize)> {
+    let bytes = src.as_bytes();
+    let start = pos;
+    if pos < bytes.len() && (bytes[pos] == b'-' || bytes[pos] == b'+') {
+        pos += 1;
+    }
+    while pos < bytes.len()
+        && (bytes[pos].is_ascii_digit()
+            || bytes[pos] == b'.'
+            || bytes[pos] == b'e'
+            || bytes[pos] == b'E'
+            || ((bytes[pos] == b'+' || bytes[pos] == b'-')
+                && (bytes[pos - 1] == b'e' || bytes[pos - 1] == b'E')))
+    {
+        pos += 1;
+    }
+    let token = &src[start..pos];
+    let trimmed = token.trim_end_matches(['f', 'F', 'l', 'L']);
+    let value: f64 = trimmed
+        .parse()
+        .with_context(|| format!("failed to parse f64 literal '{}'", token))?;
+    Ok((value, pos))
+}
+
+/// Skip ASCII whitespace starting at `pos`. Returns the new position.
+fn skip_ws(src: &str, mut pos: usize) -> usize {
+    let bytes = src.as_bytes();
+    while pos < bytes.len() && (bytes[pos] as char).is_ascii_whitespace() {
+        pos += 1;
+    }
+    pos
+}
+
+/// Locate `aliases_array[...] = {` in the cleaned source and parse every
+/// `{ "name", "description", { {"term", w}, ... } }` row up to the closing
+/// `}` of the outer brace block.
+fn parse_aliases_cpp(cleaned: &str) -> Result<Vec<AliasRec>> {
+    let bytes = cleaned.as_bytes();
+    // Locate `aliases_array` then advance past the first `{` (start of array).
+    let arr_pos = cleaned
+        .find("aliases_array")
+        .context("aliases.cpp does not declare `aliases_array`")?;
+    let mut i = arr_pos + "aliases_array".len();
+    while i < bytes.len() && bytes[i] != b'{' {
+        i += 1;
+    }
+    if i >= bytes.len() {
+        bail!("aliases_array opening brace not found");
+    }
+    i += 1; // skip outer '{'
+
+    let mut out = Vec::new();
+    loop {
+        i = skip_ws(cleaned, i);
+        if i >= bytes.len() {
+            bail!("unexpected EOF inside aliases_array");
+        }
+        if bytes[i] == b'}' {
+            break;
+        }
+        if bytes[i] == b',' {
+            i += 1;
+            continue;
+        }
+        if bytes[i] != b'{' {
+            bail!(
+                "expected '{{' or '}}' at offset {}, got '{}'",
+                i,
+                bytes[i] as char
+            );
+        }
+        i += 1; // enter row '{'
+        i = skip_ws(cleaned, i);
+
+        // name
+        let (name, after) = parse_c_string(cleaned, i)?;
+        i = after;
+        i = skip_ws(cleaned, i);
+        if i < bytes.len() && bytes[i] == b',' {
+            i += 1;
+            i = skip_ws(cleaned, i);
+        } else {
+            bail!("expected ',' after alias name '{}'", name);
+        }
+
+        // description
+        let (description, after) = parse_c_string(cleaned, i)?;
+        i = after;
+        i = skip_ws(cleaned, i);
+        if i < bytes.len() && bytes[i] == b',' {
+            i += 1;
+            i = skip_ws(cleaned, i);
+        } else {
+            bail!("expected ',' after alias description for '{}'", name);
+        }
+
+        // terms list — opens '{', contains '{...},...', closes '}'.
+        if i >= bytes.len() || bytes[i] != b'{' {
+            bail!("expected '{{' before terms list of alias '{}'", name);
+        }
+        i += 1;
+
+        let mut terms = Vec::new();
+        loop {
+            i = skip_ws(cleaned, i);
+            if i >= bytes.len() {
+                bail!("unexpected EOF in terms list of alias '{}'", name);
+            }
+            if bytes[i] == b'}' {
+                i += 1;
+                break;
+            }
+            if bytes[i] == b',' {
+                i += 1;
+                continue;
+            }
+            if bytes[i] != b'{' {
+                bail!(
+                    "expected '{{' or '}}' inside terms list of '{}', got '{}'",
+                    name,
+                    bytes[i] as char
+                );
+            }
+            i += 1; // enter term '{'
+            i = skip_ws(cleaned, i);
+            let (tname, after) = parse_c_string(cleaned, i)?;
+            i = after;
+            i = skip_ws(cleaned, i);
+            if i >= bytes.len() || bytes[i] != b',' {
+                bail!("expected ',' after term name '{}' in alias '{}'", tname, name);
+            }
+            i += 1;
+            i = skip_ws(cleaned, i);
+            let (weight, after) = parse_f64_token(cleaned, i)?;
+            i = after;
+            i = skip_ws(cleaned, i);
+            if i >= bytes.len() || bytes[i] != b'}' {
+                bail!(
+                    "expected '}}' after weight {} in term '{}' of alias '{}'",
+                    weight,
+                    tname,
+                    name
+                );
+            }
+            i += 1;
+            terms.push((tname, weight));
+        }
+        i = skip_ws(cleaned, i);
+        // Optional trailing ',' before next row.
+        if i < bytes.len() && bytes[i] == b',' {
+            // consume in next loop iteration
+        }
+        // End of row brace
+        // We already consumed the inner '}' of terms; now the outer '}' of the row.
+        if i >= bytes.len() || bytes[i] != b'}' {
+            bail!("expected '}}' at end of row for alias '{}'", name);
+        }
+        i += 1;
+
+        out.push(AliasRec {
+            name,
+            description,
+            terms,
+        });
+    }
+    Ok(out)
+}
+
+/// Parse `common_parameters.cpp` for `PARAMETER(XC_FOO) = {"description", default};`
+/// declarations. Order of returned entries matches source order, which equals
+/// `list_of_functionals.hpp:99-104` discriminant order (78..=81).
+fn parse_common_parameters_cpp(cleaned: &str) -> Result<Vec<ParameterRec>> {
+    let bytes = cleaned.as_bytes();
+    let mut out = Vec::new();
+    let mut search_from = 0usize;
+    while let Some(rel) = cleaned[search_from..].find("PARAMETER(") {
+        let mut i = search_from + rel + "PARAMETER(".len();
+        // Identifier up to ')'.
+        let id_start = i;
+        while i < bytes.len() && bytes[i] != b')' {
+            i += 1;
+        }
+        if i >= bytes.len() {
+            bail!("unterminated PARAMETER() at offset {}", id_start);
+        }
+        let xc_ident = cleaned[id_start..i].trim().to_string();
+        i += 1; // skip ')'
+        i = skip_ws(cleaned, i);
+        if i >= bytes.len() || bytes[i] != b'=' {
+            bail!("expected '=' after PARAMETER({})", xc_ident);
+        }
+        i += 1;
+        i = skip_ws(cleaned, i);
+        if i >= bytes.len() || bytes[i] != b'{' {
+            bail!(
+                "expected '{{' to open PARAMETER({}) initializer",
+                xc_ident
+            );
+        }
+        i += 1;
+        i = skip_ws(cleaned, i);
+        let (description, after) = parse_c_string(cleaned, i)?;
+        i = after;
+        i = skip_ws(cleaned, i);
+        if i >= bytes.len() || bytes[i] != b',' {
+            bail!(
+                "expected ',' after description in PARAMETER({})",
+                xc_ident
+            );
+        }
+        i += 1;
+        i = skip_ws(cleaned, i);
+        let (default, after) = parse_f64_token(cleaned, i)?;
+        i = after;
+        i = skip_ws(cleaned, i);
+        if i >= bytes.len() || bytes[i] != b'}' {
+            bail!(
+                "expected '}}' to close PARAMETER({}) initializer",
+                xc_ident
+            );
+        }
+        i += 1;
+
+        out.push(ParameterRec {
+            xc_ident,
+            description,
+            default,
+        });
+        search_from = i;
+    }
+    if out.is_empty() {
+        bail!("common_parameters.cpp parsed no PARAMETER() entries");
+    }
+    Ok(out)
+}
+
+/// Map an XC_ parameter identifier to its `ParameterId::XC_*` enum form
+/// (matches the discriminant order in `enums.rs`).
+fn parameter_id_variant(xc_ident: &str) -> Result<&'static str> {
+    match xc_ident {
+        "XC_RANGESEP_MU" => Ok("ParameterId::XC_RANGESEP_MU"),
+        "XC_EXX" => Ok("ParameterId::XC_EXX"),
+        "XC_CAM_ALPHA" => Ok("ParameterId::XC_CAM_ALPHA"),
+        "XC_CAM_BETA" => Ok("ParameterId::XC_CAM_BETA"),
+        other => bail!("unknown parameter identifier {}", other),
+    }
+}
+
+fn emit_aliases_rs(aliases: &[AliasRec]) -> String {
     let mut out = String::new();
     out.push_str(
         "// AUTO-GENERATED by `cargo run -p xtask --bin regen-registry` — do not edit by hand.\n\
-         // Source: xcfun-master/src/functionals/aliases.cpp (Phase 2: empty; Phase 4 populates 46 rows)\n\n",
+         // Source: xcfun-master/src/functionals/aliases.cpp:17-138 (46 alias entries).\n\
+         // Regenerate with: cargo run -p xtask --bin regen-registry\n\
+         // Drift check:    cargo run -p xtask --bin regen-registry -- --check (exit 2 on drift)\n\
+         //\n\
+         // Phase 4 D-04 — populated. Each `Alias` row corresponds to one entry in the\n\
+         // C++ `aliases_array[]` table. `name` and `description` mirror the C++ string\n\
+         // literals byte-for-byte; `components` mirrors the `terms[MAX_ALIAS_TERMS]`\n\
+         // list with the trailing null-name sentinels truncated.\n\n",
     );
     out.push_str(
-        "/// Registry row describing one alias functional (e.g., \"BLYP\" ->\n\
-         /// 1.0*BECKEX + 1.0*LYPC). Phase 2 ships empty; Phase 4 extends the\n\
-         /// extractor to parse `aliases.cpp` and populates 46 rows.\n\
+        "/// Registry row describing one alias functional (e.g. \"BLYP\" ->\n\
+         /// 1.0*BECKEX + 1.0*LYPC). Resolved by `Functional::set` via case-insensitive\n\
+         /// lookup and recursive `set(term_name, value * term_weight)` per\n\
+         /// `XCFunctional.cpp:389-401`.\n\
          #[derive(Debug, Clone, Copy)]\n\
          pub struct Alias {\n\
          \x20   pub name: &'static str,\n\
@@ -607,8 +989,79 @@ fn emit_aliases_rs() -> String {
          \x20   pub components: &'static [(&'static str, f64)],\n\
          }\n\n",
     );
-    out.push_str("pub static ALIASES: &[Alias] = &[];\n");
+    out.push_str("pub static ALIASES: &[Alias] = &[\n");
+    for a in aliases {
+        out.push_str("    Alias {\n");
+        out.push_str(&format!("        name: \"{}\",\n", rust_escape(&a.name)));
+        out.push_str(&format!(
+            "        description: \"{}\",\n",
+            rust_escape(&a.description)
+        ));
+        out.push_str("        components: &[");
+        for (i, (tname, w)) in a.terms.iter().enumerate() {
+            if i > 0 {
+                out.push_str(", ");
+            }
+            out.push_str(&format!("(\"{}\", {})", rust_escape(tname), format_f64(*w)));
+        }
+        out.push_str("],\n");
+        out.push_str("    },\n");
+    }
+    out.push_str("];\n");
     out
+}
+
+fn emit_parameters_rs(params: &[ParameterRec]) -> Result<String> {
+    let mut out = String::new();
+    out.push_str(
+        "// AUTO-GENERATED by `cargo run -p xtask --bin regen-registry` — do not edit by hand.\n\
+         // Source: xcfun-master/src/functionals/common_parameters.cpp:17-29\n\
+         //       + xcfun-master/src/functionals/list_of_functionals.hpp:99-104\n\
+         // Regenerate with: cargo run -p xtask --bin regen-registry\n\
+         // Drift check:    cargo run -p xtask --bin regen-registry -- --check (exit 2 on drift)\n\n",
+    );
+    out.push_str(
+        "/// Registry row describing one common parameter (range-separation /\n\
+         /// CAM coefficients). Lookup name matches the C++ symbol with the\n\
+         /// `XC_` prefix stripped (`xcint.cpp:86`).\n\
+         ///\n\
+         /// Phase 4 D-05 — populated with the 4 entries declared in\n\
+         /// `common_parameters.cpp` in `list_of_functionals.hpp` discriminant order\n\
+         /// (78..=81).\n\
+         #[derive(Debug, Clone, Copy)]\n\
+         pub struct ParameterEntry {\n\
+         \x20   pub id: ParameterId,\n\
+         \x20   /// Lookup name (XC_ prefix stripped, matches `pardat_db<P>::d.name`).\n\
+         \x20   pub name: &'static str,\n\
+         \x20   /// Documentation string from the `PARAMETER(...)` macro payload.\n\
+         \x20   pub description: &'static str,\n\
+         \x20   /// Default value seeded into `Functional::settings[id as usize]` by\n\
+         \x20   /// `Functional::new()`.\n\
+         \x20   pub default: f64,\n\
+         }\n\n",
+    );
+    out.push_str(&format!(
+        "pub static PARAMETERS: [ParameterEntry; {}] = [\n",
+        params.len()
+    ));
+    for p in params {
+        let variant = parameter_id_variant(&p.xc_ident)?;
+        let bare = p
+            .xc_ident
+            .strip_prefix("XC_")
+            .ok_or_else(|| anyhow::anyhow!("parameter ident missing XC_ prefix: {}", p.xc_ident))?;
+        out.push_str("    ParameterEntry {\n");
+        out.push_str(&format!("        id: {},\n", variant));
+        out.push_str(&format!("        name: \"{}\",\n", rust_escape(bare)));
+        out.push_str(&format!(
+            "        description: \"{}\",\n",
+            rust_escape(&p.description)
+        ));
+        out.push_str(&format!("        default: {},\n", format_f64(p.default)));
+        out.push_str("    },\n");
+    }
+    out.push_str("];\n");
+    Ok(out)
 }
 
 fn format_f64(v: f64) -> String {
@@ -674,9 +1127,36 @@ fn main() -> Result<()> {
         vars_rows.len()
     );
 
+    // Plan 04-04 D-04 — parse aliases.cpp for the 46-entry alias registry.
+    let aliases_src_path = xcfun_root.join("src/functionals/aliases.cpp");
+    let aliases_raw = fs::read_to_string(&aliases_src_path)
+        .with_context(|| format!("read {}", aliases_src_path.display()))?;
+    let aliases_clean = strip_cpp_comments(&aliases_raw);
+    let aliases_records = parse_aliases_cpp(&aliases_clean)
+        .with_context(|| format!("parsing {}", aliases_src_path.display()))?;
+    anyhow::ensure!(
+        aliases_records.len() == 46,
+        "expected 46 aliases in aliases.cpp, parsed {}",
+        aliases_records.len()
+    );
+
+    // Plan 04-04 D-05 — parse common_parameters.cpp for the 4-entry table.
+    let params_src_path = xcfun_root.join("src/functionals/common_parameters.cpp");
+    let params_raw = fs::read_to_string(&params_src_path)
+        .with_context(|| format!("read {}", params_src_path.display()))?;
+    let params_clean = strip_cpp_comments(&params_raw);
+    let params_records = parse_common_parameters_cpp(&params_clean)
+        .with_context(|| format!("parsing {}", params_src_path.display()))?;
+    anyhow::ensure!(
+        params_records.len() == 4,
+        "expected 4 PARAMETER(...) entries, parsed {}",
+        params_records.len()
+    );
+
     let descriptors_src = emit_functional_descriptors_rs(&functionals);
     let vars_src = emit_vars_table_rs(&vars_rows);
-    let aliases_src = emit_aliases_rs();
+    let aliases_src = emit_aliases_rs(&aliases_records);
+    let parameters_src = emit_parameters_rs(&params_records)?;
     let (c_stubs_src, c_stubs_count) = emit_c_stubs_cpp(&functionals);
 
     let generated_dir = root.join("crates/xcfun-core/src/registry/generated");
@@ -689,6 +1169,7 @@ fn main() -> Result<()> {
             ("FUNCTIONAL_DESCRIPTORS.rs", &descriptors_src),
             ("VARS_TABLE.rs", &vars_src),
             ("ALIASES.rs", &aliases_src),
+            ("parameters.rs", &parameters_src),
         ] {
             let actual = sha256_hex(src);
             let stamp_path = generated_dir.join(format!("{}.sha256", name));
@@ -750,6 +1231,7 @@ fn main() -> Result<()> {
     write_with_sha256_stamp(&generated_dir.join("FUNCTIONAL_DESCRIPTORS.rs"), &descriptors_src)?;
     write_with_sha256_stamp(&generated_dir.join("VARS_TABLE.rs"), &vars_src)?;
     write_with_sha256_stamp(&generated_dir.join("ALIASES.rs"), &aliases_src)?;
+    write_with_sha256_stamp(&generated_dir.join("parameters.rs"), &parameters_src)?;
 
     // Plan 02-06 Wave-2-1: also emit validation/c_stubs.cpp for the cc-build's
     // template recursion over XC_NR_FUNCTIONALS. 67 stubs (78 IDs - 11 LDAs).
@@ -757,9 +1239,11 @@ fn main() -> Result<()> {
     write_with_sha256_stamp(&c_stubs_path, &c_stubs_src)?;
 
     eprintln!(
-        "[regen-registry] wrote {} functional descriptors, {} vars rows, 0 aliases",
+        "[regen-registry] wrote {} functional descriptors, {} vars rows, {} aliases, {} parameters",
         FUNCTIONAL_IDS.len(),
-        vars_rows.len()
+        vars_rows.len(),
+        aliases_records.len(),
+        params_records.len()
     );
     eprintln!(
         "[regen-registry] wrote validation/c_stubs.cpp ({} stubs)",
