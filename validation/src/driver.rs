@@ -502,6 +502,19 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
         }
     }
 
+    // Bug-2 guard: a case-mismatched filter (regex compared against
+    // lowercased name at line 281) can silently produce 0 records and a
+    // misleading "PASS". Detect the false-green and warn.
+    if report.total_records() == 0 && filter.as_str() != ".*" {
+        tracing::warn!(
+            "Tier-2 iterated 0 records — your --filter '{}' likely matches no \
+             functional. Filter is matched against lowercased names like \
+             'xc_pbex'; uppercase or mixed-case patterns will not match. \
+             Drop --filter or use a lowercase regex.",
+            filter.as_str()
+        );
+    }
+
     tracing::info!(
         "Tier-2 done: {} records evaluated, {} failed ({} rust-unavailable, {} clamp-stratum excluded, {} would-fail-in-clamp)",
         report.total_records(),
@@ -601,6 +614,41 @@ pub fn run_potential(grid: &[GridPoint], filter: &regex::Regex) -> Result<Report
                 "Tier-2 SKIP {} under Mode::Potential — metaGGA-class deps",
                 name
             );
+            continue;
+        }
+        // C++-abort skip-list — mirrors `run` at lines 349-356. Without
+        // this, Mode::Potential aborts on TW (pow_expand x≤0 in tmath.hpp:156)
+        // before reaching the GGA tier. Same five functionals, same rationale
+        // (CONTEXT D-19 + Plan 03-06 Task 2 — no upstream test_in for TW/VWK;
+        // ZVPBESOLC/ZVPBEINTC/PBELOCC hit pow_expand on regularize-stress
+        // grid points).
+        if matches!(
+            name,
+            "XC_TW" | "XC_VWK" | "XC_ZVPBESOLC" | "XC_ZVPBEINTC" | "XC_PBELOCC"
+        ) {
+            tracing::warn!(
+                "Tier-2 EXCLUDED {} (mode=Potential): no upstream test_in (excluded_by_upstream_spec)",
+                name
+            );
+            let rec = ReportRecord {
+                functional: name.into(),
+                vars: format!("{:?}", Vars::A_B),
+                mode: 2,
+                order: 0,
+                point_idx: 0,
+                element_idx: 0,
+                input: Vec::new(),
+                rust: f64::NAN,
+                cpp: f64::NAN,
+                abs_err: f64::INFINITY,
+                rel_err: f64::INFINITY,
+                threshold: threshold_for(name),
+                pass: false,
+                rust_unavailable: true,
+                excluded_by_upstream_spec: true,
+                excluded_by_regularize_clamp_design: false,
+            };
+            report.push(rec);
             continue;
         }
         let vars = if deps.contains(Dependency::GRADIENT) {
@@ -712,6 +760,19 @@ pub fn run_potential(grid: &[GridPoint], filter: &regex::Regex) -> Result<Report
                 report.push(rec);
             }
         }
+    }
+
+    // Bug-2 guard: a case-mismatched filter (regex compared against
+    // lowercased name at line ~592) can silently produce 0 records and a
+    // misleading "PASS". Detect the false-green and warn.
+    if report.total_records() == 0 && filter.as_str() != ".*" {
+        tracing::warn!(
+            "Tier-2 (Mode::Potential) iterated 0 records — your --filter '{}' \
+             likely matches no functional. Filter is matched against lowercased \
+             names like 'xc_pbex'; uppercase or mixed-case patterns will not \
+             match. Drop --filter or use a lowercase regex.",
+            filter.as_str()
+        );
     }
 
     tracing::info!(
