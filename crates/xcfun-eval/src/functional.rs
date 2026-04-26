@@ -30,7 +30,10 @@
 
 use cubecl::prelude::*;
 use cubecl_cpu::CpuRuntime;
-use xcfun_core::{Dependency, FUNCTIONAL_DESCRIPTORS, FunctionalId, Mode, Vars, XcError, taylorlen};
+use xcfun_core::{
+    ALIASES, Dependency, FUNCTIONAL_DESCRIPTORS, FunctionalId, Mode, ParameterId, Vars, XcError,
+    taylorlen,
+};
 
 use crate::density_vars::DensVarsDev;
 use crate::density_vars::build::build_densvars;
@@ -61,9 +64,24 @@ fn eval_point_kernel<F: Float>(
     dispatch_kernel::<F>(id, d, out, n);
 }
 
-/// A weighted sum of functionals. Phase 2 minimal slice (D-21) extended in
-/// Phase 3 plan 03-02 with B3 `parameters: [f64; 4]` for range-separation /
-/// CAM functionals (BECKESRX + BECKECAMX).
+/// A weighted sum of functionals plus the full xcfun settings array.
+///
+/// Phase 2 minimal slice (D-21) extended in Phase 4 D-04/D-05 with the
+/// 82-slot `settings: [f64; 82]` mirroring
+/// `xcfun-master/src/XCFunctional.hpp:35` (`std::array<double, XC_NR_PARAMETERS_AND_FUNCTIONALS> settings`)
+/// and the alias-resolution engine on top of it.
+///
+/// Layout of `settings`:
+///   - indices 0..=77: per-`FunctionalId` weight; entries default to 0.0.
+///     Updated *additively* by `set("functional_name", value)` per
+///     `XCFunctional.cpp:373`.
+///   - indices 78..=81: per-`ParameterId` value; seeded with the defaults
+///     from `common_parameters.cpp:17-29`. Updated *destructively* by
+///     `set("parameter_name", value)` per `XCFunctional.cpp:381`.
+///
+/// `weights` retains the Phase 2 static-slice form for the existing
+/// `eval` launch loop. `set/get` operate on `settings` only — wiring the
+/// `set`-built state into `weights` is left to the C ABI / Phase 5 facade.
 pub struct Functional {
     /// (FunctionalId, weight) pairs. Weights sum to the active-functional set.
     pub weights: &'static [(FunctionalId, f64)],
@@ -74,25 +92,121 @@ pub struct Functional {
     /// Derivative order. Phase 2 supported 0..=2 per D-23; Plan 03-06 Task 1
     /// extends to 0..=4 per MODE-01 D-16.
     pub order: u32,
-    /// B3 — Range-separation / CAM parameters per
-    /// `xcfun-master/src/functionals/common_parameters.cpp:17-29`.
-    /// Indices:
-    ///   0 = `XC_EXX`         default 0.0
-    ///   1 = `XC_RANGESEP_MU` default 0.4
-    ///   2 = `XC_CAM_ALPHA`   default 0.19
-    ///   3 = `XC_CAM_BETA`    default 0.46
+    /// 82-slot xcfun-style settings array — the canonical state mutated by
+    /// `Functional::set` and read by `Functional::get`. Plan 04-04 D-05.
     ///
-    /// BECKESRX reads index 1 (RANGESEP_MU); BECKECAMX reads indices 1..=3.
-    /// The parameter buffer is launched as an extra cubecl `Array<F>` argument
-    /// alongside `DensVarsDev` only by kernels that consume it.
-    pub parameters: [f64; 4],
+    /// Indices 0..=77 are functional weights (FunctionalId discriminants).
+    /// Indices 78..=81 are parameters (ParameterId discriminants), seeded
+    /// with their defaults by `Functional::new()`.
+    pub settings: [f64; 82],
 }
 
-/// Default parameters per `common_parameters.cpp:17-29`. Use this when
-/// constructing a `Functional` that doesn't override them explicitly.
-pub const DEFAULT_PARAMETERS: [f64; 4] = [0.0, 0.4, 0.19, 0.46];
+/// Default `settings` array seeded by `Functional::new()` per
+/// `XCFunctional.cpp:351-354`. Functional slots 0..=77 are zero; parameter
+/// slots 78..=81 carry their defaults from `common_parameters.cpp:17-29`.
+///
+/// Replaces the Phase 3 `DEFAULT_PARAMETERS: [f64; 4]` constant; downstream
+/// callers must update field name from `parameters` to `settings`.
+pub const DEFAULT_SETTINGS: [f64; 82] = {
+    let mut s = [0.0_f64; 82];
+    s[ParameterId::XC_RANGESEP_MU as usize] = 0.4;
+    s[ParameterId::XC_EXX as usize] = 0.0;
+    s[ParameterId::XC_CAM_ALPHA as usize] = 0.19;
+    s[ParameterId::XC_CAM_BETA as usize] = 0.46;
+    s
+};
 
 impl Functional {
+    /// Construct a fresh `Functional` with empty weights, `Mode::Unset`, and
+    /// `settings` seeded by `DEFAULT_SETTINGS` (zero functional slots,
+    /// parameter slots at their `common_parameters.cpp:17-29` defaults).
+    ///
+    /// Companion `Default` impl below delegates to `Self::new()`.
+    ///
+    /// Mirrors `XCFunctional::XCFunctional()` at `XCFunctional.cpp:350-355`:
+    /// ```cpp
+    /// for (int i = 0; i < XC_NR_FUNCTIONALS; ++i) settings[i] = 0;
+    /// for (int i = XC_NR_FUNCTIONALS; i < XC_NR_PARAMETERS_AND_FUNCTIONALS; ++i)
+    ///     settings[i] = xcint_params[i].default_value;
+    /// ```
+    pub const fn new() -> Self {
+        Self {
+            weights: &[],
+            vars: Vars::A_B,
+            mode: Mode::Unset,
+            order: 0,
+            settings: DEFAULT_SETTINGS,
+        }
+    }
+
+    /// Update `self.settings` for `name`. Three-case dispatch mirroring
+    /// `xcfun_set` at `xcfun-master/src/XCFunctional.cpp:369-405`:
+    ///
+    /// 1. Functional name (`FunctionalId::from_name`):
+    ///    `settings[id] += value`            (additive accumulation)
+    /// 2. Parameter name (`ParameterId::from_name`):
+    ///    `settings[id]  = value`            (overwrite)
+    /// 3. Alias name (case-insensitive match in `ALIASES`):
+    ///    for each `(term_name, weight)` recurse
+    ///    `set(term_name, value * weight)`.
+    ///    Per the C++ FIXME at L393 the multiplication by `value` applies
+    ///    even to parameter terms (`exx`, `cam_alpha`, `cam_beta`,
+    ///    `rangesep_mu`); this preserves bit-level parity with the C++
+    ///    reference and is REQUIRED by the 1e-12 contract.
+    ///
+    /// Returns `Err(XcError::UnknownName)` when `name` matches no entry in
+    /// any of the three tables (mirrors C++'s `return -1`).
+    ///
+    /// **Lookup priority** (functional → parameter → alias) follows the
+    /// C++ ordering. As a consequence, names that are simultaneously a
+    /// functional and an alias (e.g. `OPTX`, `PBEX`) route to the
+    /// functional case. Names like `EXX` route to the parameter case
+    /// before any alias check.
+    ///
+    /// **Recursion bound:** the static `ALIASES` table never refers to
+    /// another alias as a term (verified across all 46 entries by the
+    /// `aliases_all_terms_resolve_to_known_names` test). Maximum recursion
+    /// depth is therefore 1 — no explicit depth counter is needed.
+    pub fn set(&mut self, name: &str, value: f64) -> Result<(), XcError> {
+        // Case 1 — Functional name (XCFunctional.cpp:372-385).
+        if let Some(id) = FunctionalId::from_name(name) {
+            self.settings[id as usize] += value;
+            return Ok(());
+        }
+        // Case 2 — Parameter name (XCFunctional.cpp:386-388).
+        if let Some(pid) = ParameterId::from_name(name) {
+            self.settings[pid as usize] = value;
+            return Ok(());
+        }
+        // Case 3 — Alias name (XCFunctional.cpp:389-401).
+        if let Some(alias) = ALIASES
+            .iter()
+            .find(|a| a.name.eq_ignore_ascii_case(name))
+        {
+            for (term_name, term_weight) in alias.components.iter() {
+                // Recurse — multiply by `value` per L397 (FIXME preserved).
+                self.set(term_name, value * *term_weight)?;
+            }
+            return Ok(());
+        }
+        Err(XcError::UnknownName)
+    }
+
+    /// Read a `settings[]` slot by name. Two-case dispatch mirroring
+    /// `xcfun_get` at `xcfun-master/src/XCFunctional.cpp:407-419`.
+    /// Aliases are NOT readable through `get` (the C++ implementation has
+    /// no alias case; it returns -1 for any non-functional / non-parameter
+    /// name).
+    pub fn get(&self, name: &str) -> Result<f64, XcError> {
+        if let Some(id) = FunctionalId::from_name(name) {
+            return Ok(self.settings[id as usize]);
+        }
+        if let Some(pid) = ParameterId::from_name(name) {
+            return Ok(self.settings[pid as usize]);
+        }
+        Err(XcError::UnknownName)
+    }
+
     /// `input_length(vars)` per MODE-04 — number of f64 inputs the kernel reads.
     /// Matches the C++ `xcfun_input_length(vars)` contract.
     pub const fn input_length(vars: Vars) -> usize {
@@ -635,6 +749,16 @@ impl Functional {
         _kernel_out: &mut [f64],
     ) -> Result<(), XcError> {
         Err(XcError::Runtime)
+    }
+}
+
+impl Default for Functional {
+    /// `Functional::default()` is equivalent to `Functional::new()` — empty
+    /// weights, `Mode::Unset`, and `settings` initialised to the
+    /// `DEFAULT_SETTINGS` constant (parameter slots at their
+    /// `common_parameters.cpp:17-29` defaults; functional slots zeroed).
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1393,7 +1517,7 @@ mod tests {
             vars: Vars::A_B,
             mode: Mode::Unset,
             order: 0,
-            parameters: DEFAULT_PARAMETERS,
+            settings: DEFAULT_SETTINGS,
         };
         let mut out = vec![0.0; 1];
         assert!(matches!(
@@ -1411,7 +1535,7 @@ mod tests {
             vars: Vars::A_B,
             mode: Mode::Contracted,
             order: 0,
-            parameters: DEFAULT_PARAMETERS,
+            settings: DEFAULT_SETTINGS,
         };
         let mut out = vec![0.0; 1];
         assert!(matches!(
@@ -1428,7 +1552,7 @@ mod tests {
             vars: Vars::A_B,
             mode: Mode::PartialDerivatives,
             order: 5,
-            parameters: DEFAULT_PARAMETERS,
+            settings: DEFAULT_SETTINGS,
         };
         let mut out = vec![0.0; 21]; // taylorlen(2, 5) = 21
         assert!(matches!(
@@ -1444,7 +1568,7 @@ mod tests {
             vars: Vars::A_B,
             mode: Mode::PartialDerivatives,
             order: 0,
-            parameters: DEFAULT_PARAMETERS,
+            settings: DEFAULT_SETTINGS,
         };
         let mut out = vec![0.0; 1];
         assert!(matches!(
@@ -1463,7 +1587,7 @@ mod tests {
             vars: Vars::A_B,
             mode: Mode::PartialDerivatives,
             order: 1,
-            parameters: DEFAULT_PARAMETERS,
+            settings: DEFAULT_SETTINGS,
         };
         // Expected outlen = taylorlen(2, 1) = 3
         let mut out = vec![0.0; 5];
@@ -1486,7 +1610,7 @@ mod tests {
             vars: Vars::A_B,
             mode: Mode::PartialDerivatives,
             order: 0,
-            parameters: DEFAULT_PARAMETERS,
+            settings: DEFAULT_SETTINGS,
         };
         let mut out = vec![99.0_f64; 1];
         assert!(f.eval(&[1.0, 0.5], &mut out).is_ok());
@@ -1553,7 +1677,7 @@ mod tests {
             vars: Vars::A_B_2ND_TAYLOR,
             mode: Mode::Potential,
             order: 0,
-            parameters: DEFAULT_PARAMETERS,
+            settings: DEFAULT_SETTINGS,
         };
         assert!(matches!(
             f.eval_setup(Vars::A_B_2ND_TAYLOR, Mode::Potential, 0),
@@ -1569,7 +1693,7 @@ mod tests {
             vars: Vars::A_B_2ND_TAYLOR,
             mode: Mode::Potential,
             order: 0,
-            parameters: DEFAULT_PARAMETERS,
+            settings: DEFAULT_SETTINGS,
         };
         assert!(matches!(
             f.eval_setup(Vars::A_B_2ND_TAYLOR, Mode::Potential, 0),
@@ -1586,7 +1710,7 @@ mod tests {
             vars: Vars::A_B_GAA_GAB_GBB,
             mode: Mode::Potential,
             order: 0,
-            parameters: DEFAULT_PARAMETERS,
+            settings: DEFAULT_SETTINGS,
         };
         assert!(matches!(
             f.eval_setup(Vars::A_B_GAA_GAB_GBB, Mode::Potential, 0),
@@ -1602,7 +1726,7 @@ mod tests {
             vars: Vars::A_B_2ND_TAYLOR,
             mode: Mode::Potential,
             order: 0,
-            parameters: DEFAULT_PARAMETERS,
+            settings: DEFAULT_SETTINGS,
         };
         assert!(f
             .eval_setup(Vars::A_B_2ND_TAYLOR, Mode::Potential, 0)
@@ -1617,7 +1741,7 @@ mod tests {
             vars: Vars::A_B,
             mode: Mode::Potential,
             order: 0,
-            parameters: DEFAULT_PARAMETERS,
+            settings: DEFAULT_SETTINGS,
         };
         assert!(f.eval_setup(Vars::A_B, Mode::Potential, 0).is_ok());
     }
@@ -1629,7 +1753,7 @@ mod tests {
             vars: Vars::A_B,
             mode: Mode::Unset,
             order: 0,
-            parameters: DEFAULT_PARAMETERS,
+            settings: DEFAULT_SETTINGS,
         };
         assert!(matches!(
             f.eval_setup(Vars::A_B, Mode::Unset, 0),
@@ -1648,7 +1772,7 @@ mod tests {
             vars: Vars::A_B_GAA_GAB_GBB,
             mode: Mode::PartialDerivatives,
             order: 0,
-            parameters: DEFAULT_PARAMETERS,
+            settings: DEFAULT_SETTINGS,
         };
         let deps = f.dependencies();
         assert!(deps.contains(Dependency::DENSITY));

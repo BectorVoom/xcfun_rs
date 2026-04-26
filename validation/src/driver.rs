@@ -433,7 +433,7 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
                 vars,
                 mode: Mode::PartialDerivatives,
                 order,
-                parameters: xcfun_eval::functional::DEFAULT_PARAMETERS,
+                settings: xcfun_eval::functional::DEFAULT_SETTINGS,
             };
 
             for (point_idx, gp) in grid.iter().enumerate() {
@@ -708,7 +708,7 @@ pub fn run_potential(grid: &[GridPoint], filter: &regex::Regex) -> Result<Report
             vars,
             mode: Mode::Potential,
             order: 0,
-            parameters: xcfun_eval::functional::DEFAULT_PARAMETERS,
+            settings: xcfun_eval::functional::DEFAULT_SETTINGS,
         };
 
         for (point_idx, gp) in grid.iter().enumerate() {
