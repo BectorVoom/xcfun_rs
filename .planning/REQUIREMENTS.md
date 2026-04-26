@@ -57,7 +57,7 @@
 
 ### Functional Ports — metaGGA Tier
 
-- [ ] **MGGA-01**: TPSS family (`XC_TPSSX`, `XC_TPSSC`, `XC_REVTPSSX`, `XC_REVTPSSC`, `XC_TPSSLOCC`) ported, self-tests pass
+- [x] **MGGA-01**: TPSS family (`XC_TPSSX`, `XC_TPSSC`, `XC_REVTPSSX`, `XC_REVTPSSC`, `XC_TPSSLOCC`) ported, self-tests pass
 - [ ] **MGGA-02**: SCAN family (`XC_SCANX`, `XC_SCANC`, `XC_RSCANX`, `XC_RSCANC`, `XC_RPPSCANX`, `XC_RPPSCANC`, `XC_R2SCANX`, `XC_R2SCANC`, `XC_R4SCANX`, `XC_R4SCANC`) ported, self-tests pass
 - [ ] **MGGA-03**: Minnesota M05 family (`XC_M05X`, `XC_M05C`, `XC_M05X2X`, `XC_M05X2C`) ported, self-tests pass
 - [ ] **MGGA-04**: Minnesota M06 family (`XC_M06X`, `XC_M06C`, `XC_M06LX`, `XC_M06LC`, `XC_M06HFX`, `XC_M06HFC`, `XC_M06X2X`, `XC_M06X2C`) ported, self-tests pass
@@ -242,7 +242,7 @@ Populated during roadmap creation (2026-04-19).
 | GGA-08 | Phase 3 | Complete (with D-19 INCONCLUSIVE: APBEX/APBEC ~1e-7 drift forwarded to Phase 6) |
 | GGA-09 | Phase 3 | Complete (with D-19 INCONCLUSIVE: B97C/B97_1C/B97_2C 4.88e-11 drift forwarded to Phase 6) |
 | GGA-10 | Phase 3 | Complete (KTX/BTK GREEN; LB94 deferred to Phase 5; CSC deferred to Phase 4) |
-| MGGA-01 | Phase 4 | Pending |
+| MGGA-01 | Phase 4 | Complete |
 | MGGA-02 | Phase 4 | Pending |
 | MGGA-03 | Phase 4 | Pending |
 | MGGA-04 | Phase 4 | Pending |
