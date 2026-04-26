@@ -168,6 +168,27 @@ None surfaced — STATE.md `Active TODOs` lists only "Plan Phase 3", which is th
 - **D-01-C:** Wave 3 revised scope: 8 kernels (B97 ×6 + KT+BTK).
 - **D-10-A (discriminant correction):** `_2ND_TAYLOR` Vars discriminants are 27, 28, 29, 30 (not 26..29 as D-10 stated). Source of truth: `crates/xcfun-core/src/enums.rs:73-76`. Build-densvars if-chain arms MUST key off these values.
 
+### Post-UAT additions (2026-04-26 — from /gsd-verify-work session)
+
+- **D-26 (Ekström-FIXME classification — third D-19 failure-pattern type):** A new category of D-19 INCONCLUSIVE entry distinct from both D-24 (cubecl polyfill divergence) and the original D-19 port-order drift class. **Trigger:** the C++ reference itself contains a `// FIXME` from the original author flagging algorithmic catastrophic cancellation, and the "special function" the FIXME asks for was never coded. Both Rust and C++ produce arbitrary-rounding garbage in the cancellation regime; their disagreement is rounding noise inside the cancellation, not a port defect.
+
+  **First member: `XC_BECKESRX`.** C++ source `xcfun-master/src/functionals/beckex.cpp:38-44` contains verbatim: `// FIXME: The erf + something is basically the erf minus its asymptotic expansion. This is horribel for numerics, will have to code a special function. ... As coded here the code will fail if mu = 0`. The same author later coded that special function for `XC_LDAERFX` (`ldaerfx.cpp:35-50`, three-branch piecewise: `a<1e-9 / a<100 / a<1e9 / else`) but never backported it to `becke_sr`. Forensic evidence (worst-case point in 9.86M-record tier-2 capstone): `point_idx=7421, order=2, a=b=6.95e-10, gaa=gab=gbb=0`; `rust=8.83e+04, cpp=9.86e+04, rel_err=1.053e-01`. Failure cluster bounded: 84 records ≥ 1e-3 all at density ∈ [2.47e-12, 2.65e-8] with zero gradient.
+
+  **Fix path (Phase 6, NOT Phase 3):** implement the piecewise asymptotic-expansion bridge in `becke_sr` mirroring the LDAERFX three-branch C++ pattern. Asymptotic series for `sqrt(π)·erf(1/(2a)) + 2a·b` when `a → ∞`: `erf(x) ≈ (2/√π)(x − x³/3 + x⁵/10 − ...)`, `b = expm1(-1/(4a²)) ≈ -1/(4a²) + 1/(32a⁴) − ...`; the leading-order terms cancel and the closed-form remainder is what the special function emits. Once shipped, Rust will be MORE accurate than C++ in this regime — same precedent as LDAERFX D-24 (Rust = mpmath truth; C++ itself diverges).
+
+  **REJECTED alternative — D-24-style 1e-7 override on BECKESRX.** Verified against `validation/report.jsonl`: a 1e-7 threshold would still leave 5,754 records failing; a 1e-4 threshold leaves 515. The numerics is broken in both implementations, so the fix must be the special function, NOT a tolerance widening. A blanket override would also mask the algorithmic-instability finding from future reviewers.
+
+  **Distinguishing the three classes (decision-tree for new D-19 entries):**
+  | Class | Diagnostic | Fix pattern |
+  |---|---|---|
+  | D-19 (port-order drift) | Same algorithm in Rust + C++; drift bounded ~1e-9 to 1e-6 from `pow` chain order | Phase 6 mpmath-bridge ground truth |
+  | D-24 (cubecl polyfill) | `Float::erf` polyfill differs from libm `erf` by ~1.3e-8 ULP | Per-functional 1e-7 threshold override (in place for LDAERFX/C/JT) |
+  | **D-26 (Ekström-FIXME)** | **C++ source carries an unresolved `// FIXME` from the author about catastrophic cancellation; rust↔cpp drift unbounded in the asymptotic regime** | **Phase 6: implement the special function the FIXME describes; once shipped, Rust > C++ accuracy** |
+
+  **Affected functionals:** Currently only `XC_BECKESRX`. Future range-separated GGAs (e.g., camb3lyp variants, additional Becke-SR-based functionals) should be screened against this pattern when added.
+
+  **Authorisation:** /gsd-verify-work session on 2026-04-26 (Test 2 forensic finding); UAT artifact at `.planning/phases/03-gga-tier-mode-potential/03-HUMAN-UAT.md` Gaps §1; commit `29fe026 test(03): record BECKESRX D-18 forensic finding (Test 2)`.
+
 ---
 
 </decisions>
