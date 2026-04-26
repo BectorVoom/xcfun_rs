@@ -176,7 +176,25 @@ fn main() -> std::io::Result<()> {
         build.file(format!("{}/src/functionals/{}.cpp", xcfun_root, f));
     }
 
-    // Non-LDA stubs — TPSS stubs removed in plan 04-01 Wave 1; BR+CSC removed in Task 2.
+    // Phase 4 plan 04-02 — SCAN family .cpp files (10 functionals across 5 files).
+    // Each file contains both the exchange and correlation variant.
+    for f in &[
+        "SCANc",    // XC_SCANC (45)
+        "SCANx",    // XC_SCANX (46)
+        "rSCANc",   // XC_RSCANC (47)
+        "rSCANx",   // XC_RSCANX (48)
+        "rppSCANc", // XC_RPPSCANC (49)
+        "rppSCANx", // XC_RPPSCANX (50)
+        "r2SCANc",  // XC_R2SCANC (51)
+        "r2SCANx",  // XC_R2SCANX (52)
+        "r4SCANc",  // XC_R4SCANC (53)
+        "r4SCANx",  // XC_R4SCANX (54)
+    ] {
+        build.file(format!("{}/src/functionals/{}.cpp", xcfun_root, f));
+    }
+
+    // Non-LDA stubs — TPSS stubs removed in plan 04-01 Wave 1; BR+CSC removed in Task 2;
+    // SCAN family removed in plan 04-02.
     build.file("c_stubs.cpp");
 
     println!("cargo:rerun-if-changed={}/src", xcfun_root);

@@ -56,6 +56,16 @@
 //!   id == 43 → XC_REVTPSSC    (Plan 04-01 — Wave 1)
 //!   id == 44 → XC_REVTPSSX    (Plan 04-01 — Wave 1)
 //!   id == 75 → XC_TPSSLOCC    (Plan 04-01 — Wave 1)
+//!   id == 45 → XC_SCANC       (Plan 04-02 — Wave 2)
+//!   id == 46 → XC_SCANX       (Plan 04-02 — Wave 2)
+//!   id == 47 → XC_RSCANC      (Plan 04-02 — Wave 2)
+//!   id == 48 → XC_RSCANX      (Plan 04-02 — Wave 2)
+//!   id == 49 → XC_RPPSCANC    (Plan 04-02 — Wave 2)
+//!   id == 50 → XC_RPPSCANX    (Plan 04-02 — Wave 2)
+//!   id == 51 → XC_R2SCANC     (Plan 04-02 — Wave 2)
+//!   id == 52 → XC_R2SCANX     (Plan 04-02 — Wave 2)
+//!   id == 53 → XC_R4SCANC     (Plan 04-02 — Wave 2)
+//!   id == 54 → XC_R4SCANX     (Plan 04-02 — Wave 2)
 
 use cubecl::prelude::*;
 use xcfun_core::FunctionalId;
@@ -237,6 +247,36 @@ pub fn dispatch_kernel<F: Float>(
     } else if comptime!(id == 66) {
         // XC_CSC (Plan 04-01 Wave 1)
         crate::functionals::mgga::csc::csc_kernel::<F>(d, out, n);
+    } else if comptime!(id == 45) {
+        // XC_SCANC (Plan 04-02 Wave 2)
+        crate::functionals::mgga::scanc::scanc_kernel::<F>(d, out, n);
+    } else if comptime!(id == 46) {
+        // XC_SCANX (Plan 04-02 Wave 2)
+        crate::functionals::mgga::scanx::scanx_kernel::<F>(d, out, n);
+    } else if comptime!(id == 47) {
+        // XC_RSCANC (Plan 04-02 Wave 2)
+        crate::functionals::mgga::rscanc::rscanc_kernel::<F>(d, out, n);
+    } else if comptime!(id == 48) {
+        // XC_RSCANX (Plan 04-02 Wave 2)
+        crate::functionals::mgga::rscanx::rscanx_kernel::<F>(d, out, n);
+    } else if comptime!(id == 49) {
+        // XC_RPPSCANC (Plan 04-02 Wave 2)
+        crate::functionals::mgga::rppscanc::rppscanc_kernel::<F>(d, out, n);
+    } else if comptime!(id == 50) {
+        // XC_RPPSCANX (Plan 04-02 Wave 2)
+        crate::functionals::mgga::rppscanx::rppscanx_kernel::<F>(d, out, n);
+    } else if comptime!(id == 51) {
+        // XC_R2SCANC (Plan 04-02 Wave 2)
+        crate::functionals::mgga::r2scanc::r2scanc_kernel::<F>(d, out, n);
+    } else if comptime!(id == 52) {
+        // XC_R2SCANX (Plan 04-02 Wave 2)
+        crate::functionals::mgga::r2scanx::r2scanx_kernel::<F>(d, out, n);
+    } else if comptime!(id == 53) {
+        // XC_R4SCANC (Plan 04-02 Wave 2)
+        crate::functionals::mgga::r4scanc::r4scanc_kernel::<F>(d, out, n);
+    } else if comptime!(id == 54) {
+        // XC_R4SCANX (Plan 04-02 Wave 2)
+        crate::functionals::mgga::r4scanx::r4scanx_kernel::<F>(d, out, n);
     }
 }
 
@@ -252,7 +292,9 @@ pub fn dispatch_kernel<F: Float>(
 ///   {41, 42, 43, 44, 75}.
 /// Phase 4 plan 04-01 Task 2 adds BR family + CSC (4):
 ///   {10, 11, 12, 66}.
-/// Total: 55 functional ids supported.
+/// Phase 4 plan 04-02 Wave 2 adds SCAN family (10):
+///   {45, 46, 47, 48, 49, 50, 51, 52, 53, 54}.
+/// Total: 65 functional ids supported.
 pub fn supports(id: FunctionalId) -> bool {
     matches!(
         id as u32,
@@ -269,5 +311,7 @@ pub fn supports(id: FunctionalId) -> bool {
         | 41 | 42 | 43 | 44 | 75
         // Phase 4 Wave-1 carryovers: BR family (3) + CSC (1)
         | 10 | 11 | 12 | 66
+        // Phase 4 Wave-2: SCAN family (10)
+        | 45 | 46 | 47 | 48 | 49 | 50 | 51 | 52 | 53 | 54
     )
 }
