@@ -149,6 +149,7 @@ Added during Phase 2 execution (user-approved or surfaced by research/fix work):
 ### Active TODOs (project level)
 
 - [ ] Plan Phase 3 (`/gsd-plan-phase 3`)
+- [ ] **Phase 3 UAT Test 1 — order-3 full-matrix tier-2 capstone re-run** (~1h human-supervised; resume via `/gsd-verify-work 3`) — see `.planning/todos/pending/2026-04-26-phase-3-uat-test-1-order-3-full-matrix-tier-2-capstone-re-ru.md`
 
 ### Blockers
 
