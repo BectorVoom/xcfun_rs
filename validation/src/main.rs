@@ -35,9 +35,10 @@ fn main() -> Result<()> {
     let mode = match mode_str {
         "partial_derivatives" => validation::driver::HarnessMode::PartialDerivatives,
         "potential" => validation::driver::HarnessMode::Potential,
-        "contracted" => anyhow::bail!("--mode contracted is Phase 4 scope (MODE-03)"),
+        // Plan 04-05 D-06-C — Mode::Contracted at orders 5/6 vs C++ DOEVAL.
+        "contracted" => validation::driver::HarnessMode::Contracted,
         other => anyhow::bail!(
-            "--mode must be 'partial_derivatives' or 'potential'; got {}",
+            "--mode must be 'partial_derivatives', 'potential', or 'contracted'; got {}",
             other
         ),
     };
@@ -59,6 +60,13 @@ fn main() -> Result<()> {
     // `output_length` is fixed at 2 or 3 per D-15).
     if mode == validation::driver::HarnessMode::PartialDerivatives && order > 4 {
         anyhow::bail!("Phase 3 supports order ≤ 4 (MODE-01 D-16); got {}", order);
+    }
+    // Plan 04-05 D-06 — Mode::Contracted supports orders 0..=6 (XCFUN_MAX_ORDER).
+    if mode == validation::driver::HarnessMode::Contracted && order > 6 {
+        anyhow::bail!(
+            "Mode::Contracted caps at order 6 (XCFUN_MAX_ORDER, Plan 04-05 D-06); got {}",
+            order
+        );
     }
 
     let regex = regex::Regex::new(filter).context("invalid --filter regex")?;

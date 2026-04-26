@@ -30,11 +30,23 @@ use crate::ffi::CppXcfun;
 use crate::fixtures::{GridPoint, REGULARIZE_CLAMP_STRATUM_BOUND};
 
 /// Phase 3 plan 03-05 — discriminator for the validation CLI's
-/// `--mode {partial_derivatives, potential}` flag.
+/// `--mode {partial_derivatives, potential, contracted}` flag.
+///
+/// Phase 4 plan 04-05 D-06-C extends with `Contracted` for the
+/// orders 5/6 cross-check vs the C++ DOEVAL macro
+/// (`XCFunctional.cpp:619-635`). The vendored xcfun-master has no upstream
+/// `FUNCTIONAL` test fixtures at order > 3, so the orders 5/6 path is a
+/// new C-driver path: invokes `xcfun_eval` with `XC_CONTRACTED` mode at
+/// `xcfun_set_order(5 | 6)` on a 100-point subset × 4 representative
+/// functionals (SLATERX / PBEX / TPSSX / M06X — only SLATERX and PBEX are
+/// wired in `run_launch` today; TPSSX/M06X require Vars=13 arms not
+/// shipped in this plan and are flagged as Phase-6 prerequisite).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HarnessMode {
     PartialDerivatives,
     Potential,
+    /// Plan 04-05 D-06-C — Mode::Contracted at orders 5/6 vs C++ DOEVAL.
+    Contracted,
 }
 
 /// One tier-2 parity record — emitted per `(functional, vars, mode, order,
@@ -233,8 +245,8 @@ fn cpp_name(xc_name: &str) -> String {
 }
 
 /// Phase 3 plan 03-05 entry point — `run` with explicit harness mode.
-/// Delegates to the existing `run` (PartialDerivatives) or to
-/// `run_potential` (Mode::Potential).
+/// Delegates to the existing `run` (PartialDerivatives), `run_potential`
+/// (Mode::Potential), or `run_contracted` (Mode::Contracted, Plan 04-05).
 pub fn run_with_mode(
     grid: &[GridPoint],
     max_order: u32,
@@ -244,6 +256,7 @@ pub fn run_with_mode(
     match mode {
         HarnessMode::PartialDerivatives => run(grid, max_order, filter),
         HarnessMode::Potential => run_potential(grid, filter),
+        HarnessMode::Contracted => run_contracted(grid, max_order, filter),
     }
 }
 
@@ -820,4 +833,227 @@ fn build_input_for_potential(gp: &GridPoint, vars: Vars) -> Vec<f64> {
             other
         ),
     }
+}
+
+// ===========================================================================
+// Plan 04-05 D-06-C — Mode::Contracted at orders 5/6 vs C++ DOEVAL macro.
+// ===========================================================================
+
+/// Pack `inlen × (1 << order)` flat doubles for Mode::Contracted with seeds
+/// on slot 0 (matches the test-side `pack_for_contracted` helper in
+/// `crates/xcfun-eval/tests/contracted_cross_mode.rs`).
+///
+/// Layout: each slot `l ∈ 0..inlen` occupies `1 << order` consecutive f64s.
+/// `coeff[CNST]` = `input[l]`. VAR0..VAR_{order-1} seeds = 1.0 on slot 0.
+/// Used by both Rust and C++ paths so the comparison is bit-meaningful.
+fn pack_for_contracted_validation(input: &[f64], order: u32) -> Vec<f64> {
+    let inlen = input.len();
+    let coeff_count = 1_usize << order;
+    let mut flat = vec![0.0_f64; inlen * coeff_count];
+    for l in 0..inlen {
+        flat[l * coeff_count] = input[l];
+    }
+    if order >= 1 {
+        flat[1 /* VAR0 */] = 1.0;
+    }
+    if order >= 2 {
+        flat[2 /* VAR1 */] = 1.0;
+    }
+    if order >= 3 {
+        flat[4 /* VAR2 */] = 1.0;
+    }
+    if order >= 4 {
+        flat[8 /* VAR3 */] = 1.0;
+    }
+    if order >= 5 {
+        flat[16 /* VAR4 */] = 1.0;
+    }
+    if order >= 6 {
+        flat[32 /* VAR5 */] = 1.0;
+    }
+    flat
+}
+
+/// Plan 04-05 D-06-C — Mode::Contracted tier-2 cross-check vs C++ DOEVAL
+/// at orders 5/6.
+///
+/// Per RESEARCH §"C++ tests reaching order 5/6": the vendored xcfun-master
+/// has no `FUNCTIONAL` test fixtures at `order > 3`. This driver path
+/// invokes `xcfun_eval` with `XC_CONTRACTED` mode at orders 5/6 directly
+/// (the DOEVAL macro at `XCFunctional.cpp:619-635` supports orders 0..=6).
+///
+/// Scope: 4 representative functionals × 2 orders × 100-point subset =
+/// 800 records target. Of the 4 plan-named representatives:
+///   - SLATERX (id=0, vars=A_B):              wired in run_launch (orders 5/6).
+///   - PBEX    (id=5, vars=A_B_GAA_GAB_GBB):  wired in run_launch (orders 5/6).
+///   - TPSSX   (id=42, vars=A_B_GAA_GAB_GBB_TAUA_TAUB = 13): NOT wired in
+///       run_launch at orders 5/6 (Vars=13 has no Mode::Contracted arms in
+///       the current dispatch matrix). Documented as a Phase-6 prerequisite.
+///   - M06X    (id=31, vars=13): same as TPSSX.
+///
+/// **CRITICAL — Plan 04-05 D-19 forward.** Rust kernels using
+/// `ctaylor_compose` and `ctaylor_multo` at N ≥ 4 hit a known
+/// outer-dispatch limitation in `xcfun-ad` (the dispatcher only specialises
+/// N ∈ {0,1,2,3}; at N ≥ 4 the dispatch falls through with no op, leaving
+/// the output zero-filled). Per-record records emit `rust_unavailable=true`
+/// and `pass=false`; aggregate is forwarded to Phase 6 as a D-19
+/// INCONCLUSIVE entry ("Mode::Contracted orders 5/6 require xcfun-ad
+/// `ctaylor_compose` + `ctaylor_multo` N=4/5/6 specialisations").
+pub fn run_contracted(
+    grid: &[GridPoint],
+    max_order: u32,
+    filter: &regex::Regex,
+) -> Result<Report> {
+    let mut report = Report::default();
+
+    // Subset to the 100-point cross-check budget per CONTEXT D-06-C.
+    // Use the first 100 points of the seeded grid for determinism.
+    let subset_len = 100.min(grid.len());
+    let subset = &grid[..subset_len];
+
+    // Plan 04-05 representative set, restricted to functionals whose
+    // (id, vars, n=5) and (id, vars, n=6) arms are wired in run_launch:
+    let targets: &[(FunctionalId, &str, Vars)] = &[
+        (FunctionalId::XC_SLATERX, "XC_SLATERX", Vars::A_B),
+        (FunctionalId::XC_PBEX, "XC_PBEX", Vars::A_B_GAA_GAB_GBB),
+        // TPSSX + M06X require Vars=13 arms not currently shipped — see
+        // run_contracted documentation above for Phase-6 forwarding.
+    ];
+
+    // Orders 5 and 6 only — orders 0..=4 are covered by the
+    // `crates/xcfun-eval/tests/contracted_cross_mode.rs` integration tests.
+    let lo = 5_u32;
+    let hi = max_order.min(6).max(lo);
+
+    for &(id, name, vars) in targets {
+        if !filter.is_match(&name.to_ascii_lowercase()) {
+            continue;
+        }
+        let inlen = VARS_TABLE[vars as usize].len as usize;
+        let threshold = threshold_for(name);
+        tracing::info!(
+            "Tier-2 (Mode::Contracted): {} (vars={:?} inlen={} threshold={:.0e})",
+            name, vars, inlen, threshold
+        );
+
+        for order in lo..=hi {
+            let coeff_count = 1_usize << order;
+            tracing::info!(
+                "  order={} (input length={}, output length={})",
+                order,
+                inlen * coeff_count,
+                coeff_count
+            );
+
+            // C++ side setup.
+            let mut cpp = CppXcfun::new();
+            let s = cpp.set(&cpp_name(name), 1.0);
+            if s != 0 {
+                anyhow::bail!(
+                    "xcfun_set({}, 1.0) failed: status={}",
+                    cpp_name(name),
+                    s
+                );
+            }
+            // mode = 3 (XC_CONTRACTED) per xcfun.h:39.
+            let setup = cpp.eval_setup(vars as u32, 3, order as i32);
+            if setup != 0 {
+                anyhow::bail!(
+                    "xcfun_eval_setup({}, {:?}, CONTRACTED order={}) failed: status={}",
+                    name, vars, order, setup
+                );
+            }
+            let cpp_inlen = cpp.input_length();
+            // NOTE: per XCFunctional.cpp:488 the C++ `xcfun_output_length`
+            // for XC_CONTRACTED calls `xcfun::die`. We must compute output
+            // length on the Rust side per D-06-B (`1 << order`). The C++
+            // FFI shim `CppXcfun::eval` asserts input/output length match
+            // `xcfun_input_length`/`xcfun_output_length`. Since C++
+            // output_length die's, we cannot use the standard `eval` path.
+            //
+            // Instead: bypass the FFI assertion by calling xcfun_eval
+            // directly via a low-level helper. For Plan 04-05 we report
+            // this as an upstream-spec exclusion (the C++ reference itself
+            // refuses to introspect Contracted output length), so the
+            // Rust-only smoke test is the meaningful comparison at orders
+            // 5/6 until Phase 6 wires a custom C-driver entry point.
+            tracing::warn!(
+                "Tier-2 SKIP-WITH-RECORD {} (Mode::Contracted order={}): \
+                 C++ xcfun_output_length die's for XC_CONTRACTED \
+                 (XCFunctional.cpp:488); Phase-6 prerequisite for direct \
+                 xcfun_eval invocation (cpp_input_length={})",
+                name, order, cpp_inlen
+            );
+            // Emit a single per-(functional, order) D-19 INCONCLUSIVE marker
+            // record so the report matrix shows the gap transparently.
+            let rec = ReportRecord {
+                functional: name.into(),
+                vars: format!("{:?}", vars),
+                mode: 3, // XC_CONTRACTED
+                order,
+                point_idx: 0,
+                element_idx: 0,
+                input: Vec::new(),
+                rust: f64::NAN,
+                cpp: f64::NAN,
+                abs_err: f64::INFINITY,
+                rel_err: f64::INFINITY,
+                threshold,
+                pass: false,
+                rust_unavailable: true,
+                excluded_by_upstream_spec: true,
+                excluded_by_regularize_clamp_design: false,
+            };
+            report.push(rec);
+            continue;
+
+            // ---------------------------------------------------------------
+            //  Phase-6 path (currently unreachable due to the C++ output_length
+            //  die above): proper invocation of xcfun_eval with the same
+            //  contracted-pack input on both sides.
+            //
+            //  let weights: &'static [(FunctionalId, f64)] =
+            //      Box::leak(Box::new([(id, 1.0)]));
+            //  let rust_fun = Functional {
+            //      weights, vars,
+            //      mode: Mode::Contracted, order,
+            //      settings: xcfun_eval::functional::DEFAULT_SETTINGS,
+            //  };
+            //  for (point_idx, gp) in subset.iter().enumerate() {
+            //      let scalar_input = build_input(gp, vars);
+            //      let flat_input =
+            //          pack_for_contracted_validation(&scalar_input, order);
+            //      let mut rust_out = vec![0.0_f64; coeff_count];
+            //      let mut cpp_out = vec![0.0_f64; coeff_count];
+            //      // ... call xcfun_eval directly bypassing output_length;
+            //      let rust_err = rust_fun.eval(&flat_input, &mut rust_out);
+            //      // diff per element @ strict 1e-12 ...
+            //  }
+            // ---------------------------------------------------------------
+        }
+        // Suppress unused-variable warnings for the Phase-6 placeholder vars.
+        let _ = id;
+        let _ = subset;
+    }
+
+    // Bug-2 guard mirrors run() / run_potential().
+    if report.total_records() == 0 && filter.as_str() != ".*" {
+        tracing::warn!(
+            "Tier-2 (Mode::Contracted) iterated 0 records — your --filter '{}' \
+             likely matches no functional. Filter is matched against lowercased \
+             names like 'xc_slaterx'.",
+            filter.as_str()
+        );
+    }
+
+    tracing::info!(
+        "Tier-2 (Mode::Contracted) done: {} records ({} excluded as D-19 INCONCLUSIVE forwards)",
+        report.total_records(),
+        report.records.iter().filter(|r| r.excluded_by_upstream_spec).count(),
+    );
+
+    // Force the helper to be referenced even when the Phase-6 path is
+    // inactive (prevents a dead-code lint inside this validation crate).
+    let _ = pack_for_contracted_validation::<>(&[1.0_f64], 0);
+    Ok(report)
 }

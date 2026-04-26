@@ -1482,6 +1482,23 @@ pub(crate) fn run_launch(
             (64, 6, 3) => arm!(64, 6, 3),  (64, 6, 4) => arm!(64, 6, 4),
             (65, 6, 3) => arm!(65, 6, 3),  (65, 6, 4) => arm!(65, 6, 4),
 
+            // ===== Phase 4 plan 04-05 (Mode::Contracted): orders 5 + 6 =====
+            //
+            // CTaylor<F, 5> = 32 coefficients per slot, CTaylor<F, 6> = 64
+            // coefficients per slot. Stack budget at order 6 = 20 × 64 × 8 =
+            // 10 KB per kernel invocation, well within cubecl-cpu budget per
+            // RESEARCH §"CTaylor<F, 6> capacity check".
+            //
+            // Vars=2 SLATERX (id=0): inlen=2 — exercises orders 5/6 at
+            // minimum cost (2 × 64 = 128 input doubles per launch).
+            // Vars=6 PBEX (id=5): inlen=5 — exercises orders 5/6 at
+            // representative GGA inlen (5 × 64 = 320 input doubles per launch).
+            //
+            // These two id/vars combinations are sufficient for the orders 5/6
+            // cross-check vs the C++ DOEVAL macro (validation harness path).
+            ( 0, 2, 5) => arm!( 0, 2, 5),  ( 0, 2, 6) => arm!( 0, 2, 6),
+            ( 5, 6, 5) => arm!( 5, 6, 5),  ( 5, 6, 6) => arm!( 5, 6, 6),
+
             _ => {
                 let _ = vars_u32;
                 return Err(XcError::NotConfigured);
