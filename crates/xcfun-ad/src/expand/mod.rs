@@ -43,3 +43,6 @@ pub mod asinh;
 pub mod atan;
 pub mod erf;
 pub mod gauss;
+// Phase 4 plan 04-00 — Brent-Kung linear-method polynomial inversion of
+// `BR_z(x) = (x-2)/x · exp(2x/3)` for the BR family (D-02).
+pub mod br_inverse;

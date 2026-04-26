@@ -54,6 +54,7 @@ use crate::ctaylor_rec::mul::ctaylor_mul;
 use crate::ctaylor_rec::multo::ctaylor_multo;
 use crate::expand::asinh::asinh_expand;
 use crate::expand::atan::atan_expand;
+use crate::expand::br_inverse::br_inverse_expand;
 use crate::expand::erf::erf_expand;
 use crate::expand::exp::exp_expand;
 use crate::expand::expm1::expm1_expand;
@@ -725,3 +726,67 @@ pub fn ctaylor_sqrtx_asinh_sqrtx<F: Float>(
         pade_8_8_sqrtx_asinh_sqrtx::<F>(x, out, n);
     }
 }
+
+// ---------------------------------------------------------------------------
+//  ctaylor_br_inverse — out = inverse of BR_z evaluated as a CTaylor of z.
+//  Phase 4 plan 04-00 Task 1 deliverable per CONTEXT D-02.
+//
+//  Port of `xcfun-master/src/functionals/brx.cpp:78-87` (`BR(t)` ctaylor adapter):
+//
+//  ```cpp
+//  template <typename T, int Nvar>
+//  static ctaylor<T, Nvar> BR(const ctaylor<T, Nvar> & t) {
+//    auto tmp = BR_taylor<T, (Nvar >= 3) ? Nvar : 3>(t.c[0]);
+//    ctaylor<T, Nvar> res = tmp[0];
+//    for (int i = 1; i <= Nvar; i++)
+//      res += tmp[i] * pow(t - t.c[0], i);
+//    return res;
+//  }
+//  ```
+//
+//  In our cubecl multilinear CTaylor, the `BR_taylor` step (host scalar Newton
+//  on slot 0 + linear-method polynomial sweep on slots 1..size) produces a
+//  CTaylor whose coefficients are the Taylor inverse of BR_z at z[0]. We
+//  populate that polynomial directly into `out` (`out[0] = BR(z[0])`,
+//  `out[1..size]` = linear-method coefficients) — the host-side caller seeds
+//  `out[CNST] = br_scalar(z[0])` BEFORE launch; this body fills the rest.
+//
+//  NOTE: the C++ `for (int i = 1; i <= Nvar; i++) res += tmp[i] * pow(t - t.c[0], i);`
+//  loop composes the inverse polynomial against the actual outer ctaylor `t`.
+//  In our pipeline, the caller has already pre-computed `z = (z-functional)`
+//  as a CTaylor, and this primitive returns the inverse Taylor directly into
+//  `out`. The composition step `res += tmp[i] * pow(t - t.c[0], i)` lives in
+//  the BR family kernel (Wave 1 `mgga/shared/br_like.rs`), not here.
+// ---------------------------------------------------------------------------
+
+/// `out = BR_inv_taylor(z)` — populates the inverse polynomial of `BR_z` at
+/// `z[0]` into `out`.
+///
+/// **Two-step host/device pipeline:**
+/// - Host (caller, NOT inside this `#[cube]`): seed `out[CNST]` with
+///   `br_scalar(z_cnst_host)` where `z_cnst_host` is the f64 constant slot
+///   of the input CTaylor `z`.
+/// - Device (this `#[cube]`): read `out[0]` (pre-seeded) and fill
+///   `out[1..size]` via the Brent-Kung linear-method polynomial sweep.
+///
+/// Precondition: `out[0]` is pre-seeded with the host-computed Newton root.
+/// The argument `z` is passed only so callers that thread the original outer
+/// CTaylor can carry its derivative-seed pattern through the linear-method
+/// recurrence (the recurrence reads/writes `out` slots only — `z` is not
+/// directly consumed in this body, but is part of the canonical 3-arg
+/// `ctaylor_<op>` signature shape).
+///
+/// Port reference: `xcfun-master/src/functionals/brx.cpp:50-71` (BR_taylor).
+#[cube]
+pub fn ctaylor_br_inverse<F: Float>(
+    _z: &Array<F>,
+    out: &mut Array<F>,
+    #[comptime] n: u32,
+) {
+    // Step 1: linear-method polynomial sweep (uses pre-seeded out[0]).
+    br_inverse_expand::<F>(out, n);
+
+    // Suppress unused-warning on the imported `br_inverse_expand` if the
+    // comptime size==1 branch elides it. cubecl 0.10-pre.3 should not warn.
+}
+

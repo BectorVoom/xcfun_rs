@@ -20,3 +20,7 @@ pub mod tfuns;
 pub mod for_tests;
 
 pub use index::{CNST, VAR0, VAR1, VAR2, VAR3, VAR4, VAR5, VAR6, VAR7};
+
+// Phase 4 plan 04-00 Task 1 — BR Newton-inverse primitive (D-02).
+pub use expand::br_inverse::{br_inverse_expand, br_scalar, br_z};
+pub use math::ctaylor_br_inverse;
