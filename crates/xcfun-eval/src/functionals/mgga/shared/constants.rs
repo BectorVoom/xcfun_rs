@@ -28,6 +28,8 @@ pub const TPSS_B_F64: f64 = 0.40_f64;
 pub const TPSS_E_F64: f64 = 1.537_f64;
 /// TPSS exchange `c` parameter — `tpssx_eps.hpp:33`.
 pub const TPSS_C_F64: f64 = 1.59096_f64;
+/// `sqrt(TPSS_E_F64)` — pre-computed because `f64::sqrt` is not `const fn`.
+pub const TPSS_SQRT_E_F64: f64 = 1.239_758_040_909_596_f64;
 
 /// TPSS correlation `dd` parameter — `tpssc_eps.hpp:59`.
 pub const TPSS_DD_F64: f64 = 2.8_f64;
@@ -46,6 +48,8 @@ pub const REVTPSS_B_F64: f64 = 0.40_f64;
 pub const REVTPSS_E_F64: f64 = 2.1677_f64;
 /// revTPSS exchange `c` parameter — `revtpssx_eps.hpp:32`.
 pub const REVTPSS_C_F64: f64 = 2.35204_f64;
+/// `sqrt(REVTPSS_E_F64)` — pre-computed because `f64::sqrt` is not `const fn`.
+pub const REVTPSS_SQRT_E_F64: f64 = 1.472_311_108_427_834_9_f64;
 
 // ---------------------------------------------------------------------------
 //  SCAN family constants (SCAN_like_eps.hpp).

@@ -20,6 +20,13 @@
 
 pub mod shared;
 
-// Wave 1 (04-01): TPSS family + BR + CSC — modules added in plan 04-01.
+// Wave 1 (04-01): TPSS family + BR + CSC
+pub mod tpssx;
+pub mod tpssc;
+pub mod revtpssx;
+pub mod revtpssc;
+pub mod tpsslocc;
+// Wave 1 (04-01): BR family + CSC — modules added in plan 04-01 Task 2.
+
 // Wave 2 (04-02): SCAN family — modules added in plan 04-02.
 // Wave 3 (04-03): M0x + BLOCX — modules added in plan 04-03.

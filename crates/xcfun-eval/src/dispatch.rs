@@ -51,6 +51,11 @@
 //!   id == 74 → XC_PBESOLX     (Plan 03-02 — Wave 2)
 //!   id == 76 → XC_ZVPBEINTC   (Plan 03-02 — Wave 2)
 //!   id == 77 → XC_PW91C       (Plan 03-03 — Wave 3)
+//!   id == 41 → XC_TPSSC       (Plan 04-01 — Wave 1)
+//!   id == 42 → XC_TPSSX       (Plan 04-01 — Wave 1)
+//!   id == 43 → XC_REVTPSSC    (Plan 04-01 — Wave 1)
+//!   id == 44 → XC_REVTPSSX    (Plan 04-01 — Wave 1)
+//!   id == 75 → XC_TPSSLOCC    (Plan 04-01 — Wave 1)
 
 use cubecl::prelude::*;
 use xcfun_core::FunctionalId;
@@ -205,6 +210,21 @@ pub fn dispatch_kernel<F: Float>(
     } else if comptime!(id == 77) {
         // XC_PW91C
         crate::functionals::gga::pw91::pw91c::pw91c_kernel::<F>(d, out, n);
+    } else if comptime!(id == 41) {
+        // XC_TPSSC (Plan 04-01 Wave 1)
+        crate::functionals::mgga::tpssc::tpssc_kernel::<F>(d, out, n);
+    } else if comptime!(id == 42) {
+        // XC_TPSSX (Plan 04-01 Wave 1)
+        crate::functionals::mgga::tpssx::tpssx_kernel::<F>(d, out, n);
+    } else if comptime!(id == 43) {
+        // XC_REVTPSSC (Plan 04-01 Wave 1)
+        crate::functionals::mgga::revtpssc::revtpssc_kernel::<F>(d, out, n);
+    } else if comptime!(id == 44) {
+        // XC_REVTPSSX (Plan 04-01 Wave 1)
+        crate::functionals::mgga::revtpssx::revtpssx_kernel::<F>(d, out, n);
+    } else if comptime!(id == 75) {
+        // XC_TPSSLOCC (Plan 04-01 Wave 1)
+        crate::functionals::mgga::tpsslocc::tpsslocc_kernel::<F>(d, out, n);
     }
 }
 
@@ -216,7 +236,9 @@ pub fn dispatch_kernel<F: Float>(
 /// adds 10 more GGAs (OPTX×2 + PW86/91×4 + P86×2 + APBE×2); plan 03-04 adds
 /// 8 more GGAs (B97×6 + KTX + BTK):
 ///   {23, 58, 60, 61, 62, 63, 64, 65}.
-/// Total: 46 functional ids supported. (CSC + BRX/BRC/BRXC + LB94 deferred.)
+/// Phase 4 plan 04-01 Wave 1 adds 5 metaGGA ids (TPSS family):
+///   {41, 42, 43, 44, 75}.
+/// Total: 51 functional ids supported. (BR×3 + CSC deferred to Task 2.)
 pub fn supports(id: FunctionalId) -> bool {
     matches!(
         id as u32,
@@ -229,5 +251,7 @@ pub fn supports(id: FunctionalId) -> bool {
         | 1 | 17 | 18 | 26 | 27 | 56 | 57 | 67 | 68 | 77
         // Phase 3 Wave-4 GGAs (8: B97 family + KTX + BTK)
         | 23 | 58 | 60 | 61 | 62 | 63 | 64 | 65
+        // Phase 4 Wave-1 metaGGAs: TPSS family (5)
+        | 41 | 42 | 43 | 44 | 75
     )
 }

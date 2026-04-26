@@ -5,7 +5,8 @@
 // Phase 3 plan 03-02 removes 17 GGA stubs (PBE×12 + Becke×4 + LYP×1).
 // Phase 3 plan 03-03 removes 10 more stubs (OPTX×2 + PW86/91×4 + P86×2 + APBE×2).
 // Phase 3 plan 03-04 removes 8 more stubs (B97×6 + KTX + BTK).
-// Stubs remaining: 67 - 17 - 10 - 8 = 32.
+// Phase 4 plan 04-01 Wave 1 removes 5 metaGGA stubs (TPSS×3 + revTPSS×2).
+// Stubs remaining: 67 - 17 - 10 - 8 - 5 = 27.
 
 #include "functional.hpp"
 
@@ -26,10 +27,6 @@ FUNCTIONAL(XC_M06C) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY
 FUNCTIONAL(XC_M06HFC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_M06LC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_M06X2C) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_TPSSC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_TPSSX) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_REVTPSSC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_REVTPSSX) = {"stub", "stub", XC_DENSITY|XC_GRADIENT, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_SCANC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_SCANX) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_RSCANC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
@@ -42,4 +39,3 @@ FUNCTIONAL(XC_R4SCANC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENE
 FUNCTIONAL(XC_R4SCANX) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_CSC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_LAPLACIAN|XC_KINETIC|XC_JP, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_BLOCX) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_TPSSLOCC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
