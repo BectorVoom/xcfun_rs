@@ -1,6 +1,76 @@
-//! Mode and Vars enums with metadata methods.
+//! Mode, Vars, and ParameterId enums with metadata methods.
 
 use crate::traits::Dependency;
+
+/// Parameter identifier for the xcfun common parameter table.
+///
+/// Discriminants match `xcfun-master/src/functionals/list_of_functionals.hpp:99-105`
+/// EXACTLY:
+/// ```cpp
+/// enum xc_parameter {
+///   XC_RANGESEP_MU = XC_NR_FUNCTIONALS,  // 78
+///   XC_EXX,                              // 79
+///   XC_CAM_ALPHA,                        // 80
+///   XC_CAM_BETA,                         // 81
+///   XC_NR_PARAMETERS_AND_FUNCTIONALS     // 82
+/// };
+/// ```
+///
+/// `as u32` indexes into the `Functional::settings[82]` array alongside
+/// `FunctionalId` (discriminants 0..=77). Plan 04-04 + Phase 4 D-05.
+#[allow(non_camel_case_types)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(u32)]
+pub enum ParameterId {
+    /// Range separation inverse length [1/a0]; default 0.4.
+    /// `xcfun-master/src/functionals/common_parameters.cpp:17`.
+    XC_RANGESEP_MU = 78,
+    /// Amount of exact (HF-like) exchange; default 0.0.
+    /// `xcfun-master/src/functionals/common_parameters.cpp:19-21`.
+    XC_EXX = 79,
+    /// Amount of exact exchange within CAM-B3LYP; default 0.19.
+    /// `xcfun-master/src/functionals/common_parameters.cpp:23-25`.
+    XC_CAM_ALPHA = 80,
+    /// Amount of long-range exchange within CAM-B3LYP; default 0.46.
+    /// `xcfun-master/src/functionals/common_parameters.cpp:27-29`.
+    XC_CAM_BETA = 81,
+}
+
+impl ParameterId {
+    /// Total number of parameters (matches
+    /// `XC_NR_PARAMETERS_AND_FUNCTIONALS - XC_NR_FUNCTIONALS = 4` in C++).
+    pub const COUNT: usize = 4;
+
+    /// Look up a parameter by string name (case-insensitive). Mirrors the
+    /// C++ `xcint_lookup_parameter` (`xcint.cpp:38-43`) which uses
+    /// `strcasecmp` against the name with the `XC_` prefix stripped.
+    /// Accepts both prefixed (`"XC_RANGESEP_MU"`) and bare
+    /// (`"rangesep_mu"`) forms per D-04-B (Phase 4 CONTEXT).
+    pub fn from_name(name: &str) -> Option<Self> {
+        let upper = name.to_ascii_uppercase();
+        let trimmed = upper.strip_prefix("XC_").unwrap_or(&upper);
+        match trimmed {
+            "RANGESEP_MU" => Some(Self::XC_RANGESEP_MU),
+            "EXX" => Some(Self::XC_EXX),
+            "CAM_ALPHA" => Some(Self::XC_CAM_ALPHA),
+            "CAM_BETA" => Some(Self::XC_CAM_BETA),
+            _ => None,
+        }
+    }
+
+    /// Default value for this parameter, copied verbatim from
+    /// `xcfun-master/src/functionals/common_parameters.cpp:17-29`.
+    /// Used by `Functional::new` to seed the parameter slots in
+    /// `settings[78..=81]`.
+    pub const fn default_value(self) -> f64 {
+        match self {
+            Self::XC_RANGESEP_MU => 0.4,
+            Self::XC_EXX => 0.0,
+            Self::XC_CAM_ALPHA => 0.19,
+            Self::XC_CAM_BETA => 0.46,
+        }
+    }
+}
 
 /// Evaluation mode for functional derivatives. Discriminants match `xcfun.h::xcfun_mode`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -326,6 +396,38 @@ mod tests {
                 | Dependency::KINETIC
                 | Dependency::JP
         );
+    }
+
+    #[test]
+    fn parameter_id_discriminants() {
+        // list_of_functionals.hpp:99-105 — discriminants 78..=81 (immediately
+        // after XC_NR_FUNCTIONALS = 78).
+        assert_eq!(ParameterId::XC_RANGESEP_MU as u32, 78);
+        assert_eq!(ParameterId::XC_EXX as u32, 79);
+        assert_eq!(ParameterId::XC_CAM_ALPHA as u32, 80);
+        assert_eq!(ParameterId::XC_CAM_BETA as u32, 81);
+        assert_eq!(ParameterId::COUNT, 4);
+    }
+
+    #[test]
+    fn parameter_id_from_name_case_insensitive() {
+        // C++ xcint_lookup_parameter uses strcasecmp on the symbol minus "XC_".
+        assert_eq!(ParameterId::from_name("rangesep_mu"), Some(ParameterId::XC_RANGESEP_MU));
+        assert_eq!(ParameterId::from_name("RANGESEP_MU"), Some(ParameterId::XC_RANGESEP_MU));
+        assert_eq!(ParameterId::from_name("XC_RANGESEP_MU"), Some(ParameterId::XC_RANGESEP_MU));
+        assert_eq!(ParameterId::from_name("Cam_Alpha"), Some(ParameterId::XC_CAM_ALPHA));
+        assert_eq!(ParameterId::from_name("xc_cam_beta"), Some(ParameterId::XC_CAM_BETA));
+        assert_eq!(ParameterId::from_name("not_a_param"), None);
+        assert_eq!(ParameterId::from_name(""), None);
+    }
+
+    #[test]
+    fn parameter_id_default_values_from_cpp() {
+        // common_parameters.cpp:17, 19-21, 23-25, 27-29.
+        assert_eq!(ParameterId::XC_RANGESEP_MU.default_value(), 0.4);
+        assert_eq!(ParameterId::XC_EXX.default_value(), 0.0);
+        assert_eq!(ParameterId::XC_CAM_ALPHA.default_value(), 0.19);
+        assert_eq!(ParameterId::XC_CAM_BETA.default_value(), 0.46);
     }
 
     #[test]

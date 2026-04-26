@@ -15,7 +15,7 @@
 use approx::assert_relative_eq;
 use xcfun_core::{FunctionalId, Mode, Vars};
 use xcfun_eval::Functional;
-use xcfun_eval::functional::DEFAULT_PARAMETERS;
+use xcfun_eval::functional::DEFAULT_SETTINGS;
 
 const C_SLATER: f64 = 0.930_525_736_349_100_2_f64;
 
@@ -27,7 +27,7 @@ fn slaterx_potential_a_b_matches_analytic() {
         vars: Vars::A_B,
         mode: Mode::Potential,
         order: 0,
-        parameters: DEFAULT_PARAMETERS,
+        settings: DEFAULT_SETTINGS,
     };
 
     let a = 0.7_f64;
@@ -58,7 +58,7 @@ fn slaterx_potential_a_b_2nd_taylor_matches_analytic() {
         vars: Vars::A_B_2ND_TAYLOR,
         mode: Mode::Potential,
         order: 0,
-        parameters: DEFAULT_PARAMETERS,
+        settings: DEFAULT_SETTINGS,
     };
 
     let a = 0.5_f64;

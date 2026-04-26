@@ -21,7 +21,7 @@
 use approx::assert_relative_eq;
 use xcfun_core::{FunctionalId, Mode, Vars};
 use xcfun_eval::Functional;
-use xcfun_eval::functional::DEFAULT_PARAMETERS;
+use xcfun_eval::functional::DEFAULT_SETTINGS;
 
 /// Smoke test: PBEX at a non-zero density with ZERO gradient + ZERO
 /// 2nd-order spatial Hessian. The divergence ∇·(∂E/∂g) at zero
@@ -45,7 +45,7 @@ fn pbex_potential_zero_gradient_matches_slater_energy() {
         vars: Vars::A_B_2ND_TAYLOR,
         mode: Mode::Potential,
         order: 0,
-        parameters: DEFAULT_PARAMETERS,
+        settings: DEFAULT_SETTINGS,
     };
 
     let a = 0.4_f64;
@@ -84,7 +84,7 @@ fn pbex_potential_non_2nd_taylor_vars_rejects() {
         vars: Vars::A_B_GAA_GAB_GBB,
         mode: Mode::Potential,
         order: 0,
-        parameters: DEFAULT_PARAMETERS,
+        settings: DEFAULT_SETTINGS,
     };
     let mut out = vec![0.0_f64; 3];
     let err = f.eval(&[0.4, 0.25, 0.0, 0.0, 0.0], &mut out);

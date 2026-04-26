@@ -120,7 +120,7 @@ fn tier1_self_tests_pass() {
             vars: test_vars,
             mode: Mode::PartialDerivatives,
             order: test_order,
-            parameters: xcfun_eval::functional::DEFAULT_PARAMETERS,
+            settings: xcfun_eval::functional::DEFAULT_SETTINGS,
         };
 
         let mut output = vec![0.0_f64; test_out.len()];

@@ -19,7 +19,7 @@ use approx::assert_relative_eq;
 use serde::Deserialize;
 use xcfun_core::{FunctionalId, Mode, Vars};
 use xcfun_eval::Functional;
-use xcfun_eval::functional::DEFAULT_PARAMETERS;
+use xcfun_eval::functional::DEFAULT_SETTINGS;
 
 #[derive(Deserialize, Debug)]
 struct PotentialRecord {
@@ -73,7 +73,7 @@ fn potential_parity_100() {
             vars: Vars::A_B_2ND_TAYLOR,
             mode: Mode::Potential,
             order: 0,
-            parameters: DEFAULT_PARAMETERS,
+            settings: DEFAULT_SETTINGS,
         };
         let mut out = vec![0.0_f64; rec.expected_output.len()];
         f.eval(&rec.input, &mut out)
@@ -173,7 +173,7 @@ fn potential_parity_100() {
             vars: Vars::A_B_2ND_TAYLOR,
             mode: Mode::Potential,
             order: 0,
-            parameters: DEFAULT_PARAMETERS,
+            settings: DEFAULT_SETTINGS,
         };
         let mut out = vec![0.0_f64; rec.expected_output.len()];
         f.eval(&rec.input, &mut out).unwrap();
