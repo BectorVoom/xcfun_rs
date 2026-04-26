@@ -44,4 +44,17 @@ pub mod r2scanc;
 pub mod r4scanx;
 pub mod r4scanc;
 
-// Wave 3 (04-03): M0x + BLOCX — modules added in plan 04-03.
+// Wave 3 (04-03): M0x family (12) + BLOCX (1).
+pub mod m05x;
+pub mod m05c;
+pub mod m05x2x;
+pub mod m05x2c;
+pub mod m06x;
+pub mod m06c;
+pub mod m06lx;
+pub mod m06lc;
+pub mod m06hfx;
+pub mod m06hfc;
+pub mod m06x2x;
+pub mod m06x2c;
+pub mod blocx;
