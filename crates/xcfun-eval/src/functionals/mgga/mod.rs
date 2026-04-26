@@ -32,5 +32,16 @@ pub mod brc;   // thin re-export of brc_kernel from brx
 pub mod brxc;  // thin re-export of brxc_kernel from brx
 pub mod csc;
 
-// Wave 2 (04-02): SCAN family — modules added in plan 04-02.
+// Wave 2 (04-02): SCAN family (10 kernels — 5 exchange + 5 correlation).
+pub mod scanx;
+pub mod scanc;
+pub mod rscanx;
+pub mod rscanc;
+pub mod rppscanx;
+pub mod rppscanc;
+pub mod r2scanx;
+pub mod r2scanc;
+pub mod r4scanx;
+pub mod r4scanc;
+
 // Wave 3 (04-03): M0x + BLOCX — modules added in plan 04-03.
