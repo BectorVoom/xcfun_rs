@@ -225,6 +225,18 @@ pub fn dispatch_kernel<F: Float>(
     } else if comptime!(id == 75) {
         // XC_TPSSLOCC (Plan 04-01 Wave 1)
         crate::functionals::mgga::tpsslocc::tpsslocc_kernel::<F>(d, out, n);
+    } else if comptime!(id == 10) {
+        // XC_BRX (Plan 04-01 Wave 1)
+        crate::functionals::mgga::brx::brx_kernel::<F>(d, out, n);
+    } else if comptime!(id == 11) {
+        // XC_BRC (Plan 04-01 Wave 1)
+        crate::functionals::mgga::brx::brc_kernel::<F>(d, out, n);
+    } else if comptime!(id == 12) {
+        // XC_BRXC (Plan 04-01 Wave 1)
+        crate::functionals::mgga::brx::brxc_kernel::<F>(d, out, n);
+    } else if comptime!(id == 66) {
+        // XC_CSC (Plan 04-01 Wave 1)
+        crate::functionals::mgga::csc::csc_kernel::<F>(d, out, n);
     }
 }
 
@@ -238,7 +250,9 @@ pub fn dispatch_kernel<F: Float>(
 ///   {23, 58, 60, 61, 62, 63, 64, 65}.
 /// Phase 4 plan 04-01 Wave 1 adds 5 metaGGA ids (TPSS family):
 ///   {41, 42, 43, 44, 75}.
-/// Total: 51 functional ids supported. (BR×3 + CSC deferred to Task 2.)
+/// Phase 4 plan 04-01 Task 2 adds BR family + CSC (4):
+///   {10, 11, 12, 66}.
+/// Total: 55 functional ids supported.
 pub fn supports(id: FunctionalId) -> bool {
     matches!(
         id as u32,
@@ -253,5 +267,7 @@ pub fn supports(id: FunctionalId) -> bool {
         | 23 | 58 | 60 | 61 | 62 | 63 | 64 | 65
         // Phase 4 Wave-1 metaGGAs: TPSS family (5)
         | 41 | 42 | 43 | 44 | 75
+        // Phase 4 Wave-1 carryovers: BR family (3) + CSC (1)
+        | 10 | 11 | 12 | 66
     )
 }

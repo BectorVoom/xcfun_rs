@@ -166,7 +166,17 @@ fn main() -> std::io::Result<()> {
         build.file(format!("{}/src/functionals/{}.cpp", xcfun_root, f));
     }
 
-    // Non-LDA stubs — TPSS stubs removed in plan 04-01 Wave 1.
+    // Phase 4 plan 04-01 Task 2 — BR family + CSC .cpp files.
+    // brx.cpp contains XC_BRX (10), XC_BRC (11), XC_BRXC (12).
+    // cs.cpp contains XC_CSC (66).
+    for f in &[
+        "brx", // XC_BRX (10) + XC_BRC (11) + XC_BRXC (12)
+        "cs",  // XC_CSC (66)
+    ] {
+        build.file(format!("{}/src/functionals/{}.cpp", xcfun_root, f));
+    }
+
+    // Non-LDA stubs — TPSS stubs removed in plan 04-01 Wave 1; BR+CSC removed in Task 2.
     build.file("c_stubs.cpp");
 
     println!("cargo:rerun-if-changed={}/src", xcfun_root);

@@ -6,15 +6,13 @@
 // Phase 3 plan 03-03 removes 10 more stubs (OPTX×2 + PW86/91×4 + P86×2 + APBE×2).
 // Phase 3 plan 03-04 removes 8 more stubs (B97×6 + KTX + BTK).
 // Phase 4 plan 04-01 Wave 1 removes 5 metaGGA stubs (TPSS×3 + revTPSS×2).
-// Stubs remaining: 67 - 17 - 10 - 8 - 5 = 27.
+// Phase 4 plan 04-01 Task 2 removes 4 more stubs (BRX + BRC + BRXC + CSC).
+// Stubs remaining: 67 - 17 - 10 - 8 - 5 - 4 = 23.
 
 #include "functional.hpp"
 
 template <typename num> static num stub_unimpl(const densvars<num> &) { return num(0); }
 
-FUNCTIONAL(XC_BRX) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_LAPLACIAN|XC_KINETIC|XC_JP, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_BRC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_LAPLACIAN|XC_KINETIC|XC_JP, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_BRXC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_LAPLACIAN|XC_KINETIC|XC_JP, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_M05X) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_M05X2X) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_M06X) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
@@ -37,5 +35,4 @@ FUNCTIONAL(XC_R2SCANC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENE
 FUNCTIONAL(XC_R2SCANX) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_R4SCANC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_R4SCANX) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};
-FUNCTIONAL(XC_CSC) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_LAPLACIAN|XC_KINETIC|XC_JP, ENERGY_FUNCTION(stub_unimpl)};
 FUNCTIONAL(XC_BLOCX) = {"stub", "stub", XC_DENSITY|XC_GRADIENT|XC_KINETIC, ENERGY_FUNCTION(stub_unimpl)};

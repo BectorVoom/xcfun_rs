@@ -26,7 +26,11 @@ pub mod tpssc;
 pub mod revtpssx;
 pub mod revtpssc;
 pub mod tpsslocc;
-// Wave 1 (04-01): BR family + CSC — modules added in plan 04-01 Task 2.
+// Wave 1 (04-01): BR family (brx.rs contains BRX/BRC/BRXC kernels) + CSC.
+pub mod brx;   // contains brx_kernel, brc_kernel, brxc_kernel
+pub mod brc;   // thin re-export of brc_kernel from brx
+pub mod brxc;  // thin re-export of brxc_kernel from brx
+pub mod csc;
 
 // Wave 2 (04-02): SCAN family — modules added in plan 04-02.
 // Wave 3 (04-03): M0x + BLOCX — modules added in plan 04-03.
