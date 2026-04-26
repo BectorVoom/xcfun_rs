@@ -222,31 +222,39 @@ impl Functional {
     /// # Phase 3 plan 03-05 — Mode::Potential routing (D-13)
     ///
     /// `Mode::Potential` is now routed to `launch_potential` (line-for-line
-    /// port of `XCFunctional.cpp:637-790`). `Mode::Contracted` is still
-    /// rejected with `XcError::InvalidMode` (Phase 4 scope).
+    /// port of `XCFunctional.cpp:637-790`).
+    ///
+    /// # Phase 4 plan 04-05 — Mode::Contracted routing (D-06)
+    ///
+    /// `Mode::Contracted` is now routed to
+    /// `crate::functionals::contracted::launch_contracted` — line-for-line
+    /// port of `XCFunctional.cpp:619-635` `DOEVAL` macro across orders
+    /// 0..=6 (D-06 + D-06-A). Input layout: `inlen × (1 << order)` flat
+    /// f64 doubles; output layout: `(1 << order)` flat doubles per D-06-B.
     pub fn eval(&self, input: &[f64], output: &mut [f64]) -> Result<(), XcError> {
-        // 1. Validate mode.  Phase 3 plan 03-05 wires Mode::Potential.
+        // 1. Validate mode.  Phase 4 plan 04-05 wires Mode::Contracted.
         match self.mode {
             Mode::Unset => return Err(XcError::NotConfigured),
-            Mode::PartialDerivatives | Mode::Potential => {}
-            Mode::Contracted => {
-                return Err(XcError::InvalidMode {
-                    mode: self.mode,
-                    depends: xcfun_core::Dependency::DENSITY,
-                });
-            }
+            Mode::PartialDerivatives | Mode::Potential | Mode::Contracted => {}
         }
-        // 2. Validate input length.
+        // 2. Validate input length. Mode::Contracted at order N reads
+        //    `inlen × (1 << order)` flat f64 doubles per D-06-A
+        //    (XCFunctional.cpp:622-627). All other modes read `inlen` scalars.
         let expected_inlen = Self::input_length(self.vars);
-        if input.len() != expected_inlen {
+        let expected_input_buf_len = match self.mode {
+            Mode::Contracted => expected_inlen * (1_usize << self.order),
+            _ => expected_inlen,
+        };
+        if input.len() != expected_input_buf_len {
             return Err(XcError::InputLengthMismatch {
-                expected: expected_inlen,
+                expected: expected_input_buf_len,
                 got: input.len(),
             });
         }
-        // 3. Validate order (Phase 3 plan 03-06 extends to 0..=4 per MODE-01
-        //    D-16; Mode::Potential uses order 0 by convention — the LDA loop
-        //    runs at N=1, GGA at N=2; the host `order` field is informational).
+        // 3. Validate order. Phase 3 plan 03-06 extends PartialDerivatives to
+        //    0..=4 per MODE-01 D-16. Mode::Contracted accepts orders 0..=6
+        //    per D-06 (XCFUN_MAX_ORDER = 6). Mode::Potential uses order 0
+        //    by convention — the LDA loop runs at N=1, GGA at N=2.
         if self.mode == Mode::PartialDerivatives && self.order > 4 {
             return Err(XcError::InvalidOrder {
                 order: self.order,
@@ -254,10 +262,18 @@ impl Functional {
                 n_vars: expected_inlen,
             });
         }
-        // 4. Validate output length per MODE-04 + RESEARCH.
+        if self.mode == Mode::Contracted && self.order > 6 {
+            return Err(XcError::InvalidOrder {
+                order: self.order,
+                mode: self.mode,
+                n_vars: expected_inlen,
+            });
+        }
+        // 4. Validate output length per MODE-04 + RESEARCH + D-06-B.
         let expected_outlen = match self.mode {
             Mode::PartialDerivatives => taylorlen(expected_inlen, self.order as usize),
             Mode::Potential => Self::output_length(self.vars, self.mode, self.order)?,
+            Mode::Contracted => Self::output_length(self.vars, self.mode, self.order)?,
             _ => unreachable!(),
         };
         if output.len() != expected_outlen {
@@ -301,7 +317,13 @@ impl Functional {
                     // D-13: line-for-line XCFunctional.cpp:637-790.
                     self.launch_potential(input, output)?;
                 }
-                _ => unreachable!(),
+                Mode::Contracted => {
+                    // D-06: line-for-line XCFunctional.cpp:619-635 DOEVAL.
+                    crate::functionals::contracted::launch_contracted(
+                        self, input, output,
+                    )?;
+                }
+                Mode::Unset => unreachable!(),
             }
         }
         #[cfg(not(feature = "testing"))]
@@ -340,8 +362,14 @@ impl Functional {
     /// ```
     ///
     /// `Mode::PartialDerivatives` returns `taylorlen(inlen, order)` per MODE-04.
-    /// `Mode::Contracted` and `Mode::Unset` are rejected (`XcError::InvalidMode`
-    /// / `XcError::NotConfigured`).
+    /// `Mode::Contracted` returns `1 << order` per D-06-B (Plan 04-05).
+    /// `Mode::Unset` is rejected (`XcError::NotConfigured`).
+    ///
+    /// **D-06-B divergence from C++:** the C++ `xcfun_output_length`
+    /// (`XCFunctional.cpp:488`) calls `xcfun::die("XC_CONTRACTED not implemented
+    /// in xc_output_length()", 0)` — i.e., refuses to compute a Contracted
+    /// output length. Rust takes the opposite stance and returns `1 << order`
+    /// directly per the DOEVAL output-write loop at `XCFunctional.cpp:627-628`.
     pub fn output_length(
         vars: Vars,
         mode: Mode,
@@ -360,10 +388,17 @@ impl Functional {
                     _ => Ok(3),
                 }
             }
-            Mode::Contracted => Err(XcError::InvalidMode {
-                mode,
-                depends: Dependency::DENSITY,
-            }),
+            Mode::Contracted => {
+                // D-06-B: 1 << order for orders 0..=6 (XCFUN_MAX_ORDER).
+                if order > 6 {
+                    return Err(XcError::InvalidOrder {
+                        order,
+                        mode,
+                        n_vars: Self::input_length(vars),
+                    });
+                }
+                Ok(1_usize << order)
+            }
             Mode::Unset => Err(XcError::NotConfigured),
         }
     }
@@ -379,24 +414,34 @@ impl Functional {
     ///   `InvalidVars` (GGA potential requires the 2nd-Taylor-seeded density
     ///   input variants to compute ∇·(∂e/∂∇ρ)).
     /// - `Mode::Unset` → `NotConfigured`.
-    /// - `Mode::Contracted` → `InvalidMode` (Phase 2 carryover — contract deferred
-    ///   to later phases).
+    /// - `Mode::Contracted` + `order > 6` → `InvalidOrder` (Plan 04-05 D-06,
+    ///   XCFUN_MAX_ORDER = 6); per D-06-A no Vars-specific rejection
+    ///   (the DOEVAL macro at XCFunctional.cpp:619-635 contains no Vars guard).
     ///
     /// D-25 resolution: no new `XcError` variants; reuses `InvalidMode` +
-    /// `InvalidVars` already present since Phase 2.
+    /// `InvalidVars` + `InvalidOrder` already present since Phase 2.
     pub fn eval_setup(
         &self,
         vars: Vars,
         mode: Mode,
-        _order: u32,
+        order: u32,
     ) -> Result<(), XcError> {
         let deps = self.dependencies();
         match mode {
             Mode::Unset => Err(XcError::NotConfigured),
-            Mode::Contracted => Err(XcError::InvalidMode {
-                mode,
-                depends: deps,
-            }),
+            Mode::Contracted => {
+                // Plan 04-05 D-06: accept any order in 0..=6 (XCFUN_MAX_ORDER).
+                // Per D-06-A no Vars-specific rejection beyond the existing
+                // depends-vs-vars check (the DOEVAL macro itself has no Vars guard).
+                if order > 6 {
+                    return Err(XcError::InvalidOrder {
+                        order,
+                        mode,
+                        n_vars: Self::input_length(vars),
+                    });
+                }
+                Ok(())
+            }
             Mode::PartialDerivatives => Ok(()),
             Mode::Potential => {
                 // metaGGA-class deps cannot produce a potential at GGA tier.
@@ -1168,8 +1213,14 @@ fn launch_and_accumulate_order2_general(
 /// Single launch: create input/output handles, build DensVarsDev buffers, run
 /// `eval_point_kernel` with the given comptime `(id, vars, n)`, read back the
 /// output coefficients. Returns a Vec<f64> of length `(1 << n)`.
+///
+/// `pub(crate)` so the Mode::Contracted host-side dispatcher in
+/// `crates/xcfun-eval/src/functionals/contracted.rs` can re-use the same
+/// monomorphisation matrix (per-functional kernels are identical across
+/// `Mode::PartialDerivatives` and `Mode::Contracted` per RESEARCH §"Mode::Contracted
+/// Implementation"). Plan 04-05 D-06.
 #[cfg(feature = "testing")]
-fn run_launch(
+pub(crate) fn run_launch(
     id_u32: u32,
     vars_u32: u32,
     n: u32,
@@ -1527,9 +1578,10 @@ mod tests {
     }
 
     #[test]
-    fn eval_rejects_contracted_mode_active() {
-        // Phase 3 plan 03-05 wires Mode::Potential — Mode::Contracted remains
-        // rejected (Phase 4 scope).
+    fn eval_contracted_mode_accepted_at_order_0() {
+        // Plan 04-05 D-06: Mode::Contracted is wired. At order 0 the input
+        // length is `inlen × (1 << 0) = inlen × 1 = inlen`, output length is 1.
+        // With empty weights the output is zero-filled and Ok is returned.
         let f = Functional {
             weights: &[],
             vars: Vars::A_B,
@@ -1538,9 +1590,89 @@ mod tests {
             settings: DEFAULT_SETTINGS,
         };
         let mut out = vec![0.0; 1];
+        assert!(f.eval(&[1.0, 0.5], &mut out).is_ok());
+    }
+
+    #[test]
+    fn eval_rejects_contracted_order_above_6() {
+        // Plan 04-05 D-06 + XCFUN_MAX_ORDER = 6: order 7 is rejected.
+        let f = Functional {
+            weights: &[],
+            vars: Vars::A_B,
+            mode: Mode::Contracted,
+            order: 7,
+            settings: DEFAULT_SETTINGS,
+        };
+        // Output length validation runs first (output_length errors with
+        // InvalidOrder when order > 6). The buffer size is irrelevant since
+        // output_length rejects before any input parsing.
+        let mut out = vec![0.0; 128];
+        // Input would need 2 * (1 << 7) = 256 doubles to pass step 2; we don't
+        // get that far — the order > 6 check at output_length step rejects first.
+        let buf = vec![0.0_f64; 2 * (1_usize << 7)];
         assert!(matches!(
-            f.eval(&[1.0, 0.5], &mut out),
-            Err(XcError::InvalidMode { .. })
+            f.eval(&buf, &mut out),
+            Err(XcError::InvalidOrder { .. })
+        ));
+    }
+
+    #[test]
+    fn output_length_contracted_orders_0_to_6() {
+        // D-06-B: output_length for Contracted = `1 << order`.
+        for order in 0_u32..=6 {
+            let expected = 1_usize << order;
+            assert_eq!(
+                Functional::output_length(Vars::A_B, Mode::Contracted, order).unwrap(),
+                expected,
+                "order {} should give 1 << {} = {}",
+                order,
+                order,
+                expected,
+            );
+        }
+    }
+
+    #[test]
+    fn output_length_contracted_rejects_order_above_6() {
+        // D-06: order > 6 returns InvalidOrder.
+        assert!(matches!(
+            Functional::output_length(Vars::A_B, Mode::Contracted, 7),
+            Err(XcError::InvalidOrder { .. })
+        ));
+    }
+
+    #[test]
+    fn eval_setup_contracted_accepts_orders_0_to_6() {
+        // D-06: eval_setup must accept orders 0..=6 for Mode::Contracted.
+        let f = Functional {
+            weights: &[(FunctionalId::XC_SLATERX, 1.0)],
+            vars: Vars::A_B,
+            mode: Mode::Contracted,
+            order: 0,
+            settings: DEFAULT_SETTINGS,
+        };
+        for order in 0_u32..=6 {
+            assert!(
+                f.eval_setup(Vars::A_B, Mode::Contracted, order).is_ok(),
+                "Mode::Contracted at order {} must pass eval_setup",
+                order
+            );
+        }
+    }
+
+    #[test]
+    fn eval_setup_contracted_rejects_order_above_6() {
+        // D-06 + XCFUN_MAX_ORDER = 6: eval_setup rejects order 7.
+        let f = Functional {
+            weights: &[(FunctionalId::XC_SLATERX, 1.0)],
+            vars: Vars::A_B,
+            mode: Mode::Contracted,
+            order: 7,
+            settings: DEFAULT_SETTINGS,
+        };
+        assert!(matches!(
+            f.eval_setup(Vars::A_B, Mode::Contracted, 7),
+            Err(XcError::InvalidOrder { .. })
         ));
     }
 
