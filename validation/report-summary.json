@@ -1,0 +1,1762 @@
+{
+  "backend": "CpuRuntime (cubecl-cpu =0.10.0-pre.3)",
+  "generated_unix_seconds": 1777186336,
+  "harness": {
+    "clamp_stratum_failures": 23690,
+    "clamp_stratum_records": 209364,
+    "failed_records": 3806228,
+    "max_order": 3,
+    "rust_unavailable": 20,
+    "total_records": 28680020
+  },
+  "matrix": {
+    "XC_APBEC": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 1.0942358130705543e-12,
+        "records_failed": 1,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 5.697466382443433e-09,
+        "records_failed": 1774,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_APBEX": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.20629947401590062,
+        "records_failed": 9391,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 292,
+        "clamp_stratum_records": 292,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.20629947401590093,
+        "records_failed": 48473,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 730,
+        "clamp_stratum_records": 730,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.20629947401590376,
+        "records_failed": 106816,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 1314,
+        "clamp_stratum_records": 1314,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.2062994740159226,
+        "records_failed": 184178,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_B97C": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 1.3010426069826053e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 3.4125612759381364e-12,
+        "records_failed": 1,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 4.877022764186757e-11,
+        "records_failed": 10,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 7.815594637835901e-11,
+        "records_failed": 53,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_B97X": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 9.462749753408562e-12,
+        "records_failed": 6,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_B97_1C": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 1.734723475976807e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 3.203277945612334e-12,
+        "records_failed": 1,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 4.877017220362945e-11,
+        "records_failed": 10,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 7.815587351984458e-11,
+        "records_failed": 58,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_B97_1X": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 9.462620774190478e-12,
+        "records_failed": 6,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_B97_2C": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 1.734723475976807e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 3.002331090980237e-11,
+        "records_failed": 8,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 4.8770252243837846e-11,
+        "records_failed": 33,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 7.815568903478498e-11,
+        "records_failed": 98,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_B97_2X": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 9.46263998621617e-12,
+        "records_failed": 10,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_BECKECAMX": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.965754362209253e-12,
+        "records_failed": 3,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 250,
+        "clamp_stratum_records": 250,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 2.0046717653998728e-08,
+        "records_failed": 2331,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_BECKECORRX": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_BECKESRX": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 1.0408340855860843e-17,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 146,
+        "clamp_stratum_records": 146,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.001595064587397009,
+        "records_failed": 4413,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 584,
+        "clamp_stratum_records": 584,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.10533686687388098,
+        "records_failed": 17827,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 1168,
+        "clamp_stratum_records": 1168,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 227.30001848427008,
+        "records_failed": 41372,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_BECKEX": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_BTK": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_KTX": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_LDAERFC": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 8.673617379884035e-19,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-07
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 8.673617379884035e-19,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-07
+      },
+      "order=2": {
+        "clamp_stratum_failures": 209,
+        "clamp_stratum_records": 209,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 7.451849750594874e-06,
+        "records_failed": 400,
+        "rust_unavailable": 0,
+        "threshold": 1e-07
+      },
+      "order=3": {
+        "clamp_stratum_failures": 501,
+        "clamp_stratum_records": 501,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 510.2442781421099,
+        "records_failed": 3391,
+        "rust_unavailable": 0,
+        "threshold": 1e-07
+      }
+    },
+    "XC_LDAERFC_JT": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 5.0757073891127824e-11,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-07
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 5.0757073891127824e-11,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-07
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 8.363891907947618e-07,
+        "records_failed": 534,
+        "rust_unavailable": 0,
+        "threshold": 1e-07
+      },
+      "order=3": {
+        "clamp_stratum_failures": 292,
+        "clamp_stratum_records": 292,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.00010707127967179986,
+        "records_failed": 14530,
+        "rust_unavailable": 0,
+        "threshold": 1e-07
+      }
+    },
+    "XC_LDAERFX": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 2.7983878062021184e-10,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-07
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 2.7983878062021184e-10,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-07
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.06740540437256214,
+        "records_failed": 651,
+        "rust_unavailable": 0,
+        "threshold": 1e-07
+      },
+      "order=3": {
+        "clamp_stratum_failures": 146,
+        "clamp_stratum_records": 146,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 11.145377772688628,
+        "records_failed": 2658,
+        "rust_unavailable": 0,
+        "threshold": 1e-07
+      }
+    },
+    "XC_LYPC": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 1.4918188818462435e-12,
+        "records_failed": 1,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 2.0310761713436255e-12,
+        "records_failed": 2,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 1.2590621435476813e-10,
+        "records_failed": 13,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_OPTX": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 1.1636247521096266e-12,
+        "records_failed": 1,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 5.301159495922145e-10,
+        "records_failed": 133,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_OPTXCORR": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 5.842923013471455e-10,
+        "records_failed": 205,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_P86C": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0003092695497092235,
+        "records_failed": 360,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.003966983564813228,
+        "records_failed": 18821,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.046949511977087875,
+        "records_failed": 111163,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.09156160765804987,
+        "records_failed": 366009,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_P86CORRC": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0003092695497092235,
+        "records_failed": 360,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.003966983564813228,
+        "records_failed": 18821,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.046949511977087875,
+        "records_failed": 111160,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.09156160765804987,
+        "records_failed": 366014,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_PBEC": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 1.0942358130705543e-12,
+        "records_failed": 1,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.638035227423037e-09,
+        "records_failed": 1795,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_PBEINTC": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.4538562082055011,
+        "records_failed": 640,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 219,
+        "clamp_stratum_records": 219,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.9000000976299303,
+        "records_failed": 30589,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 1095,
+        "clamp_stratum_records": 1095,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 1.9174530506790597,
+        "records_failed": 146811,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 3358,
+        "clamp_stratum_records": 3358,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 61.66579502419193,
+        "records_failed": 443929,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_PBEINTX": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_PBELOCC": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": true,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": true,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": true,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": true,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_PBESOLX": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_PBEX": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.938893903907228e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.938893903907228e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.938893903907228e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.938893903907228e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_PW86X": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 2.0992956850994157e-06,
+        "records_failed": 1000,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 146,
+        "clamp_stratum_records": 146,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 1.0496566805321581e-05,
+        "records_failed": 22619,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 438,
+        "clamp_stratum_records": 438,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.586372791161921e-05,
+        "records_failed": 63280,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 876,
+        "clamp_stratum_records": 876,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0006358255358946963,
+        "records_failed": 121840,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_PW91C": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 2.619639625361936e-07,
+        "records_failed": 335,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 219,
+        "clamp_stratum_records": 219,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 4.1688958283459203e-07,
+        "records_failed": 28670,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 1095,
+        "clamp_stratum_records": 1095,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.000263009673486031,
+        "records_failed": 138644,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 3358,
+        "clamp_stratum_records": 3358,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0017168415036119358,
+        "records_failed": 415631,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_PW91K": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 2.161366864207466e-05,
+        "records_failed": 8520,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 146,
+        "clamp_stratum_records": 146,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 2.161366864992649e-05,
+        "records_failed": 47172,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 584,
+        "clamp_stratum_records": 584,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 2.161366885357403e-05,
+        "records_failed": 105327,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 1168,
+        "clamp_stratum_records": 1168,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 2.1613679754836862e-05,
+        "records_failed": 182517,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_PW91X": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.938893903907228e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.938893903907228e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.938893903907228e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.938893903907228e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_PW92C": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 1.0942358130705543e-12,
+        "records_failed": 1,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 8.973993094494254e-12,
+        "records_failed": 15,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_PZ81C": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 3.0484319227612168e-12,
+        "records_failed": 6,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 1.1003000599839822e-11,
+        "records_failed": 14,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_REVPBEX": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.938893903907228e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.938893903907228e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.938893903907228e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.938893903907228e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_RPBEX": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.938893903907228e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.938893903907228e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.938893903907228e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.938893903907228e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_SLATERX": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.938893903907228e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.938893903907228e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.938893903907228e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.938893903907228e-18,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_SPBEC": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 1.1910327165520762e-05,
+        "records_failed": 1000,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 219,
+        "clamp_stratum_records": 219,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.00010532871410010479,
+        "records_failed": 30770,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 1126,
+        "clamp_stratum_records": 1126,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0003160194283569117,
+        "records_failed": 144999,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 3499,
+        "clamp_stratum_records": 3499,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0005267545284752123,
+        "records_failed": 435182,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_TFK": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 4.163336342344337e-17,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 4.163336342344337e-17,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 4.163336342344337e-17,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 4.163336342344337e-17,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_TW": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": true,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": true,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": true,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": true,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_VWK": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": true,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": true,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": true,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": true,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_VWN3C": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 10,
+        "clamp_stratum_records": 10,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 7.172234176635953e-12,
+        "records_failed": 38,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 138,
+        "clamp_stratum_records": 138,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 1.2369950018177779e-11,
+        "records_failed": 251,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_VWN5C": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 31,
+        "clamp_stratum_records": 31,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 1.5682942910987647e-11,
+        "records_failed": 110,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 141,
+        "clamp_stratum_records": 141,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 1.5682942910987647e-11,
+        "records_failed": 175,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_VWN_PBEC": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 31,
+        "clamp_stratum_records": 31,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 1.5682942910987647e-11,
+        "records_failed": 110,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 161,
+        "clamp_stratum_records": 161,
+        "excluded_by_upstream_spec": false,
+        "max_rel_err": 6.853330239778187e-09,
+        "records_failed": 2137,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_ZVPBEINTC": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": true,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": true,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": true,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": true,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    },
+    "XC_ZVPBESOLC": {
+      "order=0": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": true,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=1": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": true,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=2": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": true,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      },
+      "order=3": {
+        "clamp_stratum_failures": 0,
+        "clamp_stratum_records": 0,
+        "excluded_by_upstream_spec": true,
+        "max_rel_err": 0.0,
+        "records_failed": 0,
+        "rust_unavailable": 0,
+        "threshold": 1e-12
+      }
+    }
+  }
+}

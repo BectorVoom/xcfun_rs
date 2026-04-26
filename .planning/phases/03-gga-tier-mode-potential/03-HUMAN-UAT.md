@@ -1,27 +1,83 @@
 ---
-status: partial
+status: complete
 phase: 03-gga-tier-mode-potential
 source: [03-VERIFICATION.md]
 started: 2026-04-25T22:00:00Z
-updated: 2026-04-26T01:50:00Z
+updated: 2026-04-26T04:45:00Z
 ---
 
 ## Current Test
 
-number: 1
-name: Order-3 Full-Matrix Tier-2 Capstone Re-run
-expected: |
-  Either GREEN at strict 1e-12 across all 47 functionals, OR new D-19
-  entries documented with the same explicit-documentation rule (D-18);
-  commit updated report.html + report.jsonl snapshot.
-awaiting: human-supervised order-3 run (deferred — ~1h wall-clock + risk of usage-limit exhaustion mid-execution; not safe to attempt within current session)
+[testing complete]
 
 ## Tests
 
 ### 1. Order-3 Full-Matrix Tier-2 Capstone Re-run
 expected: Either GREEN at strict 1e-12 across all 47 functionals, OR new D-19 entries documented with the same explicit-documentation rule (D-18); commit updated report.html + report.jsonl snapshot.
 why_human: Order-3 capstone requires ~1h wall-clock + significant disk space (>500 MB report.jsonl); the executor previously hit usage-limit exhaustion mid-execution. A human-supervised run can monitor for similar issues and decide whether to commit the snapshot or split it.
-result: [pending]
+result: issue
+reported: |
+  Human ran ./target/release/validation --backend cpu --mode partial_derivatives --order 3
+  on 2026-04-26 (~2h 29m wall-clock, 02:14:42 → 04:43:37 UTC). Harness verdict:
+  Tier-2 done: 28,680,020 records evaluated, 3,806,228 failed
+    (20 rust-unavailable, 209,364 clamp-stratum excluded, 23,690 would-fail-in-clamp).
+  Tier-2 FAIL: 3,806,228 failing records (~13.3% of eligible).
+
+  Acceptance per D-18 satisfied via DOCUMENTATION route, not GREEN: Test 1 explicitly
+  accepts "OR new D-19 entries documented with the same explicit-documentation rule."
+  Aggregating report.jsonl reveals D-19 collective sign-off list grows from 14 → 26
+  entries, plus the existing D-24 1e-7 override for the 3 LDAERF functionals breaks
+  catastrophically at order=3 (max_rel_err up to 5.10e+02 — 9 orders of magnitude
+  beyond the override).
+
+  Pure-GREEN through order=3 (12 of 42 evaluable):
+    SLATERX, TFK, PBEX, REVPBEX, RPBEX, PBESOLX, PBEINTX, PW91X,
+    BECKEX, BECKECORRX, BTK, KTX
+
+  Existing 14-entry D-19 list — all confirmed at order=3 (most worsen):
+    BECKESRX     order=3 max 2.27e+02 (Ekström-FIXME catastrophic; carries D-26)
+    PBEINTC      order=3 max 6.17e+01 (catastrophic)
+    APBEX        order=3 max 2.06e-01 (constant across orders)
+    P86C         order=3 max 9.16e-02
+    P86CORRC     order=3 max 9.16e-02
+    PW91C        order=3 max 1.72e-03
+    PW86X        order=3 max 6.36e-04
+    SPBEC        order=3 max 5.27e-04
+    PW91K        order=3 max 2.16e-05 (constant)
+    BECKECAMX    order=3 max 2.01e-08
+    APBEC        order=3 max 5.70e-09
+    B97C         order=3 max 7.82e-11
+    B97_1C       order=3 max 7.82e-11
+    B97_2C       order=3 max 7.82e-11
+
+  12 NEW D-19 entries — order=3 amplifies drift previously below 1e-12:
+    VWN_PBEC     order=3 max 6.85e-09  (order=2 was 1.57e-11)
+    PBEC         order=3 max 6.64e-09  (GREEN through order=2)
+    OPTXCORR     order=3 max 5.84e-10  (GREEN through order=2)
+    OPTX         order=3 max 5.30e-10  (GREEN through order=2)
+    LYPC         order=3 max 1.26e-10  (GREEN through order=2)
+    PZ81C        order=3 max 1.10e-11  (order=2 was 3.05e-12)
+    VWN5C        order=3 max 1.57e-11  (also fails order=2)
+    VWN3C        order=3 max 1.24e-11  (also fails order=2)
+    B97X         order=3 max 9.46e-12  (GREEN through order=2)
+    B97_1X       order=3 max 9.46e-12  (GREEN through order=2)
+    B97_2X       order=3 max 9.46e-12  (GREEN through order=2)
+    PW92C        order=3 max 8.97e-12  (order=2 was 1.09e-12 borderline)
+
+  3 D-24-expansion entries — 1e-7 override insufficient at order=3:
+    LDAERFC      order=3 max 5.10e+02 (override 1e-7; 9 OOM over)
+    LDAERFX      order=3 max 1.12e+01 (override 1e-7)
+    LDAERFC_JT   order=3 max 1.07e-04 (override 1e-7)
+
+  Cross-order pattern: derivative-order increase amplifies cancellation; functionals
+  GREEN at orders 0-2 become drifty at order=3. D-19 collective sign-off list
+  doubles (14 → 26). D-24's LDAERF override no longer holds at order=3 — needs
+  order-aware variant or Phase 6 fix path.
+
+  HTML report (validation/report.html) only renders the first 11 functionals and
+  omits the order=3 column entirely — separate report-writer bug (rendering
+  truncates and column schema is order=0/1/2 only).
+severity: major
 
 ### 2. Verify BECKESRX D-18 Strict 1e-12 Violation Hypothesis (1.05e-1 max rel_err)
 expected: Identify whether the failure mode is `erf_precise` cancellation (mirrors LDAERFX D-24 forensics) or kernel-level port-order drift; if the former, document a D-24-style upstream-sourced override; if the latter, file a Phase 6 fix path.
@@ -87,8 +143,8 @@ severity: major
 
 total: 3
 passed: 0
-issues: 2
-pending: 1
+issues: 3
+pending: 0
 skipped: 0
 blocked: 0
 
@@ -185,4 +241,77 @@ blocked: 0
     - "Phase 6: D-19 collective sign-off list grows from 13 to 14 entries; update 03-06-SUMMARY.md §'D-19 Collective Sign-Off' or carry-forward in the receiving Phase 6 CONTEXT.md"
     - "Phase 3 retroactive: optional update to 03-VERIFICATION.md acknowledging that the original 'Mode::Potential SATISFIED' claim was on the 8-GGA sample only; the 36-GGA sweep is now complete and reveals 1 net-new D-19"
     - "Documentation: 03-VERIFICATION.md:170 + 03-06-SUMMARY.md:196 reference `cargo xtask validate` which is not a real cargo subcommand here; the actual invocations are `./target/release/validation` or `cargo run -p validation --release --` or `cargo run -p xtask --bin validate --release --`"
+  debug_session: ""
+
+- truth: "Order-3 full-matrix Tier-2 capstone holds strict 1e-12 across all 47 functionals (or new failures map to documented D-19 entries)"
+  status: failed
+  reason: |
+    Human ran ./target/release/validation --backend cpu --mode partial_derivatives
+    --order 3 on 2026-04-26 (~2h 29m wall-clock). Harness verdict: 28,680,020
+    records evaluated, 3,806,228 failed (~13.3% of eligible). Aggregated
+    report.jsonl per (functional, order) reveals D-19 collective sign-off list
+    grows from 14 → 26 entries (12 NEW D-19), plus the existing D-24 1e-7
+    override on the 3 LDAERF functionals breaks catastrophically at order=3
+    (LDAERFC max_rel_err 5.10e+02 — 9 orders of magnitude beyond override).
+  severity: major
+  test: 1
+  root_cause: |
+    Cross-order amplification of pre-existing kernel-level cancellation. The
+    derivative-order axis was previously sampled at 0..2 in PartialDerivatives
+    and 0..2 in Potential; order=3 introduces a third-derivative coefficient
+    layer in CTaylor<f64,3> that reuses the same intermediate cancellation
+    points as orders 0..2 but with smaller absolute magnitudes. Functionals
+    that were "barely GREEN" at order=2 (e.g., PW92C 1.09e-12 borderline,
+    PZ81C 3.05e-12) cross the strict 1e-12 line at order=3. Functionals
+    GREEN through order=2 (LYPC, OPTX, OPTXCORR, PBEC, B97{,_1,_2}X) develop
+    measurable drift. The 3 LDAERF entries enter genuinely catastrophic
+    territory because the existing D-24 1e-7 override was calibrated against
+    order≤2 cancellation magnitudes; order=3 amplifies cancellation by ~9 OOM.
+
+    Failure population is dominated by the same Ekström-FIXME / cubecl-polyfill
+    classes already cataloged in CONTEXT D-22, D-24, D-26 — order=3 just
+    surfaces more of the same. No NEW failure class identified; only NEW
+    instances of existing classes.
+  artifacts:
+    - path: "validation/report.jsonl"
+      issue: "1.6 GB / 3,830,094 lines, 3,806,228 failing records at order=3 (snapshot 2026-04-26 04:43:37 UTC)"
+    - path: "validation/report.html"
+      issue: "RENDERER BUG — only emits the first 11 functionals and only orders 0..2; order=3 column missing entirely. Update report.html template to include the order=3 column and stop truncating after VWK."
+    - path: "crates/xcfun-eval/src/functionals/lda/ldaerfx.rs"
+      issue: "D-24 1e-7 override insufficient at order=3 (max_rel_err 1.12e+01 — failure mode at order=3 is qualitatively distinct from the order≤2 polyfill divergence)"
+    - path: "crates/xcfun-eval/src/functionals/lda/ldaerfc.rs"
+      issue: "D-24 1e-7 override insufficient at order=3 (max_rel_err 5.10e+02)"
+    - path: "crates/xcfun-eval/src/functionals/lda/ldaerfc_jt.rs"
+      issue: "D-24 1e-7 override insufficient at order=3 (max_rel_err 1.07e-04)"
+    - path: "crates/xcfun-eval/src/functionals/lda/vwn3c.rs"
+      issue: "NEW D-19 candidate: order=3 max_rel_err 1.24e-11 (also order=2 7.17e-12)"
+    - path: "crates/xcfun-eval/src/functionals/lda/vwn5c.rs"
+      issue: "NEW D-19 candidate: order=2 1.57e-11 / order=3 1.57e-11"
+    - path: "crates/xcfun-eval/src/functionals/lda/pw92c.rs"
+      issue: "NEW D-19 candidate: order=3 8.97e-12 (order=2 borderline 1.09e-12)"
+    - path: "crates/xcfun-eval/src/functionals/lda/pz81c.rs"
+      issue: "NEW D-19 candidate: order=3 1.10e-11 (order=2 3.05e-12)"
+    - path: "crates/xcfun-eval/src/functionals/gga/pbe/vwn_pbec.rs"
+      issue: "NEW D-19 candidate: order=3 6.85e-09 (order=2 1.57e-11)"
+    - path: "crates/xcfun-eval/src/functionals/gga/pbe/pbec.rs"
+      issue: "NEW D-19 candidate: order=3 6.64e-09 (GREEN through order=2)"
+    - path: "crates/xcfun-eval/src/functionals/gga/optx.rs"
+      issue: "NEW D-19 candidate: order=3 5.30e-10 (GREEN through order=2)"
+    - path: "crates/xcfun-eval/src/functionals/gga/optxcorr.rs"
+      issue: "NEW D-19 candidate: order=3 5.84e-10 (GREEN through order=2)"
+    - path: "crates/xcfun-eval/src/functionals/gga/lyp/lypc.rs"
+      issue: "NEW D-19 candidate: order=3 1.26e-10 (GREEN through order=2)"
+    - path: "crates/xcfun-eval/src/functionals/gga/b97/b97x.rs"
+      issue: "NEW D-19 candidate: order=3 9.46e-12 (GREEN through order=2)"
+    - path: "crates/xcfun-eval/src/functionals/gga/b97/b97_1x.rs"
+      issue: "NEW D-19 candidate: order=3 9.46e-12 (GREEN through order=2)"
+    - path: "crates/xcfun-eval/src/functionals/gga/b97/b97_2x.rs"
+      issue: "NEW D-19 candidate: order=3 9.46e-12 (GREEN through order=2)"
+  missing:
+    - "Phase 6: D-19 collective sign-off list grows from 14 → 26 entries; update CONTEXT.md (or 03-06-SUMMARY.md §'D-19 Collective Sign-Off') with the 12 NEW entries: VWN3C, VWN5C, PW92C, PZ81C, VWN_PBEC, PBEC, OPTX, OPTXCORR, LYPC, B97X, B97_1X, B97_2X"
+    - "Phase 6: revisit D-24 LDAERF override — 1e-7 holds at order≤2 but breaks 9 OOM at order=3; either introduce an order-aware threshold table OR adopt the mpmath-bridge approach BECKESRX needs"
+    - "Phase 6 OR Phase 3 follow-up: fix validation/src/report_html.rs — currently truncates output to the first 11 functionals AND emits only the order=0/1/2 columns. The order=3 column must be added before any further capstone runs are useful for human review."
+    - "Phase 6: extend mpmath-bridge ground truth to cover all 12 new D-19 entries (mirroring the LDAERFX D-24 / BECKESRX D-26 pattern) so the 'Rust matches mpmath better than C++ matches mpmath' precedent is provable for these regimes too"
+    - "Phase 3 retroactive (optional): update 03-VERIFICATION.md to note that the order=3 capstone has now been run; the verdict is 'documentation-route acceptance' per D-18, not strict GREEN. Cross-reference this UAT entry."
+    - "Cross-cutting: cancellation-amplification with derivative order is now the dominant failure mode in the parity contract. Phase 6 CONTEXT.md should anchor a new analytical pillar (suggested: D-27) capturing this pattern explicitly so future order=4..6 work has a named reference."
   debug_session: ""

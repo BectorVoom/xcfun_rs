@@ -13,7 +13,7 @@ use std::fs;
 use std::io::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::driver::Report;
+use crate::driver::{CellSummary, Report};
 
 /// Write `report.jsonl` — one serde_json record per line (ACC-03).
 pub fn write_jsonl(report: &Report, path: &str) -> Result<()> {
@@ -87,33 +87,28 @@ pub fn write_html(report: &Report, path: &str) -> Result<()> {
         ));
     }
 
-    // Collect functionals in a stable order that matches the plan's table.
-    let stable_order = [
-        "XC_SLATERX",
-        "XC_VWN3C",
-        "XC_VWN5C",
-        "XC_PW92C",
-        "XC_PZ81C",
-        "XC_LDAERFX",
-        "XC_LDAERFC",
-        "XC_LDAERFC_JT",
-        "XC_TFK",
-        "XC_TW",
-        "XC_VWK",
-    ];
+    // Discover functional names and the maximum derivative order present in
+    // the matrix dynamically. This keeps the renderer correct as new tiers
+    // are added (Phase 2 → 3 → 6 …) without needing to hand-maintain a
+    // canonical list. BTreeMap iteration is already sorted by (name, order),
+    // so we get stable alphabetical row ordering.
+    let mut names: Vec<&String> = report.matrix.keys().map(|(n, _)| n).collect();
+    names.sort();
+    names.dedup();
+    let max_order: u32 = report.matrix.keys().map(|(_, o)| *o).max().unwrap_or(0);
 
     html.push_str("<table>\n<thead><tr>\n");
     html.push_str("<th>Functional</th>\n");
-    html.push_str("<th>order=0</th><th>order=1</th><th>order=2</th>\n");
-    html.push_str("<th>Tolerance</th>\n");
+    for o in 0..=max_order {
+        html.push_str(&format!("<th>order={}</th>", o));
+    }
+    html.push_str("\n<th>Tolerance</th>\n");
     html.push_str("</tr></thead>\n<tbody>\n");
 
-    for name in &stable_order {
-        let cells: [Option<_>; 3] = [
-            report.matrix.get(&((*name).to_string(), 0)),
-            report.matrix.get(&((*name).to_string(), 1)),
-            report.matrix.get(&((*name).to_string(), 2)),
-        ];
+    for name in &names {
+        let cells: Vec<Option<&CellSummary>> = (0..=max_order)
+            .map(|o| report.matrix.get(&((*name).to_string(), o)))
+            .collect();
         // Skip rows with no data at all (e.g., if filter excluded them).
         if cells.iter().all(|c| c.is_none()) {
             continue;
