@@ -1594,6 +1594,13 @@ mod tests {
         ));
     }
 
+    // The success path of `eval()` is only compiled under `feature = "testing"`
+    // (the launch loop calls into `cpu_client()`, a test-only helper). Under
+    // bare `cargo test -p xcfun-eval` (no features), `eval()` returns
+    // `XcError::Runtime` from the `cfg(not(feature = "testing"))` else-branch.
+    // Gate the happy-path acceptance test on the same feature so it only runs
+    // when the launch loop is actually compiled in. Plan 04-06 Rule-1 fix.
+    #[cfg(feature = "testing")]
     #[test]
     fn eval_contracted_mode_accepted_at_order_0() {
         // Plan 04-05 D-06: Mode::Contracted is wired. At order 0 the input
