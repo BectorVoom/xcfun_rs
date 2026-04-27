@@ -473,6 +473,32 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
                 // log-expansion (or BLOCX kernel is reformulated to avoid
                 // log-of-near-zero), exclude from the C++-paired sweep.
                 | "XC_BLOCX"
+                // ----- Phase 4 plan 04-10 Task 10.1 finding -----
+                // C++ xcfun's tmath::sqrt_expand at xcfun-master/external/upstream/
+                // taylor/tmath.hpp:165 asserts `x0 > 0` and aborts the entire
+                // validation process when the SCAN energy bracket evaluates
+                // sqrt(...) at a non-positive intermediate (low-density grid
+                // stratum). The fault is in the SHARED C++ substrate header
+                // `xcfun-master/src/functionals/SCAN_like_eps.hpp` (17 sqrt
+                // call-sites) — every SCAN-family functional inherits the same
+                // fault mode. Confirmed via crash on XC_SCANC during the
+                // Plan 04-10 order-3 sweep (2026-04-27 20:13 UTC, 53/76
+                // functionals iterated). Exclude the entire SCAN family from
+                // the C++-paired sweep — Phase 6 will land a guarded sqrt
+                // expansion (or a custom JP-grid harness with low-density
+                // exclusion) to enable tier-2 parity for SCAN. Mirrors the
+                // BR/CSC/BLOCX precedent: shared metaGGA C++ substrate causes
+                // C++ tmath_die at the low-density tail.
+                | "XC_SCANX"
+                | "XC_SCANC"
+                | "XC_RSCANX"
+                | "XC_RSCANC"
+                | "XC_RPPSCANX"
+                | "XC_RPPSCANC"
+                | "XC_R2SCANX"
+                | "XC_R2SCANC"
+                | "XC_R4SCANX"
+                | "XC_R4SCANC"
         );
 
         // C++ xcfun_eval supports orders 0/1/2/3 (XCFunctional.cpp:500-617);
