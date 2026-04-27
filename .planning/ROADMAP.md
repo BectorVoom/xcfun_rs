@@ -144,7 +144,7 @@ Pre-pivot plans (VOID — reverted by Wave 0 of the new plan, retained in git hi
   - [ ] 04-06-validation-signoff-PLAN.md — original sign-off; produced VERIFICATION.md=gaps_found (Wave 6)
   - [x] 04-07-driver-extension-PLAN.md — gap closure: validation driver + run_launch metaGGA arms (Wave 1, gap_closure)
   - [x] 04-08-erf-divergence-PLAN.md — gap closure: ERF + LDA-corr triage; D-19 forwards (Wave 1, gap_closure)
-  - [ ] 04-09-contracted-metagga-PLAN.md — gap closure: contracted_cross_mode metaGGA exemplars at orders 0..=4 (Wave 2, gap_closure)
+  - [x] 04-09-contracted-metagga-PLAN.md — gap closure: contracted_cross_mode metaGGA exemplars at orders 0..=4 (Wave 2, gap_closure)
   - [ ] 04-10-resignoff-PLAN.md — phase re-signoff; rewrite VERIFICATION.md to signed_off (Wave 3, gap_closure)
 
 ### Phase 5: Rust Facade (`xcfun-rs`) + C ABI (`xcfun-capi`)
