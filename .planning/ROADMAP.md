@@ -135,15 +135,15 @@ Pre-pivot plans (VOID — reverted by Wave 0 of the new plan, retained in git hi
   4. Setting `xcfun_set(fun, "b3lyp", 1.0)` followed by `xcfun_set(fun, "slaterx", 0.5)` yields an additive `slaterx` weight of (b3lyp's slaterx contribution + 0.5), matching C++ `XCFunctional.cpp:389-402`.
   5. Parameters `XC_EXX` (default 0.0), `XC_RANGESEP_MU` (default 0.4), `XC_CAM_ALPHA` (default 0.19), `XC_CAM_BETA` (default 0.46) are settable via `Functional::set` and readable via `Functional::get`.
 **Plans**: 11 plans (04-00..04-10) — original plan set 04-00..04-06 (7 plans, Waves 0..6); gap-closure 04-07..04-10 (4 plans, Waves 1..3) added 2026-04-26 to close VERIFICATION gaps_found:
-  - [ ] 04-00-substrate-PLAN.md — xcfun-ad br_inverse + metaGGA shared helpers + Vars arms + fixture gates (Wave 0)
-  - [ ] 04-01-tpss-br-csc-PLAN.md — TPSS family + BR family + CSC kernels (Wave 1)
-  - [ ] 04-02-scan-family-PLAN.md — SCAN/rSCAN/r++SCAN/r2SCAN/r4SCAN kernels (Wave 2)
-  - [ ] 04-03-m0x-blocx-PLAN.md — M05/M06 families + BLOCX kernels (Wave 3)
-  - [ ] 04-04-alias-parameters-PLAN.md — 46-alias engine + 4 parameter table (Wave 4)
-  - [ ] 04-05-mode-contracted-PLAN.md — Mode::Contracted dispatcher + cross-mode tests (Wave 5)
+  - [x] 04-00-substrate-PLAN.md — xcfun-ad br_inverse + metaGGA shared helpers + Vars arms + fixture gates (Wave 0)
+  - [x] 04-01-tpss-br-csc-PLAN.md — TPSS family + BR family + CSC kernels (Wave 1)
+  - [x] 04-02-scan-family-PLAN.md — SCAN/rSCAN/r++SCAN/r2SCAN/r4SCAN kernels (Wave 2)
+  - [x] 04-03-m0x-blocx-PLAN.md — M05/M06 families + BLOCX kernels (Wave 3)
+  - [x] 04-04-alias-parameters-PLAN.md — 46-alias engine + 4 parameter table (Wave 4)
+  - [x] 04-05-mode-contracted-PLAN.md — Mode::Contracted dispatcher + cross-mode tests (Wave 5)
   - [ ] 04-06-validation-signoff-PLAN.md — original sign-off; produced VERIFICATION.md=gaps_found (Wave 6)
-  - [ ] 04-07-driver-extension-PLAN.md — gap closure: validation driver + run_launch metaGGA arms (Wave 1, gap_closure)
-  - [ ] 04-08-erf-divergence-PLAN.md — gap closure: ERF + LDA-corr triage; D-19 forwards (Wave 1, gap_closure)
+  - [x] 04-07-driver-extension-PLAN.md — gap closure: validation driver + run_launch metaGGA arms (Wave 1, gap_closure)
+  - [x] 04-08-erf-divergence-PLAN.md — gap closure: ERF + LDA-corr triage; D-19 forwards (Wave 1, gap_closure)
   - [ ] 04-09-contracted-metagga-PLAN.md — gap closure: contracted_cross_mode metaGGA exemplars at orders 0..=4 (Wave 2, gap_closure)
   - [ ] 04-10-resignoff-PLAN.md — phase re-signoff; rewrite VERIFICATION.md to signed_off (Wave 3, gap_closure)
 
