@@ -464,6 +464,15 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
                 | "XC_BRC"
                 | "XC_BRXC"
                 | "XC_CSC"
+                // ----- Phase 4 plan 04-07 Task 7.3 finding -----
+                // C++ xcfun's tmath::log_expand asserts `x0 > 0` and aborts
+                // the entire process when BLOCX's internal Hu-Langreth-style
+                // log-of-ratio evaluates at a non-positive intermediate.
+                // The metaGGA grid stratum produces such inputs at the
+                // low-density tail. Until Phase 6 supplies a guarded
+                // log-expansion (or BLOCX kernel is reformulated to avoid
+                // log-of-near-zero), exclude from the C++-paired sweep.
+                | "XC_BLOCX"
         );
 
         // C++ xcfun_eval supports orders 0/1/2/3 (XCFunctional.cpp:500-617);
