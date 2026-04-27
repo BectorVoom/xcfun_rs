@@ -1,0 +1,143 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-04-27T13:54:47.872Z",
+  "phase": "04",
+  "phase_name": "metagga-tier-mode-contracted-aliases",
+  "phase_dir": ".planning/phases/04-metagga-tier-mode-contracted-aliases",
+  "plan": 9,
+  "task": 1,
+  "total_tasks": 3,
+  "status": "paused",
+  "completed_tasks": [
+    {
+      "id": "04-07.1",
+      "name": "Wire run_launch arms for 30 metaGGAs at vars=13/17 × n ∈ {0,1,2,3}",
+      "status": "done",
+      "commit": "0576afb"
+    },
+    {
+      "id": "04-07.2",
+      "name": "Extend validation driver tables with 30 metaGGA tuples",
+      "status": "done",
+      "commit": "a61e572"
+    },
+    {
+      "id": "04-07.3",
+      "name": "Order-2 partial-matrix sweep + per-fn-summary.json",
+      "status": "partial",
+      "commit": "1332d29",
+      "progress": "BLOCX skip-list extension committed. Full sweep deferred to Plan 04-10's order-3 sweep — validation binary's all-or-nothing jsonl flush + 50-min timeout cap meant 2 attempts produced zero records."
+    },
+    {
+      "id": "04-08.1-4",
+      "name": "ERF divergence triage (XC_LDAERFX/LDAERFC/LDAERFC_JT) + LDA-correlation triage",
+      "status": "done",
+      "commit": "74b38fa,6b8365c",
+      "progress": "All 3 ERF functionals get Path B (D-19 forward to Phase 6 with root-cause hypothesis). 2 NEW LDA-correlation D-19 entries discovered (XC_VWN_PBEC, XC_PBEC ≈ 6.7e-9) escalated to Plan 04-10."
+    },
+    {
+      "id": "04-08.merge",
+      "name": "Merge 04-08 worktree into master",
+      "status": "done",
+      "commit": "39c6630"
+    },
+    {
+      "id": "wave-1.tracking",
+      "name": "Update ROADMAP/STATE plan progress for Wave 1",
+      "status": "done",
+      "commit": "ea0c776"
+    }
+  ],
+  "remaining_tasks": [
+    {
+      "id": "04-09.1",
+      "name": "Wave 2: Plan 04-09 — Extend contracted_cross_mode test with TPSSX/SCANX/M06X exemplars at orders 0..=4",
+      "status": "not_started"
+    },
+    {
+      "id": "04-09.2",
+      "name": "Wave 2: Update REQUIREMENTS.md MODE-03 to reflect Phase-4-actual coverage",
+      "status": "not_started"
+    },
+    {
+      "id": "04-10.1-4",
+      "name": "Wave 3: Plan 04-10 — Resignoff CHECKPOINT (autonomous: false). Re-run 6 must_haves, regenerate VERIFICATION.md, advance phase tracking",
+      "status": "not_started"
+    },
+    {
+      "id": "phase-04.verification",
+      "name": "Phase verification gates: code-review, regression tests, schema/codebase drift, gsd-verifier on phase goal, mark phase 4 complete in ROADMAP/STATE",
+      "status": "not_started"
+    }
+  ],
+  "blockers": [
+    {
+      "description": "Plan 04-10's order-3 sweep may abort with C++ tmath_die on SCAN/M05/M06 family (same fault mode as XC_BLOCX hit in 04-07 Task 7.3). Mitigation: be ready to extend validation/src/driver.rs:475 skip-list incrementally and re-run.",
+      "type": "technical",
+      "workaround": "BLOCX is already pre-skipped. Watch for new tmath_die at functionals XC_SCANX/C, XC_RSCANX/C, XC_RPPSCANX/C, XC_R2SCANX/C, XC_R4SCANX/C, XC_M05X/C, XC_M05X2X/C, XC_M06X/C, XC_M06LX/C, XC_M06HFX/C, XC_M06X2X/C."
+    }
+  ],
+  "human_actions_pending": [
+    {
+      "action": "Decide what to do with .cargo/config.toml `[profile.dev] incremental = false` change",
+      "context": "Unknown provenance — appeared during the orphaned 04-07 subagent's session. May be a manual stall workaround. Not part of any committed plan.",
+      "blocking": false
+    },
+    {
+      "action": "Decide what to do with untracked docs/manual/Cubecl/cubecl_macro_fanout_manual.md (+Zone.Identifier)",
+      "context": "Pre-existing untracked, unknown provenance. Zone.Identifier suffix suggests Windows-imported file via WSL.",
+      "blocking": false
+    },
+    {
+      "action": "After Plan 04-10 completes, decide whether to file a v1.1 follow-up to add incremental jsonl writing to the validation binary",
+      "context": "Validation binary buffers all records and only writes report.jsonl on clean process exit. Caused 2 wasted sweep attempts in this session. Long-term structural improvement.",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "Treat the user's `--gaps` as the workflow's documented `--gaps-only` flag",
+      "rationale": "The literal `--gaps-only` is what execute-phase.md's filter logic checks for, but `--gaps` is unambiguous given the recently-created gap-closure plans 04-07..04-10 and the absence of any other meaning.",
+      "phase": "04"
+    },
+    {
+      "decision": "Discard prior-session dirty state at session start (option b)",
+      "rationale": "Found 7 locked leftover worktrees + staged 04-07-per-fn-summary.json (782 lines) + planning edits from a prior interrupted run. User chose clean restart over salvage. Preserved 04-08's worktree separately when 04-07's restart was needed.",
+      "phase": "04"
+    },
+    {
+      "decision": "Salvage 04-07 commits 12dc731 + 8dffdbf via cherry-pick after the 6h subagent stall",
+      "rationale": "The original gsd-executor for 04-07 went silent for 6h+ after committing Tasks 7.1+7.2, never returning a completion signal. Force-removing the orphan worktree dropped the branch but git objects survived. Cherry-pick onto master (0576afb, a61e572) recovered ~2h of executor work.",
+      "phase": "04"
+    },
+    {
+      "decision": "Mark Task 7.3 PARTIAL with documented deferral rather than continue chasing the sweep",
+      "rationale": "Two sweep attempts (38 min crashed at BLOCX, 48 min timeout at TPSSLOCC) produced zero report.jsonl records due to validation binary's buffering. Wave 2 (04-09) only depends on Tasks 7.1+7.2 (structural fix). Plan 04-10's order-3 sweep redoes the same work. Continuing inline burns wall-clock with low marginal value.",
+      "phase": "04"
+    },
+    {
+      "decision": "Add XC_BLOCX to the `excluded_by_upstream_spec` skip-list mirroring BR×3 + CSC pattern",
+      "rationale": "C++ tmath::log_expand asserts x0 > 0 and aborts the entire validation process when BLOCX's internal log evaluates at non-positive intermediate at low-density tail. Reformulating BLOCX kernel to avoid log-of-near-zero would alter parity contract; skipping matches existing protocol and defers fix to Phase 6 (guarded log expansion).",
+      "phase": "04"
+    }
+  ],
+  "uncommitted_files": [
+    {
+      "path": ".cargo/config.toml",
+      "status": "modified",
+      "note": "Adds `[profile.dev] incremental = false`. Unknown provenance. NOT part of any committed plan."
+    },
+    {
+      "path": "docs/manual/Cubecl/cubecl_macro_fanout_manual.md",
+      "status": "untracked",
+      "note": "Pre-existing untracked. Unknown provenance."
+    },
+    {
+      "path": "docs/manual/Cubecl/cubecl_macro_fanout_manual.md:Zone.Identifier",
+      "status": "untracked",
+      "note": "Windows ADS metadata sidecar (created when copying files into WSL from Windows)."
+    }
+  ],
+  "next_action": "Run `/gsd:execute-phase 4 --gaps` after `/clear`. Orchestrator skips completed plans (04-07, 04-08) automatically and resumes from Wave 2 (Plan 04-09 contracted-metaGGA), then Wave 3 (Plan 04-10 resignoff CHECKPOINT). Plan 04-09 should be quick (~30-60 min, mostly test extension). Plan 04-10 will hit a checkpoint requiring user interaction.",
+  "context_notes": "Phase 4 gap closure was driven by 04-VERIFICATION.md's gaps_found verdict. Plans 04-07/08/09/10 were created by an earlier /gsd:plan-phase --gaps run. Wave 1 (04-07 + 04-08) completed this session: 04-07 PARTIAL (Tasks 7.1+7.2 land the structural fix; Task 7.3 sweep deferred to 04-10) and 04-08 COMPLETE (3 ERF + 2 LDA-corr D-19 forwards). Wave 2 (04-09) is unblocked. Wave 3 (04-10) is the final sign-off and will produce the order-3 report.jsonl that supersedes 04-07's deferred Task 7.3 deliverable. Phase 4's must_haves: MGGA-01..05, MODE-03, ALIAS-01..06 — all on track for 04-10 sign-off (with caveats: BLOCX excluded, BR×3+CSC excluded, and likely some new D-19 forwards if SCAN/M05/M06 hit tmath_die). Total session: ~9h dominated by the 6h orphaned-agent stall + 2 failed sweep attempts."
+}
