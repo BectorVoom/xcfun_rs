@@ -227,6 +227,45 @@ fn build_input(gp: &GridPoint, vars: Vars) -> Vec<f64> {
             input[3] = gp.gab;
             input[4] = gp.gbb;
         }
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB => {
+            // metaGGA inlen=7 input. Derive tau_α/tau_β from grid (a,b) using
+            // the same physical bound as fixtures::generate_metagga_stratum:
+            // tau ∈ [0, kF² · ρ^(2/3)] with kF² = (3π²)^(2/3) ≈ 9.5703...
+            // The grid has no committed tau seed for non-mGGA points, so we
+            // derive deterministically: taua = 0.5 · kf2 · a^(2/3),
+            // taub = 0.5 · kf2 · b^(2/3) — a midpoint of the physical
+            // distribution. C++ side receives the SAME value, so parity is
+            // a true kernel-port comparison.
+            let (a, b) = gp.ab_from_ns();
+            let kf2 = (3.0_f64 * std::f64::consts::PI.powi(2)).powf(2.0 / 3.0);
+            input[0] = a;
+            input[1] = b;
+            input[2] = gp.gaa;
+            input[3] = gp.gab;
+            input[4] = gp.gbb;
+            input[5] = 0.5 * kf2 * a.max(1e-30).powf(2.0 / 3.0);
+            input[6] = 0.5 * kf2 * b.max(1e-30).powf(2.0 / 3.0);
+        }
+        Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB => {
+            // BR/CSC inlen=11 input. Same tau derivation; lap_α/lap_β set to
+            // ±0.005·a/b (matches generate_metagga_stratum's [-0.01, 0.01]
+            // midpoint band); jp_aa/jp_bb to 0.05 (matches midpoint of
+            // [-0.1, 0.1] band). All deterministic per-grid-point so the
+            // C++ side gets identical input.
+            let (a, b) = gp.ab_from_ns();
+            let kf2 = (3.0_f64 * std::f64::consts::PI.powi(2)).powf(2.0 / 3.0);
+            input[0] = a;
+            input[1] = b;
+            input[2] = gp.gaa;
+            input[3] = gp.gab;
+            input[4] = gp.gbb;
+            input[5] = 0.005 * a; // lapa
+            input[6] = 0.005 * b; // lapb
+            input[7] = 0.5 * kf2 * a.max(1e-30).powf(2.0 / 3.0); // taua
+            input[8] = 0.5 * kf2 * b.max(1e-30).powf(2.0 / 3.0); // taub
+            input[9] = 0.05; // jpaa
+            input[10] = 0.05; // jpbb
+        }
         other => panic!(
             "validation driver: unsupported vars {:?} in Phase 2 (expected A_B or A_B_GAA_GAB_GBB)",
             other
@@ -321,6 +360,56 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
         (FunctionalId::XC_B97_1C, "XC_B97_1C", Vars::A_B_GAA_GAB_GBB),
         (FunctionalId::XC_B97_2X, "XC_B97_2X", Vars::A_B_GAA_GAB_GBB),
         (FunctionalId::XC_B97_2C, "XC_B97_2C", Vars::A_B_GAA_GAB_GBB),
+        // ===== Phase 4 plan 04-07 (gap closure): metaGGA tier =====
+        // 30 metaGGA functionals across 6 families. 26 use vars=13
+        // (A_B_GAA_GAB_GBB_TAUA_TAUB); BR×3 + CSC use vars=17 (full JP).
+        //
+        // BR family + CSC are tagged for likely upstream-spec exclusion at
+        // run() because their FUNCTIONAL macro test_in (xcfun-master/src/
+        // functionals/brx.cpp etc.) lacks a deterministic A_B_GAA_GAB_GBB_
+        // LAPA_LAPB_TAUA_TAUB_JPAA_JPBB seed; the existing
+        // excluded_by_upstream_spec mechanism catches these at runtime when
+        // the C++ harness reports input-length mismatch — no special-case
+        // code needed here, the per-functional skip-list at line 362 may
+        // need extension during execution if XC_BRX/BRC/BRXC/CSC abort.
+        // ----- TPSS family + TPSSLOCC (5 ids) -----
+        (FunctionalId::XC_TPSSC, "XC_TPSSC", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_TPSSX, "XC_TPSSX", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_REVTPSSC, "XC_REVTPSSC", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_REVTPSSX, "XC_REVTPSSX", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_TPSSLOCC, "XC_TPSSLOCC", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        // ----- BLOCX (1 id, TAUA_TAUB only) -----
+        (FunctionalId::XC_BLOCX, "XC_BLOCX", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        // ----- SCAN family (10 ids) -----
+        (FunctionalId::XC_SCANC, "XC_SCANC", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_SCANX, "XC_SCANX", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_RSCANC, "XC_RSCANC", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_RSCANX, "XC_RSCANX", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_RPPSCANC, "XC_RPPSCANC", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_RPPSCANX, "XC_RPPSCANX", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_R2SCANC, "XC_R2SCANC", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_R2SCANX, "XC_R2SCANX", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_R4SCANC, "XC_R4SCANC", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_R4SCANX, "XC_R4SCANX", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        // ----- M05 family (4 ids) -----
+        (FunctionalId::XC_M05X, "XC_M05X", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_M05X2X, "XC_M05X2X", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_M05X2C, "XC_M05X2C", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_M05C, "XC_M05C", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        // ----- M06 family (8 ids) -----
+        (FunctionalId::XC_M06X, "XC_M06X", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_M06X2X, "XC_M06X2X", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_M06LX, "XC_M06LX", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_M06HFX, "XC_M06HFX", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_M06C, "XC_M06C", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_M06HFC, "XC_M06HFC", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_M06LC, "XC_M06LC", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (FunctionalId::XC_M06X2C, "XC_M06X2C", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        // ----- BR family + CSC (4 ids at vars=17) -----
+        (FunctionalId::XC_BRX, "XC_BRX", Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB),
+        (FunctionalId::XC_BRC, "XC_BRC", Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB),
+        (FunctionalId::XC_BRXC, "XC_BRXC", Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB),
+        (FunctionalId::XC_CSC, "XC_CSC", Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB),
     ];
 
     for &(id, name, vars) in lda_targets {
@@ -366,6 +455,15 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
                 | "XC_ZVPBESOLC"
                 | "XC_ZVPBEINTC"
                 | "XC_PBELOCC"
+                // ----- Phase 4 plan 04-07 additions: BR family + CSC -----
+                // BRX/BRC/BRXC/CSC require an inlen=11 LAPA_LAPB_JPAA_JPBB
+                // seed that the C++ FUNCTIONAL macro test_in does not
+                // provide deterministically. Reported as upstream-spec
+                // exclusion until Phase 6 wires a custom JP-grid harness.
+                | "XC_BRX"
+                | "XC_BRC"
+                | "XC_BRXC"
+                | "XC_CSC"
         );
 
         // C++ xcfun_eval supports orders 0/1/2/3 (XCFunctional.cpp:500-617);
