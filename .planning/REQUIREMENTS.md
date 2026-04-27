@@ -69,7 +69,7 @@
 
 - [x] **MODE-01**: `Mode::PartialDerivatives` supports orders 0..=4 (Plan 03-06 Task 1; tier-2 parity capped at order 3 — C++ `xcfun_eval` supports 0/1/2/3 only via `case 3:` fall-through to `case 2:`; order 4 is Rust-only with no C++ reference per `XCFunctional.cpp:614-617`)
 - [x] **MODE-02**: `Mode::Potential` supports GGA via the `CTaylor<f64, 2>` divergence construction (Plan 03-05; line-for-line port of `XCFunctional.cpp:637-790`). 11 LDA + 8 representative GGA verified GREEN at strict 1e-12 over ~510k tier-2 records. Rejects metaGGAs (`Dependency::LAPLACIAN|KINETIC` → `XcError::InvalidMode`); enforces `_2ND_TAYLOR` Vars for GGA path
-- [ ] **MODE-03**: `Mode::Contracted` supports orders 0..=6 with output layout matching the `DOEVAL` macro expansion in the C++ reference
+- [~] **MODE-03**: `Mode::Contracted` supports orders 0..=4 verified across LDA (XC_SLATERX) and GGA (XC_PBEX) at strict 1e-12 cross-mode parity (Plan 04-05). For metaGGAs, orders 0..=3 verified across one exemplar per family — XC_TPSSX (TPSS), XC_SCANX (SCAN), XC_M06X (M06) — at strict 1e-12 (Plan 04-09 commit `307616c`). Order 4 metaGGA cross-mode hits the same xcfun-ad N≥4 specialisation gap (`ctaylor_compose` / `ctaylor_multo` outer dispatch only specialise N ∈ {0,1,2,3}; N ≥ 4 falls through with no op, leaving Contracted output zero-filled — empirically observed during Plan 04-09). Order 4 metaGGA tests retained as `#[ignore]` in `crates/xcfun-eval/tests/contracted_cross_mode.rs`. Orders 5..=6 D-19 INCONCLUSIVE forwarded to Phase 6 — Phase 6 owns the libm-hybrid + AD-N4..=N6 work that lifts the limit (Plan 04-05 D-19 forward).
 - [x] **MODE-04**: `Functional::input_length` returns `VARS_TABLE[vars].len` as `usize` (Plan 02-03; also `PartialDerivatives` orders 0/1/2 landed via `Functional::eval` dispatch)
 - [x] **MODE-05**: `Functional::output_length` returns `taylor_len(input_len, order)` for `PartialDerivatives` orders 0..=4, 2 or 3 for `Potential` per D-15 + `XCFunctional.cpp:482-490` (Plan 03-01 Task 3 + Plan 03-06 Task 1). Contracted left for Phase 4
 
@@ -251,7 +251,7 @@ Populated during roadmap creation (2026-04-19).
 | MGGA-05 | Phase 4 | Pending |
 | MODE-01 | Phase 3 | Complete (orders 0..=4 implemented; tier-2 parity capped at order 3 — C++ unsupported beyond) |
 | MODE-02 | Phase 3 | Complete |
-| MODE-03 | Phase 4 | Pending |
+| MODE-03 | Phase 4 | Partial (LDA + GGA orders 0..=4, metaGGAs 0..=3 — Plan 04-05 + 04-09; order 4 metaGGA + orders 5..=6 forwarded to Phase 6 per D-19) |
 | MODE-04 | Phase 2 | Complete |
 | MODE-05 | Phase 3 | Complete |
 | ALIAS-01 | Phase 4 | Pending |

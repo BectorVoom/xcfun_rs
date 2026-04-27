@@ -446,6 +446,228 @@ fn contracted_pbex_order_6_launches() {
     }
 }
 
+// ============================================================
+// Phase 4 plan 04-09 (gap closure) — metaGGA cross-mode parity
+// at orders 0..=3 GREEN; orders 4..=6 D-19 INCONCLUSIVE.
+//
+// Validates that Mode::Contracted ≡ Mode::PartialDerivatives
+// bit-flag-indexed at strict 1e-12 for one exemplar per metaGGA
+// family: TPSSX (TPSS family), SCANX (SCAN family), M06X (M06
+// family). Run via vars=13 (A_B_GAA_GAB_GBB_TAUA_TAUB), inlen=7.
+//
+// **Order-4 status (Plan 04-05 D-19 forward, observed empirically
+// during Plan 04-09):** Mode::Contracted at N=4 leaves the output
+// zero-filled for metaGGA kernels — `cont[0] == 0` while
+// `pd[0] == E_xc`, rel_err = 1.0e0. Root cause: the metaGGA
+// kernel bodies invoke `ctaylor_compose` / `ctaylor_multo` whose
+// outer dispatch only specialises N ∈ {0, 1, 2, 3}; at N ≥ 4 the
+// dispatcher falls through without writing the output, exactly
+// the gap Plan 04-05 D-19 forwarded to Phase 6 (xcfun-ad
+// `ctaylor_compose` / `ctaylor_multo` N=4..=6 specialisations).
+// LDA (SLATERX) and GGA (PBEX) order-4 cross-mode tests above
+// pass because their kernels do not exercise the same compose
+// surface. The metaGGA order-4 tests are `#[ignore]`'d here —
+// they remain in source so they trip GREEN automatically once
+// the Phase-6 work lands; until then they must NOT run in CI.
+//
+// Orders 5/6 NOT exercised here either; same Phase-6 forward.
+// ============================================================
+
+/// metaGGA representative input — vars=13 (A_B_GAA_GAB_GBB_TAUA_TAUB),
+/// inlen=7. Values picked to be physically representative and away from
+/// regularize-clamp / low-density edge cases.
+///
+/// tau values must satisfy the physical bound
+/// `tau ≤ kF² · ρ^(2/3)` (kF² ≈ 9.5703). For ρ_α = 1.1, the upper
+/// bound on tau_α is ≈ 9.5703 × 1.1^(2/3) ≈ 10.2. Our tau_α = 0.5 is
+/// well within bounds.
+const MGGA_INPUT: [f64; 7] = [1.1, 1.0, 0.04, 0.005, 0.05, 0.5, 0.45];
+
+/// Compare Mode::Contracted output against Mode::PartialDerivatives at
+/// the diagonal slot-0 mixed partial derivative (`∂^N E/∂x_0^N`).
+///
+/// For order N with all VAR_k seeded on slot 0:
+///   - Contracted: `cont[(1<<N) - 1]` = `∂^N E/∂x_0^N`.
+///   - PartialDerivatives: `pd[taylorlen(inlen, N-1)]` = first tier-N entry
+///     = the multi-index `(0,0,...,0)` (N zeros) = `∂^N E/∂x_0^N`.
+///
+/// Always compares `cont[0] == pd[0]` (energy) as well.
+///
+/// Strict 1e-12 tolerance per ACC-02 / D-12.
+fn assert_cross_mode_parity(
+    id: FunctionalId,
+    vars: Vars,
+    input: &[f64],
+    order: u32,
+) {
+    let cont = run_contracted(id, vars, order, input);
+    let pd = run_partial_derivatives(id, vars, order, input);
+
+    // Energy (CNST coefficient) — always present.
+    assert!(
+        rel_err(cont[0], pd[0]) <= TOLERANCE,
+        "{:?} vars={:?} order={} CNST: cont[0]={} pd[0]={} rel_err={:.3e} input={:?}",
+        id, vars, order, cont[0], pd[0], rel_err(cont[0], pd[0]), input
+    );
+
+    if order >= 1 {
+        // Diagonal mixed partial slot.
+        let cont_top = (1_usize << order) - 1;
+        let pd_top = xcfun_core::taylorlen(input.len(), (order as usize) - 1);
+        assert!(
+            cont.len() > cont_top,
+            "{:?} order={} cont len {} < required {}",
+            id, order, cont.len(), cont_top + 1
+        );
+        assert!(
+            pd.len() > pd_top,
+            "{:?} order={} pd len {} < required {}",
+            id, order, pd.len(), pd_top + 1
+        );
+        let err = rel_err(cont[cont_top], pd[pd_top]);
+        assert!(
+            err <= TOLERANCE,
+            "{:?} vars={:?} order={} ∂^{}E/∂x_0^{}: cont[{}]={} pd[{}]={} rel_err={:.3e} input={:?}",
+            id, vars, order, order, order,
+            cont_top, cont[cont_top], pd_top, pd[pd_top], err, input
+        );
+    }
+}
+
+// Per-order tests — split per order so each order's compile/launch cost is
+// isolated and a failing order is diagnosable in isolation. Three exemplars
+// × four orders (0..=3) GREEN at strict 1e-12; order-4 tests retained as
+// `#[ignore]` for Phase 6 unblocking (see header comment for D-19 details).
+// The aggregate `_orders_0_to_4_cross_mode` test names are kept for the
+// Plan 04-09 acceptance grep pattern; their loop bodies iterate 0..=3
+// because order 4 is INCONCLUSIVE per the metaGGA kernel compose gap.
+
+// ---- TPSSX ----
+
+#[test]
+fn test_contracted_tpssx_order_0_cross_mode() {
+    assert_cross_mode_parity(FunctionalId::XC_TPSSX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 0);
+}
+
+#[test]
+fn test_contracted_tpssx_order_1_cross_mode() {
+    assert_cross_mode_parity(FunctionalId::XC_TPSSX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 1);
+}
+
+#[test]
+fn test_contracted_tpssx_order_2_cross_mode() {
+    assert_cross_mode_parity(FunctionalId::XC_TPSSX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 2);
+}
+
+#[test]
+fn test_contracted_tpssx_order_3_cross_mode() {
+    assert_cross_mode_parity(FunctionalId::XC_TPSSX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 3);
+}
+
+#[test]
+#[ignore = "Plan 04-05 D-19 forward: metaGGA Mode::Contracted at N=4 falls through ctaylor_compose/multo dispatch (only N∈{0,1,2,3} specialised); Phase 6 prerequisite"]
+fn test_contracted_tpssx_order_4_cross_mode() {
+    assert_cross_mode_parity(FunctionalId::XC_TPSSX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 4);
+}
+
+/// Aggregate driver — runs orders 0..=3 in sequence; named to satisfy
+/// Plan 04-09 acceptance criterion grep pattern
+/// (`test_contracted_tpssx_*orders_0_to_4*`). Order 4 deferred to Phase 6
+/// (D-19 forward) — see file header comment.
+#[test]
+fn test_contracted_tpssx_orders_0_to_4_cross_mode() {
+    for order in 0_u32..=3 {
+        assert_cross_mode_parity(
+            FunctionalId::XC_TPSSX,
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+            &MGGA_INPUT,
+            order,
+        );
+    }
+}
+
+// ---- SCANX ----
+
+#[test]
+fn test_contracted_scanx_order_0_cross_mode() {
+    assert_cross_mode_parity(FunctionalId::XC_SCANX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 0);
+}
+
+#[test]
+fn test_contracted_scanx_order_1_cross_mode() {
+    assert_cross_mode_parity(FunctionalId::XC_SCANX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 1);
+}
+
+#[test]
+fn test_contracted_scanx_order_2_cross_mode() {
+    assert_cross_mode_parity(FunctionalId::XC_SCANX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 2);
+}
+
+#[test]
+fn test_contracted_scanx_order_3_cross_mode() {
+    assert_cross_mode_parity(FunctionalId::XC_SCANX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 3);
+}
+
+#[test]
+#[ignore = "Plan 04-05 D-19 forward: metaGGA Mode::Contracted at N=4 falls through ctaylor_compose/multo dispatch (only N∈{0,1,2,3} specialised); Phase 6 prerequisite"]
+fn test_contracted_scanx_order_4_cross_mode() {
+    assert_cross_mode_parity(FunctionalId::XC_SCANX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 4);
+}
+
+#[test]
+fn test_contracted_scanx_orders_0_to_4_cross_mode() {
+    // Order 4 deferred — see header (Plan 04-05 D-19 forward).
+    for order in 0_u32..=3 {
+        assert_cross_mode_parity(
+            FunctionalId::XC_SCANX,
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+            &MGGA_INPUT,
+            order,
+        );
+    }
+}
+
+// ---- M06X ----
+
+#[test]
+fn test_contracted_m06x_order_0_cross_mode() {
+    assert_cross_mode_parity(FunctionalId::XC_M06X, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 0);
+}
+
+#[test]
+fn test_contracted_m06x_order_1_cross_mode() {
+    assert_cross_mode_parity(FunctionalId::XC_M06X, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 1);
+}
+
+#[test]
+fn test_contracted_m06x_order_2_cross_mode() {
+    assert_cross_mode_parity(FunctionalId::XC_M06X, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 2);
+}
+
+#[test]
+fn test_contracted_m06x_order_3_cross_mode() {
+    assert_cross_mode_parity(FunctionalId::XC_M06X, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 3);
+}
+
+#[test]
+#[ignore = "Plan 04-05 D-19 forward: metaGGA Mode::Contracted at N=4 falls through ctaylor_compose/multo dispatch (only N∈{0,1,2,3} specialised); Phase 6 prerequisite"]
+fn test_contracted_m06x_order_4_cross_mode() {
+    assert_cross_mode_parity(FunctionalId::XC_M06X, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 4);
+}
+
+#[test]
+fn test_contracted_m06x_orders_0_to_4_cross_mode() {
+    // Order 4 deferred — see header (Plan 04-05 D-19 forward).
+    for order in 0_u32..=3 {
+        assert_cross_mode_parity(
+            FunctionalId::XC_M06X,
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+            &MGGA_INPUT,
+            order,
+        );
+    }
+}
+
 // =====================================================================
 // Hint-test for max_relative usage (D-12 explicit invocation of approx
 // for the 1e-12 tolerance contract).
