@@ -5,3 +5,5 @@ xcfun-master
 # At order=3 the file reaches ~1.5 GB; commit `validation/report-summary.json`
 # (per-cell aggregate) and `validation/report.html` (human view) instead.
 validation/report.jsonl
+# Ephemeral GSD executor worktrees — should never be tracked.
+.claude/worktrees/
