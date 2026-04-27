@@ -46,7 +46,7 @@
   "phase_naming": "sequential",
   "agent_skills": {},
   "claude_md_path": "./CLAUDE.md",
-  "resolve_model_ids": "omit",
+  "resolve_model_ids": false,
   "mode": "yolo",
   "granularity": "standard"
 }

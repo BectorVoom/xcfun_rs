@@ -23,3 +23,7 @@ rustflags = [
 rustflags = [
     "-Cllvm-args=-fp-contract=off",
 ]
+
+
+[profile.dev]
+incremental = false

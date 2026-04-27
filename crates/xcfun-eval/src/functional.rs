@@ -1554,6 +1554,15 @@ pub(crate) fn run_launch(
             (40, 13, 0) => arm!(40, 13, 0),  (40, 13, 1) => arm!(40, 13, 1),
             (40, 13, 2) => arm!(40, 13, 2),  (40, 13, 3) => arm!(40, 13, 3),
 
+            // ===== Phase 4 plan 04-09 (gap closure): metaGGA cross-mode order 4 =====
+            // Three exemplars (TPSSX, SCANX, M06X — one per family) at n=4 to
+            // unblock the contracted_cross_mode test at orders 0..=4. Orders 5/6
+            // for these ids remain forwarded to Phase 6 per Plan 04-05 D-19
+            // (xcfun-ad ctaylor_compose/multo N=4..=6 specialisations).
+            (42, 13, 4) => arm!(42, 13, 4),  // XC_TPSSX
+            (46, 13, 4) => arm!(46, 13, 4),  // XC_SCANX
+            (31, 13, 4) => arm!(31, 13, 4),  // XC_M06X
+
             // ----- BR family + CSC (4 ids at vars=17, full JP path) -----
             (10, 17, 0) => arm!(10, 17, 0),  (10, 17, 1) => arm!(10, 17, 1),
             (10, 17, 2) => arm!(10, 17, 2),  (10, 17, 3) => arm!(10, 17, 3),
