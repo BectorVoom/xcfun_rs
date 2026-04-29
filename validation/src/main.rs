@@ -2,13 +2,33 @@
 //!
 //! Usage:
 //!   cargo run -p validation --release -- [--backend cpu] [--order N] [--filter REGEX]
+//!                                        [--mode {partial_derivatives,potential,contracted}]
+//!                                        [--grid {default,supplemental}]
+//!                                        [--resume]
 //!
 //! Exit codes:
 //!   0 — all records within their per-functional threshold
 //!   2 — at least one record exceeded its threshold (ACC-03 merge block)
 //!   1 — internal error (bad CLI flag, build/FFI failure, etc.)
+//!
+//! ## --resume (Plan 04-10, 2026-04-28)
+//!
+//! When passed, the harness:
+//!   1. Parses the existing `validation/report.jsonl` line-by-line into a
+//!      `HashSet<(functional, vars, mode, order)>` of completed tuples.
+//!   2. Opens `validation/report.jsonl` in **append** mode (does NOT
+//!      truncate). New records flush per-line.
+//!   3. Re-builds matrix entries from the prior file for the skipped tuples
+//!      so `report.html` end-of-run remains accurate.
+//!   4. Skips any `(functional, vars, mode, order)` tuple in the skip-set —
+//!      the driver short-circuits at the start of every per-tuple loop.
+//!
+//! Without `--resume`, `report.jsonl` is truncated as it has always been.
+//! Either way, every record is now flushed to disk synchronously so a
+//! SIGKILL/OOM/WSL-VM-termination cannot lose data already written.
 
 use anyhow::{Context, Result};
+use std::collections::HashSet;
 
 fn parse_arg<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
     args.iter().enumerate().find_map(|(i, a)| {
@@ -18,6 +38,10 @@ fn parse_arg<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
             None
         }
     })
+}
+
+fn has_flag(args: &[String], name: &str) -> bool {
+    args.iter().any(|a| a == name)
 }
 
 fn main() -> Result<()> {
@@ -49,6 +73,11 @@ fn main() -> Result<()> {
     // (seed 0xdeadbeef per PATTERNS.md J2).
     let grid_name = parse_arg(&args, "--grid").unwrap_or("default");
 
+    // Plan 04-10 — `--resume` flag. Off-by-default to preserve the legacy
+    // truncating clean-run behaviour (and the byte-for-byte JSONL invariant
+    // expected by the merge gate).
+    let resume = has_flag(&args, "--resume");
+
     if backend != "cpu" {
         anyhow::bail!(
             "Phase 2 only supports --backend cpu; got {} (D-23)",
@@ -71,12 +100,13 @@ fn main() -> Result<()> {
 
     let regex = regex::Regex::new(filter).context("invalid --filter regex")?;
     tracing::info!(
-        "Tier-2 harness: backend={} mode={} order={} filter={} grid={}",
+        "Tier-2 harness: backend={} mode={} order={} filter={} grid={} resume={}",
         backend,
         mode_str,
         order,
         filter,
-        grid_name
+        grid_name,
+        resume,
     );
 
     let grid = match grid_name {
@@ -93,9 +123,56 @@ fn main() -> Result<()> {
     };
     tracing::info!("Generated grid: {} points", grid.len());
 
-    let report = validation::driver::run_with_mode(&grid, order, &regex, mode)?;
+    // Plan 04-10 — durability + resume.
+    //
+    // 1. If --resume: parse existing report.jsonl into a skip-set; rebuild
+    //    prior matrix entries; open the sink in append mode.
+    // 2. Else: empty skip-set; open the sink in truncate mode (legacy
+    //    semantics).
+    let jsonl_path = "validation/report.jsonl";
+    let skip_keys: HashSet<validation::report::TupleKey> = if resume {
+        let s = validation::report::read_completed_tuples(jsonl_path)?;
+        tracing::info!(
+            "--resume: {} prior tuple(s) will be skipped",
+            s.len()
+        );
+        s
+    } else {
+        HashSet::new()
+    };
+    let prior_matrix = if resume {
+        validation::report::rebuild_matrix_from_jsonl(jsonl_path, &skip_keys)?
+    } else {
+        Default::default()
+    };
+    let mut sink = if resume {
+        validation::report::JsonlSink::append(jsonl_path)?
+    } else {
+        validation::report::JsonlSink::create(jsonl_path)?
+    };
+
+    let mut cfg = validation::driver::RunConfig {
+        sink: Some(&mut sink),
+        skip_keys: &skip_keys,
+    };
+
+    let mut report =
+        validation::driver::run_with_mode_cfg(&grid, order, &regex, mode, &mut cfg)?;
+
+    // Drop the sink to ensure all buffered bytes hit the OS before we
+    // hand the report off to the HTML writer (per-line flush already
+    // wrote each record; this is belt-and-braces for the underlying file).
+    drop(cfg);
+    drop(sink);
+
+    // Carry forward prior-run cells for tuples we did not re-evaluate, so
+    // report.html shows complete coverage (otherwise a --resume run's HTML
+    // would only display the cells touched in this invocation).
+    if !prior_matrix.is_empty() {
+        report.extend_matrix_from_prior(prior_matrix);
+    }
+
     validation::report::write_html(&report, "validation/report.html")?;
-    validation::report::write_jsonl(&report, "validation/report.jsonl")?;
 
     let n_failed = report.failed_count();
     if n_failed > 0 {

@@ -18,16 +18,34 @@
 //!   Those cases surface as `XcError::NotConfigured`; the driver records
 //!   them as threshold failures with rust=NaN so the checkpoint reviewer
 //!   sees the gap (D-19 INCONCLUSIVE trigger) rather than a crash.
+//!
+//! ## Durability + resume (Plan 04-10 incremental-jsonl-flush, 2026-04-28)
+//!
+//! Long-running (~5 h order-3 capstone) sweeps were losing 100 % of their
+//! data on any interruption because the previous code path buffered every
+//! `ReportRecord` in `Report::records` and wrote `report.jsonl` exactly once
+//! at end-of-run. Two consecutive Plan 04-10 sign-off attempts wasted
+//! ~5.5 h of compute. The fix:
+//!
+//! - `RunConfig` (new) carries an optional `&mut JsonlSink` and a
+//!   `HashSet<TupleKey>` (functional, vars, mode, order). The sink is opened
+//!   once in `main.rs` and flushes after every record write. The skip-set is
+//!   populated from a prior `report.jsonl` when `--resume` is used; driver
+//!   functions short-circuit at the start of every per-tuple iteration if
+//!   the tuple is in the skip-set. A clean (non-resumed) run uses
+//!   `RunConfig::default()`-equivalent config (empty skip-set, sink in
+//!   create/truncate mode), preserving byte-for-byte JSONL output.
 
 use anyhow::Result;
-use serde::Serialize;
-use std::collections::BTreeMap;
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, HashSet};
 
 use xcfun_core::{Dependency, FUNCTIONAL_DESCRIPTORS, FunctionalId, Mode, VARS_TABLE, Vars, taylorlen};
 use xcfun_eval::Functional;
 
 use crate::ffi::CppXcfun;
 use crate::fixtures::{GridPoint, REGULARIZE_CLAMP_STRATUM_BOUND};
+use crate::report::{JsonlSink, TupleKey};
 
 /// Phase 3 plan 03-05 — discriminator for the validation CLI's
 /// `--mode {partial_derivatives, potential, contracted}` flag.
@@ -49,9 +67,39 @@ pub enum HarnessMode {
     Contracted,
 }
 
+/// Plan 04-10 — durability + resume context passed to driver functions.
+///
+/// Holds the (optional) streaming JSONL sink and the skip-set of tuples
+/// already on disk from a prior interrupted run. `None`/empty == legacy
+/// behaviour (all records buffered in `Report::records`, no skipping).
+pub struct RunConfig<'a> {
+    /// Streaming JSONL writer — `Some` when `main.rs` wants per-record
+    /// durability, `None` for in-memory-only runs (e.g. unit tests).
+    pub sink: Option<&'a mut JsonlSink>,
+    /// `(functional, vars, mode, order)` tuples already present in
+    /// `report.jsonl` when `--resume` was passed. Driver short-circuits
+    /// any tuple matching this set.
+    pub skip_keys: &'a HashSet<TupleKey>,
+}
+
+impl<'a> RunConfig<'a> {
+    /// Construct a config with no sink and no skip-set — preserves the
+    /// pre-Plan-04-10 behaviour. Used by tests that call `run` directly.
+    pub fn empty(skip_keys: &'a HashSet<TupleKey>) -> Self {
+        Self {
+            sink: None,
+            skip_keys,
+        }
+    }
+}
+
 /// One tier-2 parity record — emitted per `(functional, vars, mode, order,
 /// point_idx, element_idx)` tuple. Serialized to `validation/report.jsonl`.
-#[derive(Serialize, Debug, Clone)]
+///
+/// `Deserialize` derived for the `--resume` path: existing JSONL is parsed
+/// back into `ReportRecord` to recover the (functional, vars, mode, order)
+/// skip-set + rebuild matrix entries for tuples we won't re-evaluate.
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ReportRecord {
     pub functional: String,
     pub vars: String,
@@ -125,7 +173,26 @@ pub struct Report {
 }
 
 impl Report {
+    /// Append a record to the in-memory aggregate. Used by code paths that
+    /// don't have a streaming sink (e.g. unit tests). `main.rs` uses
+    /// `push_with_sink` so each retained record is also written + flushed
+    /// to disk synchronously.
     pub fn push(&mut self, rec: ReportRecord) {
+        self.push_with_sink(rec, None).expect("no sink: cannot fail");
+    }
+
+    /// Append a record to the in-memory aggregate AND, if a sink is supplied,
+    /// stream the same record to disk with a per-line flush.
+    ///
+    /// IMPORTANT: the sink is only written for records that we'd retain in
+    /// `self.records` (failing records + sampled passes). This keeps the
+    /// streaming output byte-for-byte identical to the legacy end-of-run
+    /// `write_jsonl(report, ...)` output for clean (non-resumed) runs.
+    pub fn push_with_sink(
+        &mut self,
+        rec: ReportRecord,
+        sink: Option<&mut JsonlSink>,
+    ) -> Result<()> {
         let key = (rec.functional.clone(), rec.order);
         let entry = self.matrix.entry(key).or_insert(CellSummary {
             max_rel_err: 0.0,
@@ -162,10 +229,32 @@ impl Report {
         }
         // To bound JSONL size: keep all failing records (including excluded
         // ones for transparency) + a few sampled passes per (functional, order).
-        if !rec.pass {
+        let keep = !rec.pass || (rec.point_idx == 0 && rec.element_idx == 0);
+        if keep {
+            // Stream FIRST so a panic in `Vec::push` (OOM in extreme cases)
+            // can't lose the on-disk record. Per-line flush is a property of
+            // `JsonlSink::write_record`.
+            if let Some(sink) = sink {
+                sink.write_record(&rec)?;
+            }
             self.records.push(rec);
-        } else if rec.point_idx == 0 && rec.element_idx == 0 {
-            self.records.push(rec);
+        }
+        Ok(())
+    }
+
+    /// Merge a pre-existing `(functional, order) → CellSummary` map into the
+    /// matrix — used by `--resume` to carry forward the prior run's matrix
+    /// entries for tuples we are NOT re-evaluating, so `report.html` is
+    /// accurate end-to-end.
+    pub fn extend_matrix_from_prior(
+        &mut self,
+        prior: std::collections::HashMap<(String, u32), CellSummary>,
+    ) {
+        for (k, v) in prior {
+            // The current run's evaluation always wins for any cell it
+            // produced; only insert prior cells that the current run did
+            // not touch.
+            self.matrix.entry(k).or_insert(v);
         }
     }
 
@@ -286,16 +375,34 @@ fn cpp_name(xc_name: &str) -> String {
 /// Phase 3 plan 03-05 entry point — `run` with explicit harness mode.
 /// Delegates to the existing `run` (PartialDerivatives), `run_potential`
 /// (Mode::Potential), or `run_contracted` (Mode::Contracted, Plan 04-05).
+///
+/// Backward-compatible shim with no streaming sink and an empty skip-set —
+/// preserved so unit tests can call this without constructing a `RunConfig`.
 pub fn run_with_mode(
     grid: &[GridPoint],
     max_order: u32,
     filter: &regex::Regex,
     mode: HarnessMode,
 ) -> Result<Report> {
+    let empty: HashSet<TupleKey> = HashSet::new();
+    let mut cfg = RunConfig::empty(&empty);
+    run_with_mode_cfg(grid, max_order, filter, mode, &mut cfg)
+}
+
+/// Plan 04-10 — entry point used by `main.rs` with a streaming sink and
+/// skip-set. Dispatches to `run` / `run_potential` / `run_contracted` with
+/// the same `RunConfig` threaded through.
+pub fn run_with_mode_cfg(
+    grid: &[GridPoint],
+    max_order: u32,
+    filter: &regex::Regex,
+    mode: HarnessMode,
+    cfg: &mut RunConfig<'_>,
+) -> Result<Report> {
     match mode {
-        HarnessMode::PartialDerivatives => run(grid, max_order, filter),
-        HarnessMode::Potential => run_potential(grid, filter),
-        HarnessMode::Contracted => run_contracted(grid, max_order, filter),
+        HarnessMode::PartialDerivatives => run(grid, max_order, filter, cfg),
+        HarnessMode::Potential => run_potential(grid, filter, cfg),
+        HarnessMode::Contracted => run_contracted(grid, max_order, filter, cfg),
     }
 }
 
@@ -304,7 +411,12 @@ pub fn run_with_mode(
 /// (XCFunctional.cpp:500-617 — case 3 falls through to case 2; case 4 hits
 /// `xcfun::die`). Per Plan 03-06 we cap tier-2 at order 3 here and document
 /// order 4 as Rust-only in the SUMMARY (no C++ reference available).
-pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<Report> {
+pub fn run(
+    grid: &[GridPoint],
+    max_order: u32,
+    filter: &regex::Regex,
+    cfg: &mut RunConfig<'_>,
+) -> Result<Report> {
     let mut report = Report::default();
 
     // The 11 Phase-2 LDA functionals + 27 Phase-3 GGAs (17 Wave-2 + 10 Wave-3).
@@ -504,6 +616,22 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
         // C++ xcfun_eval supports orders 0/1/2/3 (XCFunctional.cpp:500-617);
         // order 4 hits the `default: die` arm. Cap at 3 here for tier-2 parity.
         for order in 0..=max_order.min(3) {
+            // Plan 04-10: short-circuit if a prior interrupted run already
+            // emitted records for this tuple (mode=1 == XC_PARTIAL_DERIVATIVES).
+            let tup_key: TupleKey = (
+                name.to_string(),
+                format!("{:?}", vars),
+                1u32,
+                order,
+            );
+            if cfg.skip_keys.contains(&tup_key) {
+                tracing::info!(
+                    "Tier-2 RESUME-SKIP {} order={} (already on disk)",
+                    name,
+                    order
+                );
+                continue;
+            }
             let outlen = taylorlen(inlen, order as usize);
             if excluded {
                 tracing::warn!(
@@ -532,7 +660,7 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
                     excluded_by_upstream_spec: true,
                     excluded_by_regularize_clamp_design: false,
                 };
-                report.push(rec);
+                report.push_with_sink(rec, cfg.sink.as_deref_mut())?;
                 continue;
             }
 
@@ -642,7 +770,7 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
                         excluded_by_upstream_spec: false,
                         excluded_by_regularize_clamp_design: in_clamp_stratum,
                     };
-                    report.push(rec);
+                    report.push_with_sink(rec, cfg.sink.as_deref_mut())?;
                 }
             }
         }
@@ -689,7 +817,11 @@ pub fn run(grid: &[GridPoint], max_order: u32, filter: &regex::Regex) -> Result<
 /// LDAERFX/LDAERFC/LDAERFC_JT inherit the Phase-2 D-24 1e-7 override (via
 /// `threshold_for`) since their cubecl `erf` polyfill drift survives
 /// across modes.
-pub fn run_potential(grid: &[GridPoint], filter: &regex::Regex) -> Result<Report> {
+pub fn run_potential(
+    grid: &[GridPoint],
+    filter: &regex::Regex,
+    cfg: &mut RunConfig<'_>,
+) -> Result<Report> {
     let mut report = Report::default();
 
     // Same target list as `run` — but vars routed through `eval_setup` rules.
@@ -776,6 +908,21 @@ pub fn run_potential(grid: &[GridPoint], filter: &regex::Regex) -> Result<Report
                 "Tier-2 EXCLUDED {} (mode=Potential): no upstream test_in (excluded_by_upstream_spec)",
                 name
             );
+            // Plan 04-10 — resume short-circuit (mode=2 == XC_POTENTIAL,
+            // order=0 here per the marker convention).
+            let tup_key: TupleKey = (
+                name.to_string(),
+                format!("{:?}", Vars::A_B),
+                2u32,
+                0u32,
+            );
+            if cfg.skip_keys.contains(&tup_key) {
+                tracing::info!(
+                    "Tier-2 (Mode::Potential) RESUME-SKIP {} (already on disk)",
+                    name
+                );
+                continue;
+            }
             let rec = ReportRecord {
                 functional: name.into(),
                 vars: format!("{:?}", Vars::A_B),
@@ -794,7 +941,7 @@ pub fn run_potential(grid: &[GridPoint], filter: &regex::Regex) -> Result<Report
                 excluded_by_upstream_spec: true,
                 excluded_by_regularize_clamp_design: false,
             };
-            report.push(rec);
+            report.push_with_sink(rec, cfg.sink.as_deref_mut())?;
             continue;
         }
         let vars = if deps.contains(Dependency::GRADIENT) {
@@ -802,6 +949,20 @@ pub fn run_potential(grid: &[GridPoint], filter: &regex::Regex) -> Result<Report
         } else {
             Vars::A_B
         };
+        // Plan 04-10 — resume short-circuit (mode=2 == XC_POTENTIAL, order=0).
+        let tup_key: TupleKey = (
+            name.to_string(),
+            format!("{:?}", vars),
+            2u32,
+            0u32,
+        );
+        if cfg.skip_keys.contains(&tup_key) {
+            tracing::info!(
+                "Tier-2 (Mode::Potential) RESUME-SKIP {} (already on disk)",
+                name
+            );
+            continue;
+        }
         let inlen = VARS_TABLE[vars as usize].len as usize;
         // `output_length(vars, Mode::Potential, _)` returns 2 or 3 per D-15.
         let outlen = match vars {
@@ -903,7 +1064,7 @@ pub fn run_potential(grid: &[GridPoint], filter: &regex::Regex) -> Result<Report
                     excluded_by_upstream_spec: false,
                     excluded_by_regularize_clamp_design: in_clamp_stratum,
                 };
-                report.push(rec);
+                report.push_with_sink(rec, cfg.sink.as_deref_mut())?;
             }
         }
     }
@@ -1036,6 +1197,7 @@ pub fn run_contracted(
     grid: &[GridPoint],
     max_order: u32,
     filter: &regex::Regex,
+    cfg: &mut RunConfig<'_>,
 ) -> Result<Report> {
     let mut report = Report::default();
 
@@ -1070,6 +1232,21 @@ pub fn run_contracted(
         );
 
         for order in lo..=hi {
+            // Plan 04-10 — resume short-circuit (mode=3 == XC_CONTRACTED).
+            let tup_key: TupleKey = (
+                name.to_string(),
+                format!("{:?}", vars),
+                3u32,
+                order,
+            );
+            if cfg.skip_keys.contains(&tup_key) {
+                tracing::info!(
+                    "Tier-2 (Mode::Contracted) RESUME-SKIP {} order={} (already on disk)",
+                    name,
+                    order
+                );
+                continue;
+            }
             let coeff_count = 1_usize << order;
             tracing::info!(
                 "  order={} (input length={}, output length={})",
@@ -1137,7 +1314,7 @@ pub fn run_contracted(
                 excluded_by_upstream_spec: true,
                 excluded_by_regularize_clamp_design: false,
             };
-            report.push(rec);
+            report.push_with_sink(rec, cfg.sink.as_deref_mut())?;
             continue;
 
             // ---------------------------------------------------------------
