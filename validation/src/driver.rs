@@ -38,7 +38,9 @@
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashSet, VecDeque};
+use std::sync::{Arc, Mutex};
+use std::sync::mpsc;
 
 use xcfun_core::{Dependency, FUNCTIONAL_DESCRIPTORS, FunctionalId, Mode, VARS_TABLE, Vars, taylorlen};
 use xcfun_eval::Functional;
@@ -300,6 +302,480 @@ impl Report {
     }
 }
 
+// ===========================================================================
+// Quick task 260430-4x7 — parallel scheduler internals.
+//
+// Each driver entry point (run / run_potential / run_contracted) exposes a
+// `dispatch_*` function that:
+//   1. fast-paths `cfg.jobs == 1` to a serial loop that calls
+//      `report.push_with_sink` inline (byte-stable vs the pre-change main).
+//   2. otherwise, spawns `cfg.jobs` workers inside `std::thread::scope`.
+//      Workers pop `Job*` records off a shared `Arc<Mutex<VecDeque<...>>>`,
+//      construct their own `CppXcfun` (NOT Send), run a per-tuple helper,
+//      and stream `ReportRecord`s back through an `mpsc::channel`. The
+//      orchestrator thread is the SOLE writer to `report` and
+//      `cfg.sink.as_deref_mut()` — preserving the matrix + JSONL flush
+//      invariant exactly as in the legacy serial path.
+//
+// CLAUDE.md hard rules: NO `rayon`, NO `crossbeam`, NO `unsafe impl Send` —
+// `std::thread::scope` + `std::sync::mpsc` only.
+// ===========================================================================
+
+/// One scheduled `(functional, vars, order)` tuple for `run` (Mode = PartialDerivatives).
+#[derive(Clone)]
+struct JobPD {
+    id: FunctionalId,
+    name: &'static str,
+    vars: Vars,
+    order: u32,
+    threshold: f64,
+}
+
+/// One scheduled `(functional, vars)` tuple for `run_potential`
+/// (Mode = Potential, order is implicit 0).
+#[derive(Clone)]
+struct JobPot {
+    id: FunctionalId,
+    name: &'static str,
+    vars: Vars,
+    inlen: usize,
+    outlen: usize,
+    threshold: f64,
+}
+
+/// One scheduled `(functional, vars, order)` tuple for `run_contracted`
+/// (Mode = Contracted at orders 5/6 only).
+#[derive(Clone)]
+struct JobCon {
+    /// Reserved for the Phase-6 path (direct `xcfun_eval` invocation
+    /// bypassing the C++ output_length die — see `run_one_tuple_contracted`).
+    /// Kept on the job struct now to avoid an API churn when the path
+    /// is enabled.
+    #[allow(dead_code)]
+    id: FunctionalId,
+    name: &'static str,
+    vars: Vars,
+    order: u32,
+    threshold: f64,
+}
+
+/// Run one PartialDerivatives tuple end-to-end (C++ setup + Rust kernel +
+/// per-point per-element diff). Records flow out via `emit`.
+///
+/// `emit` is a callback because the serial path emits straight into
+/// `report.push_with_sink` while the parallel path emits via an
+/// `mpsc::Sender<ReportRecord>` clone owned by the worker.
+fn run_one_tuple_pd<F>(
+    job: &JobPD,
+    grid: &[GridPoint],
+    cpp: &mut CppXcfun,
+    mut emit: F,
+) -> Result<()>
+where
+    F: FnMut(ReportRecord) -> Result<()>,
+{
+    let JobPD { id, name, vars, order, threshold } = *job;
+    let inlen = VARS_TABLE[vars as usize].len as usize;
+    let outlen = taylorlen(inlen, order as usize);
+
+    let status_set = cpp.set(&cpp_name(name), 1.0);
+    if status_set != 0 {
+        anyhow::bail!(
+            "xcfun_set({}, 1.0) failed: status={}",
+            cpp_name(name),
+            status_set
+        );
+    }
+    let status_setup = cpp.eval_setup(vars as u32, 1, order as i32);
+    if status_setup != 0 {
+        anyhow::bail!(
+            "xcfun_eval_setup({}, {:?}, order={}) failed: status={}",
+            name,
+            vars,
+            order,
+            status_setup
+        );
+    }
+    let cpp_inlen = cpp.input_length();
+    let cpp_outlen = cpp.output_length();
+    if cpp_inlen != inlen || cpp_outlen != outlen {
+        anyhow::bail!(
+            "Length mismatch for {} order={}: rust inlen={} outlen={}; cpp inlen={} outlen={}",
+            name,
+            order,
+            inlen,
+            outlen,
+            cpp_inlen,
+            cpp_outlen
+        );
+    }
+
+    // Rust side: leak a per-iteration `weights` slice — acceptable in
+    // a one-shot validation binary (total leak across run < 1 KB).
+    // `Box::leak` is thread-safe; multiple workers leaking concurrently
+    // is fine.
+    let weights: &'static [(FunctionalId, f64)] = Box::leak(Box::new([(id, 1.0)]));
+    let rust_fun = Functional {
+        weights,
+        vars,
+        mode: Mode::PartialDerivatives,
+        order,
+        settings: xcfun_eval::functional::DEFAULT_SETTINGS,
+    };
+
+    for (point_idx, gp) in grid.iter().enumerate() {
+        let input = build_input(gp, vars);
+        let mut rust_out = vec![0.0_f64; outlen];
+        let mut cpp_out = vec![0.0_f64; outlen];
+
+        let in_clamp_stratum = input.len() >= 2
+            && input[0].min(input[1]) <= REGULARIZE_CLAMP_STRATUM_BOUND;
+
+        cpp.eval(&input, &mut cpp_out);
+
+        let rust_err = rust_fun.eval(&input, &mut rust_out);
+        let rust_unavailable = rust_err.is_err();
+        if rust_unavailable {
+            for r in rust_out.iter_mut() {
+                *r = f64::NAN;
+            }
+        }
+
+        for elem_idx in 0..outlen {
+            let r = rust_out[elem_idx];
+            let c = cpp_out[elem_idx];
+            let abs_err = (r - c).abs();
+            let rel_err = if rust_unavailable {
+                f64::INFINITY
+            } else {
+                abs_err / c.abs().max(1.0)
+            };
+            let pass = !rust_unavailable && rel_err <= threshold;
+            let rec = ReportRecord {
+                functional: name.into(),
+                vars: format!("{:?}", vars),
+                mode: 1,
+                order,
+                point_idx,
+                element_idx: elem_idx,
+                input: input.clone(),
+                rust: r,
+                cpp: c,
+                abs_err,
+                rel_err,
+                threshold,
+                pass,
+                rust_unavailable,
+                excluded_by_upstream_spec: false,
+                excluded_by_regularize_clamp_design: in_clamp_stratum,
+            };
+            emit(rec)?;
+        }
+    }
+    Ok(())
+}
+
+/// Run one Mode::Potential tuple end-to-end. Same emit-callback pattern
+/// as `run_one_tuple_pd`.
+fn run_one_tuple_potential<F>(
+    job: &JobPot,
+    grid: &[GridPoint],
+    cpp: &mut CppXcfun,
+    mut emit: F,
+) -> Result<()>
+where
+    F: FnMut(ReportRecord) -> Result<()>,
+{
+    let JobPot { id, name, vars, inlen, outlen, threshold } = *job;
+
+    let s = cpp.set(&cpp_name(name), 1.0);
+    if s != 0 {
+        anyhow::bail!("xcfun_set({}, 1.0) failed: status={}", cpp_name(name), s);
+    }
+    // mode=2 is XC_POTENTIAL.
+    let setup = cpp.eval_setup(vars as u32, 2, 0);
+    if setup != 0 {
+        anyhow::bail!(
+            "xcfun_eval_setup({}, {:?}, POTENTIAL) failed: status={}",
+            name,
+            vars,
+            setup
+        );
+    }
+    let cpp_inlen = cpp.input_length();
+    let cpp_outlen = cpp.output_length();
+    if cpp_inlen != inlen || cpp_outlen != outlen {
+        anyhow::bail!(
+            "Length mismatch for {} (Mode::Potential): rust inlen={} outlen={}; cpp inlen={} outlen={}",
+            name,
+            inlen,
+            outlen,
+            cpp_inlen,
+            cpp_outlen
+        );
+    }
+
+    let weights: &'static [(FunctionalId, f64)] = Box::leak(Box::new([(id, 1.0)]));
+    let rust_fun = Functional {
+        weights,
+        vars,
+        mode: Mode::Potential,
+        order: 0,
+        settings: xcfun_eval::functional::DEFAULT_SETTINGS,
+    };
+
+    for (point_idx, gp) in grid.iter().enumerate() {
+        let input = build_input_for_potential(gp, vars);
+        let mut rust_out = vec![0.0_f64; outlen];
+        let mut cpp_out = vec![0.0_f64; outlen];
+
+        let in_clamp_stratum = input.len() >= 2
+            && input[0].min(input[1]) <= REGULARIZE_CLAMP_STRATUM_BOUND;
+
+        cpp.eval(&input, &mut cpp_out);
+
+        let rust_err = rust_fun.eval(&input, &mut rust_out);
+        let rust_unavailable = rust_err.is_err();
+        if rust_unavailable {
+            for r in rust_out.iter_mut() {
+                *r = f64::NAN;
+            }
+        }
+
+        for elem_idx in 0..outlen {
+            let r = rust_out[elem_idx];
+            let c = cpp_out[elem_idx];
+            let abs_err = (r - c).abs();
+            let rel_err = if rust_unavailable {
+                f64::INFINITY
+            } else {
+                abs_err / c.abs().max(1.0)
+            };
+            let pass = !rust_unavailable && rel_err <= threshold;
+            let rec = ReportRecord {
+                functional: name.into(),
+                vars: format!("{:?}", vars),
+                mode: 2, // XC_POTENTIAL
+                order: 0,
+                point_idx,
+                element_idx: elem_idx,
+                input: input.clone(),
+                rust: r,
+                cpp: c,
+                abs_err,
+                rel_err,
+                threshold,
+                pass,
+                rust_unavailable,
+                excluded_by_upstream_spec: false,
+                excluded_by_regularize_clamp_design: in_clamp_stratum,
+            };
+            emit(rec)?;
+        }
+    }
+    Ok(())
+}
+
+/// Run one Mode::Contracted tuple. Per Plan 04-05 D-06-C, this currently
+/// emits a single `excluded_by_upstream_spec` marker record per
+/// (functional, order) because C++ `xcfun_output_length` dies for
+/// XC_CONTRACTED. Phase 6 will replace this with a direct
+/// `xcfun_eval` invocation bypassing the FFI shim's length check.
+fn run_one_tuple_contracted<F>(
+    job: &JobCon,
+    cpp: &mut CppXcfun,
+    mut emit: F,
+) -> Result<()>
+where
+    F: FnMut(ReportRecord) -> Result<()>,
+{
+    let JobCon { id: _, name, vars, order, threshold } = *job;
+
+    let s = cpp.set(&cpp_name(name), 1.0);
+    if s != 0 {
+        anyhow::bail!(
+            "xcfun_set({}, 1.0) failed: status={}",
+            cpp_name(name),
+            s
+        );
+    }
+    // mode = 3 (XC_CONTRACTED) per xcfun.h:39.
+    let setup = cpp.eval_setup(vars as u32, 3, order as i32);
+    if setup != 0 {
+        anyhow::bail!(
+            "xcfun_eval_setup({}, {:?}, CONTRACTED order={}) failed: status={}",
+            name, vars, order, setup
+        );
+    }
+    let cpp_inlen = cpp.input_length();
+    tracing::warn!(
+        "Tier-2 SKIP-WITH-RECORD {} (Mode::Contracted order={}): \
+         C++ xcfun_output_length die's for XC_CONTRACTED \
+         (XCFunctional.cpp:488); Phase-6 prerequisite for direct \
+         xcfun_eval invocation (cpp_input_length={})",
+        name, order, cpp_inlen
+    );
+    let rec = ReportRecord {
+        functional: name.into(),
+        vars: format!("{:?}", vars),
+        mode: 3, // XC_CONTRACTED
+        order,
+        point_idx: 0,
+        element_idx: 0,
+        input: Vec::new(),
+        rust: f64::NAN,
+        cpp: f64::NAN,
+        abs_err: f64::INFINITY,
+        rel_err: f64::INFINITY,
+        threshold,
+        pass: false,
+        rust_unavailable: true,
+        excluded_by_upstream_spec: true,
+        excluded_by_regularize_clamp_design: false,
+    };
+    emit(rec)?;
+    Ok(())
+}
+
+/// Generic dispatcher: runs `n_workers` workers over `jobs`, each invoking
+/// `worker_fn(&Job, &mut CppXcfun, &mpsc::Sender<ReportRecord>)`. The
+/// orchestrator drains the channel and pushes records to the report.
+///
+/// `cfg.jobs == 1` short-circuits to a serial loop with no thread::scope,
+/// no channels, and `report.push_with_sink` inline — preserving the
+/// pre-change byte-stable serial output exactly.
+fn parallel_dispatch<J, W>(
+    report: &mut Report,
+    cfg: &mut RunConfig<'_>,
+    jobs: Vec<J>,
+    worker_fn: W,
+) -> Result<()>
+where
+    J: Send + Clone + 'static,
+    W: Fn(&J, &mut CppXcfun, &mpsc::Sender<ReportRecord>) -> Result<()> + Send + Sync,
+{
+    if jobs.is_empty() {
+        return Ok(());
+    }
+
+    // Serial fast-path — byte-stable vs the pre-change main.
+    if cfg.jobs.get() == 1 {
+        for job in &jobs {
+            let mut cpp = CppXcfun::new();
+            let (tx, rx) = mpsc::channel::<ReportRecord>();
+            // Run the worker; it sends each record on tx. Drop tx after the
+            // call so rx.recv() returns Err once we drain. We then push
+            // records inline to preserve the legacy ordering.
+            let res = worker_fn(job, &mut cpp, &tx);
+            drop(tx);
+            // Drain even if worker errored, so we don't lose successful
+            // records that flushed before the failure.
+            for rec in rx.iter() {
+                report.push_with_sink(rec, cfg.sink.as_deref_mut())?;
+            }
+            res?;
+        }
+        return Ok(());
+    }
+
+    // Parallel path — std::thread::scope.
+    let n_workers = cfg.jobs.get().min(jobs.len()).max(1);
+    let queue: Arc<Mutex<VecDeque<J>>> = Arc::new(Mutex::new(jobs.into_iter().collect()));
+    let (tx, rx) = mpsc::channel::<ReportRecord>();
+    let worker_fn_ref = &worker_fn;
+
+    std::thread::scope(|s| -> Result<()> {
+        let mut handles = Vec::with_capacity(n_workers);
+        for _ in 0..n_workers {
+            let q = Arc::clone(&queue);
+            let tx_w = tx.clone();
+            handles.push(s.spawn(move || -> Result<()> {
+                loop {
+                    // Lock briefly to pop one job; release immediately so
+                    // sibling workers can also claim work.
+                    let job = {
+                        let mut g = q.lock().expect("worker queue mutex poisoned");
+                        g.pop_front()
+                    };
+                    let job = match job {
+                        Some(j) => j,
+                        None => break,
+                    };
+                    // Each worker constructs its own CppXcfun (NOT Send).
+                    let mut cpp = CppXcfun::new();
+                    worker_fn_ref(&job, &mut cpp, &tx_w)?;
+                }
+                Ok(())
+            }));
+        }
+        // Drop the orchestrator's sender clone so rx.iter() terminates
+        // once the last worker exits.
+        drop(tx);
+
+        // Single-writer drain — orchestrator is the SOLE thread that
+        // touches `report` and `cfg.sink.as_deref_mut()`, preserving the
+        // existing matrix + per-line JSONL flush invariant.
+        for rec in rx.iter() {
+            report.push_with_sink(rec, cfg.sink.as_deref_mut())?;
+        }
+
+        for h in handles {
+            match h.join() {
+                Ok(Ok(())) => {}
+                Ok(Err(e)) => return Err(e),
+                Err(panic) => {
+                    return Err(anyhow::anyhow!("worker thread panicked: {:?}", panic));
+                }
+            }
+        }
+        Ok(())
+    })
+}
+
+/// Dispatch the PartialDerivatives jobs (orchestrator entry point for `run`).
+fn dispatch_pd(
+    report: &mut Report,
+    cfg: &mut RunConfig<'_>,
+    grid: &[GridPoint],
+    jobs: Vec<JobPD>,
+) -> Result<()> {
+    parallel_dispatch(report, cfg, jobs, |job, cpp, tx| {
+        run_one_tuple_pd(job, grid, cpp, |rec| {
+            tx.send(rec)
+                .map_err(|e| anyhow::anyhow!("orchestrator drain channel closed: {}", e))
+        })
+    })
+}
+
+/// Dispatch the Mode::Potential jobs (orchestrator entry point for `run_potential`).
+fn dispatch_potential(
+    report: &mut Report,
+    cfg: &mut RunConfig<'_>,
+    grid: &[GridPoint],
+    jobs: Vec<JobPot>,
+) -> Result<()> {
+    parallel_dispatch(report, cfg, jobs, |job, cpp, tx| {
+        run_one_tuple_potential(job, grid, cpp, |rec| {
+            tx.send(rec)
+                .map_err(|e| anyhow::anyhow!("orchestrator drain channel closed: {}", e))
+        })
+    })
+}
+
+/// Dispatch the Mode::Contracted jobs (orchestrator entry point for `run_contracted`).
+fn dispatch_contracted(
+    report: &mut Report,
+    cfg: &mut RunConfig<'_>,
+    jobs: Vec<JobCon>,
+) -> Result<()> {
+    parallel_dispatch(report, cfg, jobs, |job, cpp, tx| {
+        run_one_tuple_contracted(job, cpp, |rec| {
+            tx.send(rec)
+                .map_err(|e| anyhow::anyhow!("orchestrator drain channel closed: {}", e))
+        })
+    })
+}
+
 /// Per-functional tier-2 threshold — D-24 override for LDAERF family; strict
 /// 1e-12 for the remaining 8 LDAs.
 pub fn threshold_for(name: &str) -> f64 {
@@ -538,6 +1014,10 @@ pub fn run(
         (FunctionalId::XC_CSC, "XC_CSC", Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB),
     ];
 
+    // Quick task 260430-4x7 — pre-build job list and emit
+    // resume/excluded markers from the orchestrator thread. Workers see
+    // only "real work" jobs after this loop.
+    let mut jobs: Vec<JobPD> = Vec::new();
     for &(id, name, vars) in lda_targets {
         if !filter.is_match(&name.to_ascii_lowercase()) {
             continue;
@@ -646,7 +1126,6 @@ pub fn run(
                 );
                 continue;
             }
-            let outlen = taylorlen(inlen, order as usize);
             if excluded {
                 tracing::warn!(
                     "Tier-2 EXCLUDED {} order={}: no upstream test_in (excluded_by_upstream_spec)",
@@ -677,118 +1156,11 @@ pub fn run(
                 report.push_with_sink(rec, cfg.sink.as_deref_mut())?;
                 continue;
             }
-
-            // C++ side: set up once per (functional, order).
-            let mut cpp = CppXcfun::new();
-            let status_set = cpp.set(&cpp_name(name), 1.0);
-            if status_set != 0 {
-                anyhow::bail!(
-                    "xcfun_set({}, 1.0) failed: status={}",
-                    cpp_name(name),
-                    status_set
-                );
-            }
-            // vars as u32 matches xcfun_vars discriminants; mode=1 is XC_PARTIAL_DERIVATIVES.
-            let status_setup = cpp.eval_setup(vars as u32, 1, order as i32);
-            if status_setup != 0 {
-                anyhow::bail!(
-                    "xcfun_eval_setup({}, {:?}, order={}) failed: status={}",
-                    name,
-                    vars,
-                    order,
-                    status_setup
-                );
-            }
-            let cpp_inlen = cpp.input_length();
-            let cpp_outlen = cpp.output_length();
-            if cpp_inlen != inlen || cpp_outlen != outlen {
-                anyhow::bail!(
-                    "Length mismatch for {} order={}: rust inlen={} outlen={}; cpp inlen={} outlen={}",
-                    name,
-                    order,
-                    inlen,
-                    outlen,
-                    cpp_inlen,
-                    cpp_outlen
-                );
-            }
-
-            // Rust side: leak a per-iteration `weights` slice — acceptable in
-            // a one-shot validation binary (total leak across run < 1 KB).
-            let weights: &'static [(FunctionalId, f64)] = Box::leak(Box::new([(id, 1.0)]));
-            let rust_fun = Functional {
-                weights,
-                vars,
-                mode: Mode::PartialDerivatives,
-                order,
-                settings: xcfun_eval::functional::DEFAULT_SETTINGS,
-            };
-
-            for (point_idx, gp) in grid.iter().enumerate() {
-                let input = build_input(gp, vars);
-                let mut rust_out = vec![0.0_f64; outlen];
-                let mut cpp_out = vec![0.0_f64; outlen];
-
-                // D-22 clamp stratum: records where `min(a,b)` is within
-                // 2 × TINY_DENSITY test the regularize design intent
-                // (deliberate density saturation), not kernel correctness.
-                // Plan 02-06 Fix 2 marks these records for transparency but
-                // excludes them from the tier-2 verdict.
-                //
-                // For vars = A_B (inlen = 2): `(a, b) = input[0..2]`.
-                // For vars = A_B_GAA_GAB_GBB: same (a, b) slots in [0..2]
-                // (we currently skip inlen != 2 via the `excluded` check,
-                // so this branch handles only A_B in practice).
-                let in_clamp_stratum = input.len() >= 2
-                    && input[0].min(input[1]) <= REGULARIZE_CLAMP_STRATUM_BOUND;
-
-                // Evaluate C++ side unconditionally.
-                cpp.eval(&input, &mut cpp_out);
-
-                // Evaluate Rust side; on `NotConfigured`, record as
-                // rust_unavailable and fill rust_out with NaN so the
-                // per-element loop still produces a record (with pass=false).
-                let rust_err = rust_fun.eval(&input, &mut rust_out);
-                let rust_unavailable = rust_err.is_err();
-                if rust_unavailable {
-                    for r in rust_out.iter_mut() {
-                        *r = f64::NAN;
-                    }
-                }
-
-                for elem_idx in 0..outlen {
-                    let r = rust_out[elem_idx];
-                    let c = cpp_out[elem_idx];
-                    let abs_err = (r - c).abs();
-                    let rel_err = if rust_unavailable {
-                        f64::INFINITY
-                    } else {
-                        abs_err / c.abs().max(1.0)
-                    };
-                    let pass = !rust_unavailable && rel_err <= threshold;
-                    let rec = ReportRecord {
-                        functional: name.into(),
-                        vars: format!("{:?}", vars),
-                        mode: 1,
-                        order,
-                        point_idx,
-                        element_idx: elem_idx,
-                        input: input.clone(),
-                        rust: r,
-                        cpp: c,
-                        abs_err,
-                        rel_err,
-                        threshold,
-                        pass,
-                        rust_unavailable,
-                        excluded_by_upstream_spec: false,
-                        excluded_by_regularize_clamp_design: in_clamp_stratum,
-                    };
-                    report.push_with_sink(rec, cfg.sink.as_deref_mut())?;
-                }
-            }
+            jobs.push(JobPD { id, name, vars, order, threshold });
         }
     }
+
+    dispatch_pd(&mut report, cfg, grid, jobs)?;
 
     // Bug-2 guard: a case-mismatched filter (regex compared against
     // lowercased name at line 281) can silently produce 0 records and a
@@ -893,6 +1265,9 @@ pub fn run_potential(
         (FunctionalId::XC_B97_2C, "XC_B97_2C"),
     ];
 
+    // Quick task 260430-4x7 — pre-build job list; emit excluded markers
+    // and resume-skips from the orchestrator thread.
+    let mut jobs: Vec<JobPot> = Vec::new();
     for &(id, name) in lda_targets {
         if !filter.is_match(&name.to_ascii_lowercase()) {
             continue;
@@ -992,96 +1367,10 @@ pub fn run_potential(
             outlen,
             threshold
         );
-
-        // C++ side: set up once per functional.
-        let mut cpp = CppXcfun::new();
-        let s = cpp.set(&cpp_name(name), 1.0);
-        if s != 0 {
-            anyhow::bail!("xcfun_set({}, 1.0) failed: status={}", cpp_name(name), s);
-        }
-        // mode=2 is XC_POTENTIAL.
-        let setup = cpp.eval_setup(vars as u32, 2, 0);
-        if setup != 0 {
-            anyhow::bail!(
-                "xcfun_eval_setup({}, {:?}, POTENTIAL) failed: status={}",
-                name,
-                vars,
-                setup
-            );
-        }
-        let cpp_inlen = cpp.input_length();
-        let cpp_outlen = cpp.output_length();
-        if cpp_inlen != inlen || cpp_outlen != outlen {
-            anyhow::bail!(
-                "Length mismatch for {} (Mode::Potential): rust inlen={} outlen={}; cpp inlen={} outlen={}",
-                name,
-                inlen,
-                outlen,
-                cpp_inlen,
-                cpp_outlen
-            );
-        }
-
-        // Rust side — leak weights[1] per the existing pattern.
-        let weights: &'static [(FunctionalId, f64)] = Box::leak(Box::new([(id, 1.0)]));
-        let rust_fun = Functional {
-            weights,
-            vars,
-            mode: Mode::Potential,
-            order: 0,
-            settings: xcfun_eval::functional::DEFAULT_SETTINGS,
-        };
-
-        for (point_idx, gp) in grid.iter().enumerate() {
-            let input = build_input_for_potential(gp, vars);
-            let mut rust_out = vec![0.0_f64; outlen];
-            let mut cpp_out = vec![0.0_f64; outlen];
-
-            let in_clamp_stratum = input.len() >= 2
-                && input[0].min(input[1]) <= REGULARIZE_CLAMP_STRATUM_BOUND;
-
-            cpp.eval(&input, &mut cpp_out);
-
-            let rust_err = rust_fun.eval(&input, &mut rust_out);
-            let rust_unavailable = rust_err.is_err();
-            if rust_unavailable {
-                for r in rust_out.iter_mut() {
-                    *r = f64::NAN;
-                }
-            }
-
-            for elem_idx in 0..outlen {
-                let r = rust_out[elem_idx];
-                let c = cpp_out[elem_idx];
-                let abs_err = (r - c).abs();
-                let rel_err = if rust_unavailable {
-                    f64::INFINITY
-                } else {
-                    abs_err / c.abs().max(1.0)
-                };
-                let pass = !rust_unavailable && rel_err <= threshold;
-                let rec = ReportRecord {
-                    functional: name.into(),
-                    vars: format!("{:?}", vars),
-                    mode: 2, // XC_POTENTIAL
-                    order: 0,
-                    point_idx,
-                    element_idx: elem_idx,
-                    input: input.clone(),
-                    rust: r,
-                    cpp: c,
-                    abs_err,
-                    rel_err,
-                    threshold,
-                    pass,
-                    rust_unavailable,
-                    excluded_by_upstream_spec: false,
-                    excluded_by_regularize_clamp_design: in_clamp_stratum,
-                };
-                report.push_with_sink(rec, cfg.sink.as_deref_mut())?;
-            }
-        }
+        jobs.push(JobPot { id, name, vars, inlen, outlen, threshold });
     }
+
+    dispatch_potential(&mut report, cfg, grid, jobs)?;
 
     // Bug-2 guard: a case-mismatched filter (regex compared against
     // lowercased name at line ~592) can silently produce 0 records and a
@@ -1234,6 +1523,9 @@ pub fn run_contracted(
     let lo = 5_u32;
     let hi = max_order.min(6).max(lo);
 
+    // Quick task 260430-4x7 — pre-build job list; emit resume-skip log
+    // entries from the orchestrator thread.
+    let mut jobs: Vec<JobCon> = Vec::new();
     for &(id, name, vars) in targets {
         if !filter.is_match(&name.to_ascii_lowercase()) {
             continue;
@@ -1268,97 +1560,14 @@ pub fn run_contracted(
                 inlen * coeff_count,
                 coeff_count
             );
-
-            // C++ side setup.
-            let mut cpp = CppXcfun::new();
-            let s = cpp.set(&cpp_name(name), 1.0);
-            if s != 0 {
-                anyhow::bail!(
-                    "xcfun_set({}, 1.0) failed: status={}",
-                    cpp_name(name),
-                    s
-                );
-            }
-            // mode = 3 (XC_CONTRACTED) per xcfun.h:39.
-            let setup = cpp.eval_setup(vars as u32, 3, order as i32);
-            if setup != 0 {
-                anyhow::bail!(
-                    "xcfun_eval_setup({}, {:?}, CONTRACTED order={}) failed: status={}",
-                    name, vars, order, setup
-                );
-            }
-            let cpp_inlen = cpp.input_length();
-            // NOTE: per XCFunctional.cpp:488 the C++ `xcfun_output_length`
-            // for XC_CONTRACTED calls `xcfun::die`. We must compute output
-            // length on the Rust side per D-06-B (`1 << order`). The C++
-            // FFI shim `CppXcfun::eval` asserts input/output length match
-            // `xcfun_input_length`/`xcfun_output_length`. Since C++
-            // output_length die's, we cannot use the standard `eval` path.
-            //
-            // Instead: bypass the FFI assertion by calling xcfun_eval
-            // directly via a low-level helper. For Plan 04-05 we report
-            // this as an upstream-spec exclusion (the C++ reference itself
-            // refuses to introspect Contracted output length), so the
-            // Rust-only smoke test is the meaningful comparison at orders
-            // 5/6 until Phase 6 wires a custom C-driver entry point.
-            tracing::warn!(
-                "Tier-2 SKIP-WITH-RECORD {} (Mode::Contracted order={}): \
-                 C++ xcfun_output_length die's for XC_CONTRACTED \
-                 (XCFunctional.cpp:488); Phase-6 prerequisite for direct \
-                 xcfun_eval invocation (cpp_input_length={})",
-                name, order, cpp_inlen
-            );
-            // Emit a single per-(functional, order) D-19 INCONCLUSIVE marker
-            // record so the report matrix shows the gap transparently.
-            let rec = ReportRecord {
-                functional: name.into(),
-                vars: format!("{:?}", vars),
-                mode: 3, // XC_CONTRACTED
-                order,
-                point_idx: 0,
-                element_idx: 0,
-                input: Vec::new(),
-                rust: f64::NAN,
-                cpp: f64::NAN,
-                abs_err: f64::INFINITY,
-                rel_err: f64::INFINITY,
-                threshold,
-                pass: false,
-                rust_unavailable: true,
-                excluded_by_upstream_spec: true,
-                excluded_by_regularize_clamp_design: false,
-            };
-            report.push_with_sink(rec, cfg.sink.as_deref_mut())?;
-            continue;
-
-            // ---------------------------------------------------------------
-            //  Phase-6 path (currently unreachable due to the C++ output_length
-            //  die above): proper invocation of xcfun_eval with the same
-            //  contracted-pack input on both sides.
-            //
-            //  let weights: &'static [(FunctionalId, f64)] =
-            //      Box::leak(Box::new([(id, 1.0)]));
-            //  let rust_fun = Functional {
-            //      weights, vars,
-            //      mode: Mode::Contracted, order,
-            //      settings: xcfun_eval::functional::DEFAULT_SETTINGS,
-            //  };
-            //  for (point_idx, gp) in subset.iter().enumerate() {
-            //      let scalar_input = build_input(gp, vars);
-            //      let flat_input =
-            //          pack_for_contracted_validation(&scalar_input, order);
-            //      let mut rust_out = vec![0.0_f64; coeff_count];
-            //      let mut cpp_out = vec![0.0_f64; coeff_count];
-            //      // ... call xcfun_eval directly bypassing output_length;
-            //      let rust_err = rust_fun.eval(&flat_input, &mut rust_out);
-            //      // diff per element @ strict 1e-12 ...
-            //  }
-            // ---------------------------------------------------------------
+            jobs.push(JobCon { id, name, vars, order, threshold });
         }
-        // Suppress unused-variable warnings for the Phase-6 placeholder vars.
-        let _ = id;
-        let _ = subset;
     }
+    // `subset` is reserved for the Phase-6 multi-point path; reference it
+    // here so the dead-code lint doesn't fire on the placeholder helper.
+    let _ = subset;
+
+    dispatch_contracted(&mut report, cfg, jobs)?;
 
     // Bug-2 guard mirrors run() / run_potential().
     if report.total_records() == 0 && filter.as_str() != ".*" {
@@ -1399,5 +1608,109 @@ mod parallel_cfg_tests {
         let cfg = RunConfig::empty(&s);
         assert_eq!(cfg.jobs.get(), 1);
         assert!(cfg.sink.is_none());
+    }
+}
+
+/// Quick task 260430-4x7 — serial-vs-parallel parity at the driver level.
+///
+/// Asserts that `run` with `jobs == 1` and `jobs == 4` produces identical
+/// records (after sort by stable key) and an identical `Report.matrix`.
+/// Filters to a single cheap functional (`xc_slaterx`) and a 64-point
+/// grid slice to keep the test fast.
+#[cfg(test)]
+mod parallel_run_tests {
+    use super::*;
+    use crate::fixtures::generate_grid;
+    use std::collections::HashSet;
+    use std::num::NonZeroUsize;
+
+    fn run_with_jobs(jobs: usize, filter: &str) -> Report {
+        let grid = generate_grid();
+        let small_grid: Vec<_> = grid.into_iter().take(64).collect();
+        let regex = regex::Regex::new(filter).unwrap();
+        let empty: HashSet<TupleKey> = HashSet::new();
+        let mut cfg = RunConfig {
+            sink: None,
+            skip_keys: &empty,
+            jobs: NonZeroUsize::new(jobs).unwrap(),
+        };
+        run(&small_grid, 0, &regex, &mut cfg).unwrap()
+    }
+
+    fn key(r: &ReportRecord) -> (String, String, u32, u32, usize, usize) {
+        (
+            r.functional.clone(),
+            r.vars.clone(),
+            r.mode,
+            r.order,
+            r.point_idx,
+            r.element_idx,
+        )
+    }
+
+    /// Test 1 + Test 2 (plan): a `--jobs 4` run produces the SAME record
+    /// SET and the SAME `Report.matrix` as a `--jobs 1` run on the same
+    /// fixture. Proves the 1e-12 numerical contract is unchanged under
+    /// parallel emission.
+    #[test]
+    fn parallel_matches_serial_partial_derivatives() {
+        let serial = run_with_jobs(1, "xc_slaterx");
+        let parallel = run_with_jobs(4, "xc_slaterx");
+
+        // Matrix equality (BTreeMap → deterministic ordering).
+        assert_eq!(
+            serial.matrix.len(),
+            parallel.matrix.len(),
+            "matrix length mismatch"
+        );
+        for (k, sv) in &serial.matrix {
+            let pv = parallel
+                .matrix
+                .get(k)
+                .expect("missing cell in parallel matrix");
+            assert_eq!(
+                sv.records_total, pv.records_total,
+                "records_total mismatch at {:?}",
+                k
+            );
+            assert_eq!(
+                sv.records_failed, pv.records_failed,
+                "records_failed mismatch at {:?}",
+                k
+            );
+            assert_eq!(sv.rust_unavailable, pv.rust_unavailable);
+            assert!(
+                (sv.max_rel_err - pv.max_rel_err).abs() <= f64::EPSILON,
+                "max_rel_err drift at {:?}: serial={} parallel={}",
+                k,
+                sv.max_rel_err,
+                pv.max_rel_err
+            );
+            assert_eq!(sv.threshold, pv.threshold);
+        }
+
+        // Record SET equality (sort by stable key, then byte-compare JSON).
+        let mut s: Vec<_> = serial.records.iter().collect();
+        let mut p: Vec<_> = parallel.records.iter().collect();
+        s.sort_by_key(|r| key(r));
+        p.sort_by_key(|r| key(r));
+        assert_eq!(s.len(), p.len(), "record count mismatch");
+        for (a, b) in s.iter().zip(p.iter()) {
+            assert_eq!(
+                serde_json::to_string(a).unwrap(),
+                serde_json::to_string(b).unwrap(),
+                "record content mismatch at key {:?}",
+                key(a)
+            );
+        }
+    }
+
+    /// Test 3 (plan): `jobs == 1` short-circuits — produces records and
+    /// completes successfully on a small fixture.
+    #[test]
+    fn jobs_one_short_circuit_runs_clean() {
+        let r = run_with_jobs(1, "xc_slaterx");
+        assert!(r.total_records() > 0, "no records emitted at jobs=1");
+        assert_eq!(r.failed_count(), 0, "unexpected failures at jobs=1");
     }
 }
