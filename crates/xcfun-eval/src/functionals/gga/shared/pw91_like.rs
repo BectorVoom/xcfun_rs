@@ -129,8 +129,8 @@ pub fn pw91k_prefactor<F: Float>(
     let size = comptime!((1_u32 << n) as usize);
     let mut rho_53 = Array::<F>::new(size);
     ctaylor_pow::<F>(rho, F::cast_from(5.0_f64 / 3.0_f64), &mut rho_53, n);
-    // CF · 2^(2/3) = 2.871234000188191 · 1.5874010519681994 = 4.5577013615694205
-    const CF_TIMES_2_23: f64 = 4.557_701_361_569_420_5_f64;
+    // CF · 2^(2/3) = 2.871234000188191 · 1.5874010519681994 = 4.557799872345596
+    const CF_TIMES_2_23: f64 = 4.557_799_872_345_596_0_f64;
     ctaylor_scalar_mul::<F>(&rho_53, F::cast_from(CF_TIMES_2_23), out, n);
 }
 
