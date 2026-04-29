@@ -320,7 +320,7 @@ fn locc_C<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) 
     ctaylor_mul::<F>(&gzeta2_num, &inv_n4, &mut gzeta2, n);
 
     // xi2
-    const FOUR_3PI2_23: f64 = 38.299_545_282_010_95_f64;
+    const FOUR_3PI2_23: f64 = 38.283_120_002_509_214_f64;
     let mut n_m23 = Array::<F>::new(size);
     ctaylor_pow::<F>(&d.n, F::cast_from(-2.0_f64 / 3.0_f64), &mut n_m23, n);
     let mut xi2_raw = Array::<F>::new(size);

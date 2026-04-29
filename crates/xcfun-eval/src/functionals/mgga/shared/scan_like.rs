@@ -1392,7 +1392,7 @@ pub fn get_SCAN_Fx<F: Float>(
 
     // p = d_g / (4*(3π²)^(2/3) * d_n^(8/3))
     // If d_g CNST near 0, use 1e-16 instead (per C++ guard)
-    const FOUR_3PI2_23: f64 = 38.299_545_282_010_95_f64; // 4*(3π²)^(2/3)
+    const FOUR_3PI2_23: f64 = 38.283_120_002_509_214_f64; // 4*(3π²)^(2/3)
     let dg_cnst = d_g[0];
     let mut p = Array::<F>::new(size);
     {

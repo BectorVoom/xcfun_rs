@@ -94,9 +94,9 @@ pub fn tpss_x<F: Float>(
     // p0 = 1 / (4 * (3π²)^(2/3) * n^(8/3))
     // = 1/(4*(3π²)^(2/3)) * n^(-8/3)
     // (3π²)^(2/3) computed: 3*PI^2=29.608..., cbrt(29.608...)^2=9.5751...
-    // 4*(3π²)^(2/3) = 38.300...
+    // 4*(3π²)^(2/3) = 38.2831...
     // 1/(4*(3π²)^(2/3)) = 0.026100...
-    const FOUR_3PI2_23_F64: f64 = 38.299_545_282_010_95_f64; // 4*(3π²)^(2/3)
+    const FOUR_3PI2_23_F64: f64 = 38.283_120_002_509_214_f64; // 4*(3π²)^(2/3)
     let mut n_m83 = Array::<F>::new(size);
     ctaylor_pow::<F>(d_n, F::cast_from(-8.0_f64 / 3.0_f64), &mut n_m83, n);
     let mut p0 = Array::<F>::new(size);
@@ -394,7 +394,7 @@ pub fn revtpss_x<F: Float>(
     let size = comptime!((1_u32 << n) as usize);
 
     // p = gnn / (4*(3π²)^(2/3) * n^(8/3))
-    const FOUR_3PI2_23_F64: f64 = 38.299_545_282_010_95_f64;
+    const FOUR_3PI2_23_F64: f64 = 38.283_120_002_509_214_f64;
     let mut n_m83 = Array::<F>::new(size);
     ctaylor_pow::<F>(d_n, F::cast_from(-8.0_f64 / 3.0_f64), &mut n_m83, n);
     let mut p_raw = Array::<F>::new(size);
@@ -664,7 +664,7 @@ fn tpss_C<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) 
     // xi2 = gzeta2 / (4 * pow(3*pi^2*n, 2/3))  per C++ code
     // = gzeta2 / (4 * (3π²)^(2/3) * n^(2/3))
     // = gzeta2 * (1/(4*(3π²)^(2/3))) * n^(-2/3)
-    const FOUR_3PI2_23: f64 = 38.299_545_282_010_95_f64;
+    const FOUR_3PI2_23: f64 = 38.283_120_002_509_214_f64;
     let mut n_m23 = Array::<F>::new(size);
     ctaylor_pow::<F>(&d.n, F::cast_from(-2.0_f64 / 3.0_f64), &mut n_m23, n);
     let mut xi2_raw = Array::<F>::new(size);
@@ -1234,7 +1234,7 @@ fn revtpss_C<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u3
     ctaylor_mul::<F>(&gzeta2_num, &inv_n4, &mut gzeta2, n);
 
     // xi2
-    const FOUR_3PI2_23: f64 = 38.299_545_282_010_95_f64;
+    const FOUR_3PI2_23: f64 = 38.283_120_002_509_214_f64;
     let mut n_m23 = Array::<F>::new(size);
     ctaylor_pow::<F>(&d.n, F::cast_from(-2.0_f64 / 3.0_f64), &mut n_m23, n);
     let mut xi2_raw = Array::<F>::new(size);
