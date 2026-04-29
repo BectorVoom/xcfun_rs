@@ -82,8 +82,8 @@ fn pw86x_alpha<F: Float>(
 
     // s² = grad2 / (4·(3π²)^(2/3) · ρ^(8/3))
     //    = grad2 · (1 / (4·(3π²)^(2/3))) · ρ^(-8/3)
-    // Precomputed: 1 / (4·(3π²)^(2/3)) = 0.02612144716...
-    const S2_DIVISOR_INV: f64 = 0.026_121_447_167_870_876_f64;
+    // Precomputed: 1 / (4·(3π²)^(2/3)) = 0.026121172985233605
+    const S2_DIVISOR_INV: f64 = 0.026_121_172_985_233_605_f64;
     let mut rho_neg83 = Array::<F>::new(size);
     ctaylor_pow::<F>(&rho, F::cast_from(-8.0_f64 / 3.0_f64), &mut rho_neg83, n);
     let mut s2_unscaled = Array::<F>::new(size);

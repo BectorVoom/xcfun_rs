@@ -14,8 +14,9 @@
 //! return -Ax · ρ^(4/3) · enh   per spin, summed.
 //! ```
 //!
-//! Note: APBE-specific Ax = `(81/(4π))^(1/3) / 2 = 0.738558766382022...`
-//! (same value as PW86X_AX). However, APBE's exchange enhancement is the same
+//! Note: APBE-specific Ax = `(81/(4π))^(1/3) / 2 = 0.9305257363491001`
+//! (= `c_slater`, NOT same as PW86X_AX which is `-(3/π)^(1/3) · 3/4` —
+//! the two are algebraically distinct). APBE's exchange enhancement is the same
 //! polynomial form as PBEX with different (μ, κ) — we therefore re-use the
 //! shared `pbex::enhancement` helper, but with μ=MU_APBE_F64 (0.26) instead
 //! of the default MU_PBE_F64 (0.066725·π²/3).
@@ -32,10 +33,12 @@ use crate::density_vars::DensVarsDev;
 use crate::functionals::gga::shared::constants::{MU_APBE_F64, R_PBE_F64};
 use crate::functionals::gga::shared::pw91_like;
 
-/// `Ax_APBE = (81/(4π))^(1/3) / 2 = 0.738558766382022`. Same magnitude as
-/// PW86X_AX. NOT NEG_C_SLATER (which is the unscaled Slater factor before
-/// /2 partition).
-const APBE_AX: f64 = 0.738_558_766_382_022_3_f64;
+/// `Ax_APBE = (81/(4π))^(1/3) / 2 = 0.9305257363491001`. This is the
+/// `c_slater` constant (`pow(81/(32π), 1/3)`) — algebraically equal to
+/// `pow(81/(4π), 1/3) / 2`, since `(1/8)^(1/3) = 1/2` ⇒ `81/(4π·8) = 81/(32π)`.
+/// Cross-check: `xcfun-master/src/functionals/apbex.cpp:29` literal
+/// `pow(81 / (4 * M_PI), 1.0 / 3.0) / 2` yields exactly this value in f64.
+const APBE_AX: f64 = 0.930_525_736_349_100_1_f64;
 
 #[cube]
 fn apbe_enhancement<F: Float>(

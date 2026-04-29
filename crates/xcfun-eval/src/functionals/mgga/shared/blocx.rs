@@ -20,7 +20,7 @@ use super::constants::{BLOCX_B_F64, BLOCX_C_F64, BLOCX_E_F64, BLOCX_KAPPA_F64, B
 
 // `(3·π²)^(2/3)` — appears in p0 and tau_unif. Computed once at module load.
 // 3·π² = 29.608813...; (3·π²)^(2/3) = 9.570780...
-const THREE_PI2_TWO_THIRDS_F64: f64 = 9.570_780_000_762_303_f64;
+const THREE_PI2_TWO_THIRDS_F64: f64 = 9.570_780_000_627_304_f64;
 
 // `1 / (4 · (3π²)^(2/3))` — p0 prefactor.
 const P0_PREFACTOR_F64: f64 = 1.0_f64 / (4.0_f64 * THREE_PI2_TWO_THIRDS_F64);
