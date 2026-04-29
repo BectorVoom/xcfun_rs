@@ -72,6 +72,11 @@ pub enum HarnessMode {
 /// Holds the (optional) streaming JSONL sink and the skip-set of tuples
 /// already on disk from a prior interrupted run. `None`/empty == legacy
 /// behaviour (all records buffered in `Report::records`, no skipping).
+///
+/// Quick task 260430-4x7 — adds `jobs: NonZeroUsize` controlling
+/// parallelism inside the driver entry points. `1` = serial (legacy
+/// path, byte-stable for clean-run output); `> 1` = `std::thread::scope`
+/// orchestrator with worker-owned `CppXcfun` handles.
 pub struct RunConfig<'a> {
     /// Streaming JSONL writer — `Some` when `main.rs` wants per-record
     /// durability, `None` for in-memory-only runs (e.g. unit tests).
@@ -80,15 +85,24 @@ pub struct RunConfig<'a> {
     /// `report.jsonl` when `--resume` was passed. Driver short-circuits
     /// any tuple matching this set.
     pub skip_keys: &'a HashSet<TupleKey>,
+    /// Quick task 260430-4x7 — degree of parallelism for the driver.
+    /// `1` (default) preserves the legacy serial path verbatim;
+    /// values `> 1` enable a `std::thread::scope` orchestrator that
+    /// dispatches one `(functional, vars, mode, order)` tuple per
+    /// worker job. Each worker constructs its own `CppXcfun` (the
+    /// FFI handle is `!Send + !Sync`).
+    pub jobs: std::num::NonZeroUsize,
 }
 
 impl<'a> RunConfig<'a> {
-    /// Construct a config with no sink and no skip-set — preserves the
-    /// pre-Plan-04-10 behaviour. Used by tests that call `run` directly.
+    /// Construct a config with no sink, no skip-set, and `jobs == 1`
+    /// (serial fast-path). Preserves the pre-Plan-04-10 behaviour.
+    /// Used by tests that call `run` directly.
     pub fn empty(skip_keys: &'a HashSet<TupleKey>) -> Self {
         Self {
             sink: None,
             skip_keys,
+            jobs: std::num::NonZeroUsize::new(1).unwrap(),
         }
     }
 }
@@ -1366,4 +1380,24 @@ pub fn run_contracted(
     // inactive (prevents a dead-code lint inside this validation crate).
     let _ = pack_for_contracted_validation::<>(&[1.0_f64], 0);
     Ok(report)
+}
+
+// ===========================================================================
+// Quick task 260430-4x7 — parallel scheduler unit tests.
+// ===========================================================================
+
+#[cfg(test)]
+mod parallel_cfg_tests {
+    use super::*;
+    use std::collections::HashSet;
+
+    /// `RunConfig::empty(...)` defaults `jobs == 1` so the legacy serial
+    /// path is preserved for any test that doesn't opt into parallelism.
+    #[test]
+    fn empty_runconfig_is_serial() {
+        let s: HashSet<TupleKey> = HashSet::new();
+        let cfg = RunConfig::empty(&s);
+        assert_eq!(cfg.jobs.get(), 1);
+        assert!(cfg.sink.is_none());
+    }
 }

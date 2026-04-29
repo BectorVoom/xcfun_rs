@@ -78,6 +78,29 @@ fn main() -> Result<()> {
     // expected by the merge gate).
     let resume = has_flag(&args, "--resume");
 
+    // Quick task 260430-4x7 — `--jobs auto|N`. Default `auto` uses
+    // `std::thread::available_parallelism()`; `--jobs 1` reproduces the
+    // legacy serial path; `--jobs N` (N > 1) spawns N workers inside
+    // `std::thread::scope` per driver entry point. Bails on `--jobs 0`.
+    let jobs_arg = parse_arg(&args, "--jobs").unwrap_or("auto");
+    let jobs_count = match jobs_arg {
+        "auto" => std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1),
+        s => s
+            .parse::<usize>()
+            .with_context(|| format!("--jobs must be 'auto' or a positive integer; got {}", s))?,
+    };
+    if jobs_count == 0 {
+        anyhow::bail!("--jobs must be >= 1; got 0");
+    }
+    let jobs = std::num::NonZeroUsize::new(jobs_count).unwrap();
+    tracing::info!(
+        "Parallelism: --jobs {} ({} effective)",
+        jobs_arg,
+        jobs.get()
+    );
+
     if backend != "cpu" {
         anyhow::bail!(
             "Phase 2 only supports --backend cpu; got {} (D-23)",
@@ -154,7 +177,23 @@ fn main() -> Result<()> {
     let mut cfg = validation::driver::RunConfig {
         sink: Some(&mut sink),
         skip_keys: &skip_keys,
+        jobs,
     };
+
+    // Quick task 260430-4x7 — FFI globals pre-warm.
+    //
+    // xcfun-master's `xcint_assure_setup` (xcint.cpp:138) uses a one-shot
+    // `static bool is_setup` guard. The body is idempotent but writes
+    // descriptor tables non-atomically, so on the first-ever call two
+    // threads racing here could observe torn pointers. Construct one
+    // CppXcfun on the main thread to drive the guard to true before any
+    // worker spawn. After this, all C++ state is per-handle (xcfun_new
+    // returns a heap-owned XCFunctional*) and is safe to use from
+    // many threads concurrently — each worker constructs its own.
+    {
+        let _prewarm = validation::ffi::CppXcfun::new();
+        // _prewarm is dropped at end-of-scope — xcfun_delete is called.
+    }
 
     let mut report =
         validation::driver::run_with_mode_cfg(&grid, order, &regex, mode, &mut cfg)?;
