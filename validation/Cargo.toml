@@ -28,3 +28,9 @@ regex = "1.10"
 
 [build-dependencies]
 cc = { workspace = true }
+
+# Quick task 260430-4x7 — `tempfile` is a `[dev-dependencies]` only;
+# does not enter the production validation lib/binary. App-boundary
+# scope per CLAUDE.md (validation crate is the dev-tooling app boundary).
+[dev-dependencies]
+tempfile = "3"

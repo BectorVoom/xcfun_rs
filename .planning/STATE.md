@@ -157,6 +157,12 @@ Added during Phase 2 execution (user-approved or surfaced by research/fix work):
 
 None.
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commits | Directory |
+|---|-------------|------|---------|-----------|
+| 260430-4x7 | Parallelize validation harness — speed up the order=3 full sweep | 2026-04-30 | e79c3ef, 8c59675 | [260430-4x7-parallelize-validation-harness-speed-up-](./quick/260430-4x7-parallelize-validation-harness-speed-up-/) |
+
 ### Recent activity
 
 - 2026-04-19: Research complete (`.planning/research/SUMMARY.md`, `STACK.md`, `FEATURES.md`, `ARCHITECTURE.md`, `PITFALLS.md`)
@@ -180,6 +186,7 @@ None.
 - 2026-04-22: Plan 02-07 complete — Phase 2 signed off. 4 design docs updated (02/05/06/09) to reflect as-built D-02/D-04/D-17/tier-1-tier-2 pattern; 30 Phase-2 IDs [x] Complete + ACC-04 [~] Partial with documented D-19 residuals; ROADMAP Phase 2 [x] Complete (with caveats) 7/7 plans; STATE advanced to 25% (14/14 plans across 2 phases).
 - 2026-04-24: `/gsd-discuss-phase 3 --auto` complete. Phase 3 (GGA Tier + Mode::Potential) CONTEXT.md written at `.planning/phases/03-gga-tier-mode-potential/03-CONTEXT.md` with 25 decisions (D-01..D-25) auto-selected across 10 gray areas. Inherits 53 locked decisions from Phases 1+2. DISCUSSION-LOG.md records the auto-selection rationale. Scope-count corrected: 40 GGA functionals (ROADMAP's "45" is loose). LB94 deferred to Phase 5 per D-19 (not in the 78-entry enum; uses legacy `setup_lb94` pattern). xcfun-ad additive extensions queued: `expm1`/`ctaylor_expm1` (D-05) and `sqrtx_asinh_sqrtx` helper (D-06) — mandatory for 6 GGA families. Note: `gsd-sdk` CLI unavailable in this environment; the workflow's final git-commit + auto-advance-to-plan steps were not auto-invoked.
 - 2026-04-24: `/gsd-plan-phase 3 --auto` complete. Research + pattern-mapping + 7 PLAN.md files (03-00..03-06) shipped. CONTEXT.md amended (commit `ee77cd7`): D-01-A scope reduction 40→36 (BRX/BRC/BRXC + CSC deferred to Phase 4 — metaGGA-class deps); D-01-B Wave 1 = 17 kernels; D-01-C Wave 3 = 8 kernels; D-10-A `_2ND_TAYLOR` discriminants corrected to 27..30. Checker GREEN on iteration 3 (5 BLOCKER / 9 WARNING / 3 INFO on iter 1 → 2 BLOCKER / 1 WARNING on iter 2 → 0 on iter 3). Key commits: `eea97b3` (RESEARCH.md), `050d0c6` (VALIDATION.md), `3e35e7b` (PATTERNS.md), `ee77cd7` (CONTEXT amendments), `96932d4` (03-00 plan), `00ce743` (plans 01-06), `1e8c156`..`5ac932f` (r1 revisions), `5d1fe96` (r2 final).
+- 2026-04-30: Quick task `260430-4x7` complete — `validation/` harness parallelised over `(functional, vars, mode, order)` tuples via `std::thread::scope` + `std::sync::mpsc`. New `--jobs auto|N` CLI flag (default = `available_parallelism()`); FFI pre-warm drives `xcint_assure_setup` to `is_setup=true` on the main thread before any worker spawn (no global mutex needed). `--jobs 1` reproduces the legacy serial path byte-for-record-content. Smoke run on `xc_slaterx + xc_pbex` order 0: 13.59s → 8.19s (1.66× on 4 jobs). Numerical contract preserved: `parallel_matches_serial_via_jsonl` + `parallel_matches_serial_via_matrix` integration tests assert byte-identical serialised JSON between `--jobs 1` and `--jobs 4` after sort. CLAUDE.md hard rules respected: no rayon, no crossbeam, no `unsafe impl Send` for `CppXcfun`. Commits: `e79c3ef` (Task 1 — CLI + RunConfig + pre-warm), `8c59675` (Task 2 — parallel scheduler), final docs commit (Task 3 — parity test + tempfile dev-dep + planning artifacts).
 
 ## Session Continuity
 
