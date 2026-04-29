@@ -45,7 +45,7 @@ const M0X_CF_F64: f64 = 2.871_234_000_188_191_0_f64;
 
 /// `M0X_CF_F64 * M0X_SCALEFACTOR_TF_F64` — scale-corrected Thomas-Fermi
 /// constant subtracted in `zet`. Pre-computed at module load.
-const M0X_CF_TIMES_SCALEFACTOR_TF: f64 = 9.115_599_720_409_998_f64;
+const M0X_CF_TIMES_SCALEFACTOR_TF: f64 = 9.115_599_744_691_195_f64;
 // = 2.871_234_000_188_191_0 * 3.174_802_103_936_40
 
 // ---------------------------------------------------------------------------
@@ -684,8 +684,13 @@ pub fn ueg_c_anti<F: Float>(
 //    return -(3/2) · (3/(4π))^(1/3) · ρ^(4/3)
 // ---------------------------------------------------------------------------
 
-/// `-(3/2) · (3/(4π))^(1/3) · ρ^(4/3) = -0.738558766382022 · ρ^(4/3)`.
-const LSDA_X_COEFF_F64: f64 = -0.738_558_766_382_022_3_f64;
+/// `-(3/2) · (3/(4π))^(1/3) · ρ^(4/3) = -0.930525736349100 · ρ^(4/3)`.
+///
+/// Cross-check: `(3/2) · (3/(4π))^(1/3) = 0.9305257363491002` in f64 — NOT the
+/// standard Slater coefficient `(3/4) · (3/π)^(1/3) = 0.7385587663820223`. The
+/// two differ by exactly `2^(1/3)`. See `xcfun-master/src/functionals/m0xy_fun.hpp:260-262`
+/// for the literal C++ expression this reproduces.
+const LSDA_X_COEFF_F64: f64 = -0.930_525_736_349_100_2_f64;
 
 /// `lsda_x(rho)` — local spin-density approximation for exchange.
 #[cube]
