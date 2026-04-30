@@ -2,19 +2,21 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-04-30T09:30:00.000Z"
+status: completed
+last_updated: "2026-04-30T10:00:00.000Z"
 progress:
   total_phases: 8
-  completed_phases: 4
+  completed_phases: 3
   total_plans: 32
   completed_plans: 32
-  percent: 50
+  percent: 100
 ---
 
 # Project State: xcfun_rs
 
-**Last updated:** 2026-04-25 (Phase 4 context gathered via `/gsd:discuss-phase --auto`; 11 gray areas auto-resolved as D-01..D-14 in 04-CONTEXT.md; scope = 32 functional bodies (28 metaGGA + 4 Phase-3 carryovers BRX/BRC/BRXC + CSC) + 1 new xcfun-ad primitive (`ctaylor_br_inverse`) + 11 new DensVarsDev Vars arms (ids 8..=18, 23..=26) + alias engine (46 entries, line-for-line port of XCFunctional.cpp:369-405) + 4 parameters (XC_RANGESEP_MU/EXX/CAM_ALPHA/CAM_BETA) + Mode::Contracted (DOEVAL macro, orders 0..=6); LB94 confirmed not alias-feasible → Phase 5; 13 Phase-3 D-19 forwards inherited unchanged for Phase 6; ready for `/gsd:plan-phase 4 --auto`)
+**Last updated:** 2026-04-30 (Phase 5 context gathered via `/gsd:discuss-phase 5` interactive; 14 decisions captured (D-01..D-17) in 05-CONTEXT.md across 4 areas: crate topology [rename xcfun-ffi→xcfun-capi; new xcfun-rs wrapper crate; lookup tables stay in xcfun-core; delete xcfun-functionals stub], C ABI panic+error contract [c_entry! macro with stderr+abort; void-returning C fns abort on Err mirroring xcfun::die; defensive NULL checks; trust caller-supplied buffer sizes], cbindgen workflow [xtask regen-capi-header + checked-in xcfun.h; headers_match integration test in xcfun-capi; documentation=false; XCFun_API verbatim via cbindgen prefix + inline prelude macro defs], hot-path zero-alloc verification [counting #[global_allocator] in xcfun-rs/tests/zero_alloc.rs; 10-fixture tests/c_abi.c spanning LDA/GGA/metaGGA/alias/Contracted/Potential incl. LB94]; LB94 (Phase-3 D-19 deferred) re-confirmed not alias-feasible per Phase 4 D-13 — additive descriptor entry only; ready for `/gsd:plan-phase 5`)
+
+**2026-04-25 entry (superseded):** Phase 4 context gathered via `/gsd:discuss-phase --auto`; 11 gray areas auto-resolved as D-01..D-14 in 04-CONTEXT.md.
 
 ## Project Reference
 
