@@ -1,0 +1,19 @@
+[package]
+name = "xcfun-rs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Native Rust public API for xcfun_rs (Functional struct + free fns)"
+license = "MPL-2.0"
+
+[features]
+default = []
+# RS-08 GPU dispatch lives in Phase 6; Phase 5 ships a Functional::eval_vec stub.
+
+[dependencies]
+xcfun-core = { path = "../xcfun-core" }
+xcfun-eval = { path = "../xcfun-eval", features = ["testing"] }
+thiserror  = { workspace = true }
+
+[dev-dependencies]
+static_assertions = "1.1"

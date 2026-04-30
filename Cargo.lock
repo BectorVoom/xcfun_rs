@@ -4551,6 +4551,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "xcfun-capi"
+version = "0.1.0"
+dependencies = [
+ "xcfun-core",
+]
+
+[[package]]
 name = "xcfun-core"
 version = "0.1.0"
 dependencies = [
@@ -4573,6 +4580,16 @@ dependencies = [
  "thiserror",
  "xcfun-ad",
  "xcfun-core",
+]
+
+[[package]]
+name = "xcfun-rs"
+version = "0.1.0"
+dependencies = [
+ "static_assertions",
+ "thiserror",
+ "xcfun-core",
+ "xcfun-eval",
 ]
 
 [[package]]

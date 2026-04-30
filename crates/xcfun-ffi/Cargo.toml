@@ -1,9 +1,0 @@
-[package]
-name = "xcfun-ffi"
-version.workspace = true
-edition.workspace = true
-description = "C FFI bindings for xcfun_rs"
-
-[dependencies]
-xcfun-core = { path = "../xcfun-core" }
-# xcfun-eval dependency added in Phase 7
