@@ -100,3 +100,13 @@ prefix = "XCFun_API"
 
 [parse]
 parse_deps = false
+
+# Plan 05-04 Task 4.2 fix: cbindgen emits Rust type names verbatim in
+# function signatures (`xcfun_s *fun`). The cbindgen-generated header
+# forward-declares `struct xcfun_s` (no typedef-without-struct), so a C
+# function signature using bare `xcfun_s` is invalid. Rewrite the
+# pointed-to type to `xcfun_t` (matching the prelude's `typedef struct
+# xcfun_s xcfun_t;`) so signatures emit `xcfun_t *fun` — drop-in
+# compatible with upstream `xcfun-master/api/xcfun.h` and valid C.
+[export.rename]
+"xcfun_s" = "xcfun_t"

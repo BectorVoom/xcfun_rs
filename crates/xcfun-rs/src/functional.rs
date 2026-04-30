@@ -142,6 +142,26 @@ impl Functional {
         xcfun_eval::Functional::input_length(self.0.vars)
     }
 
+    /// Input-buffer length consumed by [`Self::eval`] for the current
+    /// `(vars, mode, order)`. Equals `input_length()` for
+    /// `Mode::PartialDerivatives` / `Mode::Potential`; equals
+    /// `input_length() * (1 << order)` for `Mode::Contracted` per D-06-A
+    /// (`XCFunctional.cpp:622-627` — Contracted mode reads `inlen ×
+    /// (1 << order)` flat doubles, mirroring the `DOEVAL` macro layout).
+    ///
+    /// Plan 05-04: the C ABI `xcfun_eval` signature in upstream
+    /// `xcfun-master/api/xcfun.h` carries no length parameter, so the
+    /// FFI layer must derive this length on the C side. Plan 05-02's
+    /// initial implementation hard-coded `input_length()` only,
+    /// breaking Mode::Contracted invocation from C.
+    pub fn input_buffer_length(&self) -> usize {
+        let inlen = self.input_length();
+        match self.0.mode {
+            xcfun_core::Mode::Contracted => inlen * (1_usize << self.0.order),
+            _ => inlen,
+        }
+    }
+
     /// MODE-05 / RS-09 — number of `f64` outputs `eval` writes.
     pub fn output_length(&self) -> Result<usize, XcError> {
         xcfun_eval::Functional::output_length(self.0.vars, self.0.mode, self.0.order)

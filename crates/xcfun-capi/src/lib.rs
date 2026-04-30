@@ -401,12 +401,18 @@ pub extern "C" fn xcfun_eval(
 ) {
     c_entry!("xcfun_eval", fun, density, result => {
         let f = unsafe { &(*fun).inner };
-        let inlen = f.input_length();
+        // Plan 05-04 fix: input buffer length is `inlen × (1 << order)`
+        // for Mode::Contracted (per D-06-A, mirroring xcfun-master/src/
+        // XCFunctional.cpp:622-627 DOEVAL macro), and `inlen` for
+        // Mode::PartialDerivatives / Mode::Potential. Without the
+        // mode-aware length, Contracted mode evaluations fault with
+        // an InputLengthMismatch from the inner Functional::eval.
+        let in_buf_len = f.input_buffer_length();
         let outlen = match f.output_length() {
             Ok(n) => n,
             Err(e) => die_with(&format!("xcfun_eval: output_length failed: {}", e)),
         };
-        let input = unsafe { std::slice::from_raw_parts(density, inlen) };
+        let input = unsafe { std::slice::from_raw_parts(density, in_buf_len) };
         let output = unsafe { std::slice::from_raw_parts_mut(result, outlen) };
         if let Err(e) = f.eval(input, output) {
             die_with(&format!(

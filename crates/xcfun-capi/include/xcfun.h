@@ -114,22 +114,22 @@ XCFun_API const char *xcfun_describe_short(const char *name);
 
 XCFun_API const char *xcfun_describe_long(const char *name);
 
-XCFun_API xcfun_s *xcfun_new(void);
+XCFun_API xcfun_t *xcfun_new(void);
 
-XCFun_API void xcfun_delete(xcfun_s *fun);
+XCFun_API void xcfun_delete(xcfun_t *fun);
 
-XCFun_API int xcfun_set(xcfun_s *fun, const char *name, double value);
+XCFun_API int xcfun_set(xcfun_t *fun, const char *name, double value);
 
-XCFun_API int xcfun_get(const xcfun_s *fun, const char *name, double *value);
+XCFun_API int xcfun_get(const xcfun_t *fun, const char *name, double *value);
 
-XCFun_API bool xcfun_is_gga(const xcfun_s *fun);
+XCFun_API bool xcfun_is_gga(const xcfun_t *fun);
 
-XCFun_API bool xcfun_is_metagga(const xcfun_s *fun);
+XCFun_API bool xcfun_is_metagga(const xcfun_t *fun);
 
-XCFun_API int xcfun_eval_setup(xcfun_s *fun, int vars, int mode, int order);
+XCFun_API int xcfun_eval_setup(xcfun_t *fun, int vars, int mode, int order);
 
 XCFun_API
-int xcfun_user_eval_setup(xcfun_s *fun,
+int xcfun_user_eval_setup(xcfun_t *fun,
                           int order,
                           unsigned int func_type,
                           unsigned int dens_type,
@@ -139,14 +139,14 @@ int xcfun_user_eval_setup(xcfun_s *fun,
                           unsigned int current,
                           unsigned int explicit_derivatives);
 
-XCFun_API int xcfun_input_length(const xcfun_s *fun);
+XCFun_API int xcfun_input_length(const xcfun_t *fun);
 
-XCFun_API int xcfun_output_length(const xcfun_s *fun);
+XCFun_API int xcfun_output_length(const xcfun_t *fun);
 
-XCFun_API void xcfun_eval(const xcfun_s *fun, const double *density, double *result);
+XCFun_API void xcfun_eval(const xcfun_t *fun, const double *density, double *result);
 
 XCFun_API
-void xcfun_eval_vec(const xcfun_s *fun,
+void xcfun_eval_vec(const xcfun_t *fun,
                     int nr_points,
                     const double *density,
                     int density_pitch,
