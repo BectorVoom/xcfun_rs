@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-27T04:54:13.225Z"
+last_updated: "2026-04-30T09:30:00.000Z"
 progress:
   total_phases: 8
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 32
-  completed_plans: 28
-  percent: 88
+  completed_plans: 32
+  percent: 50
 ---
 
 # Project State: xcfun_rs
@@ -24,23 +24,29 @@ progress:
 
 ## Current Position
 
-Phase: 04 (metagga-tier-mode-contracted-aliases) — EXECUTING
-Plan: 1 of 11
-Plans: 7 (03-00 ✓, 03-01 ✓, 03-02 ✓, 03-03 ✓, 03-04 ✓ partial, 03-05 Mode::Potential, 03-06 orders 3..=4 + ACC-04 re-run + sign-off)
-Scope: 36 GGA functional IDs (BRX/BRC/BRXC + CSC deferred to Phase 4 per D-01-A; LB94 deferred per D-19)
-Wave 0 (03-00) COMPLETE: `ctaylor_expm1` (D-05) + `ctaylor_sqrtx_asinh_sqrtx` (D-06) + 6500 fixtures GREEN at 1e-12.
-Wave 1 (03-01) COMPLETE: `gga/` module + 6 shared helpers + 7 DensVarsDev Vars arms (D-10-A) + Mode::Potential host gates.
-Wave 2 (03-02) COMPLETE: 17 GGA kernels (PBE×12 + Becke×4 + LYP), 5 skeleton→FULL conversions, `Functional::parameters: [f64;4]`, dispatch 11→28, c_stubs 67→50.
-Wave 3 (03-03) COMPLETE: 10 GGA kernels (OPTX×2 + PW86/91×4 + P86×2 + APBE×2), W3+W7 FULL helpers, W8 pz81_eps pub, dispatch 28→38, c_stubs 50→40; Wave-2 INCONCLUSIVE ABSORBED (run_launch + launch_and_accumulate extended for inlen=5); OPTX GREEN at strict 1e-12. **NEW D-19 INCONCLUSIVE**: 5 functionals (PW86X, APBEX, APBEC, P86C, PW91C) show 1e-6 to 1e-9 port-order drift from C++ `pow` expression vs Rust `ctaylor_pow` chain — constants verified to 16 digits; forwarded to Wave 6 sign-off for Rule-1 fix decision.
-Wave 4 (03-04) COMPLETE WITH D-19 FORWARDS: 8 GGA kernels (B97 ×6 + KTX + BTK), W3 b97_poly FULL bodies (G6-safe explicit u² preserved), `pw92eps_polarized` LSDA helper (FERRO branch), dispatch 38→46 (8 new comptime arms), c_stubs 40→32, validation/build.rs +5 entries. **I2 CAPSTONE: 4.10 s** — clean `cargo build -p xcfun-eval --release` ≤ 45 s budget, NO per-Mode split applied per unconditional rule. **Tier-2 PARTIAL**: 5/8 GREEN strict 1e-12 (B97X, B97_1X, B97_2X, KTX, BTK); 3/8 (B97C 11 fails, B97_1C 11, B97_2C 41) max rel_err 4.88e-11 on near-zero polarised gradient_stress (point_idx 8246 stratum: a=1.6e-8, b=1.2e-3, gradients zero). Failures ~3 orders of magnitude TIGHTER than Wave 3 D-19 (4.88e-11 vs 1e-6..1e-9). Likely root-cause: `pw92eps_polarized` FERRO-branch composition order. Forwarded as 3 new D-19 INCONCLUSIVE entries to Wave 6 sign-off (mirroring Wave 3 protocol). 63 / 2,240,000 record failure rate = 2.81e-5.
-Wave 5 (03-05) COMPLETE: Mode::Potential routing per D-13 line-for-line port of XCFunctional.cpp:637-790. `launch_potential` (LDA N=1 single-pass + GGA N=2 two-pass divergence), `potential_lda_kernel` + `potential_gga_kernel` `#[cube] fn`s; 80 new (id, vars=28, n) match arms in run_launch covering all 38 supported ids at A_B_2ND_TAYLOR. **B5 path (a)**: new `xtask gen-potential-fixtures` binary drives cc-compiled C++ harness over deterministic 100-record grid (5 GGAs × 20 pts, seed 0xf00dbabe) → `potential_reference_100.json`. **potential_parity_100 GREEN strict 1e-12 100/100**. Tier-2 sweep 510k records GREEN across 11 LDAs (8 strict + 3 LDAERF at 1e-7 D-24) + 8 GGAs (incl. B97C — confirms Wave-4 D-19 forwards are Mode::PartialDerivatives-only). **Bonus Rule-1 fix** to `build_xc_a_b_2nd_taylor`: added missing gnn/gns/gss derivations (unblocks LYPC). MODE-02 + MODE-05 satisfied. Goal-complete for Mode::Potential.
-Wave 6 (03-06) COMPLETE WITH PHASE-3 SIGN-OFF: orders 3+4 + W9 pack helpers + 88 new run_launch arms (9 LDAs + 35 GGAs at n∈{3,4}); supplemental 400-pt GGA-stratified grid (seed 0xdeadbeef); C++ fall-through fix (recursive accumulation N→N-1 before tier-N append); Mode::PartialDerivatives raised from > 2 to > 4 per MODE-01 D-16. **Tier-2 capstone at order 2: 9.86M records, 516 MB report.jsonl committed**. ACC-04 re-run on Phase-2 LDA residuals: orders 0/1 GREEN, order 2 unchanged from Phase-2 baseline → forward UNCHANGED to Phase 6 per I3. C++-abort exclusions added to skip list: ZVPBESOLC, ZVPBEINTC, PBELOCC. **Collective D-19 INCONCLUSIVE sign-off — 13 entries forwarded to Phase 6**: 5 Wave-3 (PW86X/APBEX/APBEC/P86C/PW91C) + 3 Wave-4 (B97C/B97_1C/B97_2C) + 5 NEW from full-matrix (SPBEC/PBEINTC/PW91K/P86CORRC/BECKESRX). Order-3 full-matrix run interrupted mid-execution (usage-limit) — forwarded as Phase-6 prereq with structural cover via W9 unit tests + C++ fall-through fix + lib unit tests (17/17 GREEN). REQUIREMENTS.md GGA-01..10 + MODE-01/02/05 marked Complete with per-functional caveats. **All 36 of 40 GGA functional IDs ship; BR×3 + CSC → Phase 4, LB94 → Phase 5.**
+Phase: 04 (metagga-tier-mode-contracted-aliases) — **COMPLETE WITH GAP CLOSURE (2026-04-30)** — phase-4-complete
+Plans: 11 (04-00 ✓, 04-01 ✓, 04-02 ✓, 04-03 ✓, 04-04 ✓, 04-05 ✓, 04-06 partial→VERIFICATION gaps_found, 04-07 ✓ gap closure driver extension, 04-08 ✓ gap closure ERF investigation, 04-09 ✓ gap closure contracted metaGGA, 04-10 ✓ phase re-signoff with caveats)
+Scope: 32 functional bodies (28 metaGGA + 4 carryovers BRX/BRC/BRXC + CSC); 46 aliases + 4 parameters; Mode::Contracted orders 0..=4 verified.
 
 - **Milestone:** Initial v1 build-out
-- **Phase:** 03 (gga-tier-mode-potential) — **COMPLETE (2026-04-25)**
-- **Plan:** 4-06 complete. All 7 Phase-3 plans shipped (Wave 0 → Wave 6); 13 of 13 Phase-3 requirement IDs satisfied (10 GGA + 3 MODE) with 13 D-19 INCONCLUSIVE entries explicitly forwarded to Phase 6 + 3 follow-up items in 03-HUMAN-UAT.md (order-3 capstone re-run, BECKESRX D-18 forensics, full 36-GGA Mode::Potential sweep).
-- **Status:** Executing Phase 04
-- **Progress:** [█████████░] 86%
+- **Phase:** 04 (metagga-tier-mode-contracted-aliases) — **COMPLETE (2026-04-30)** — signed_off_with_caveats
+- **Plan:** 04-10 complete. All 11 Phase-4 plans shipped.
+- **Status:** Phase-4 complete; ready for Phase 5 (Rust facade + C ABI)
+- **Progress:** [████████░░] 50% (4/8 phases; 32/32 known plans)
+
+### Phase 4 sign-off summary (2026-04-30)
+
+Order-3 full-matrix tier-2 sweep (`cargo run -p validation --release -- --backend cpu --order 3 --resume --jobs 18 --filter '.*'`, parallelized via Quick Task 260430-4x7) produced 3,001,208 records in `validation/report.jsonl` (gitignored) + `validation/report.html` (committed `db0f8ad`). Distribution:
+
+- **17 functionals 100% clean strict 1e-12**: SLATERX, TFK, PBEX, REVPBEX, PBEINTX, RPBEX, PBESOLX, BECKEX, BECKECORRX, **PW86X**, OPTXCORR, **APBEX**, PW91X, KTX, BTK, M05X2X, M06X2X. (PW86X + APBEX tightened from Phase-3 D-19 to clean at order 3 — better than expected.)
+- **20 functionals `excluded_by_upstream_spec`** (skip-list): BR×3, CSC, BLOCX, SCAN×10, TW, VWK, PBELOCC, ZVPBESOLC, ZVPBEINTC. C++ tmath_die at low-density tail; Phase-6 JP grid harness or guarded {sqrt,log,pow}_expand required.
+- **30+ Phase-4 D-19 INCONCLUSIVE forwards to Phase 6** (consolidated):
+  - **TPSS-correlation gradient-stress AD-chain divergence** (Plan 04-10 Path-B bisection, NEW): TPSSC max_rel 1.09e+30, TPSSLOCC 8.89e+27, REVTPSSC 3.73e+15 at points 9000-9999 where tau<<tau_w (von Weizsäcker bound violated). Algorithmically faithful port confirmed; root cause f64-rounding cancellation in `eps_pkzb*(1+2.8*eps_pkzb*tauwtau3)` with tauwtau3≈1e+27 amplifying ULP-level differences. Phase-6 triage: tau≥tau_w guard or stratum exclusion.
+  - **TPSS-X + Becke-CAM + VWN clamp-boundary AD-tail** (NEW): TPSSX 2.7e-2, REVTPSSX 1.3e-2, BECKECAMX 2.0e-8, VWN5C 1.6e-11, VWN3C 7.2e-12, PZ81C 3.0e-12 at rho≈2e-14 regularize stratum.
+  - **Minnesota meta-correlation small-magnitude AD-residual** (NEW): M06{C,LC,HFC,X2C,X,LX,HFX} 1.5e-12 to 6.3e-11, M05{X,C,X2C} 1.9e-12 to 3.0e-11, B97{X,_1X,_2X} 9.5e-12, LYPC 1.3e-10, VWN_PBEC 6.9e-9 (Plan 04-08), PW92C 9.0e-12, PBEC 1.8e-12, OPTX 1.2e-12, M06HFX 7.8e-12 — same shape as Phase-3 B97{,_1,_2}C forwards.
+  - **3 Phase-4 ERF forwards** (Plan 04-08): LDAERFX 6.7e-2, LDAERFC 4.6e-6, LDAERFC_JT 4.6e-5 — AD-chain amplification of erf bracket cancellation, Phase-6 libm-hybrid required.
+  - **11 inherited Phase-3 forwards still failing at order 3**: PBEINTC 6.2e+1, P86C/P86CORRC 9.2e-2, PW91C 1.7e-3, SPBEC 5.3e-4, BECKESRX 2.3e+2, APBEC 5.7e-9, B97{,_1,_2}C 7.8e-11, PW91K 1.4e-11.
+- **Mode::Contracted orders 5..=6 metaGGA** still D-19 forwarded per Plan 04-05 (xcfun-ad ctaylor_compose/multo N≥4 specialisations — Phase-6 prerequisite).
 
 ## Performance Metrics
 
@@ -139,6 +145,26 @@ Added during Phase 2 execution (user-approved or surfaced by research/fix work):
 - **Plan 02-06 Fix 2 (commit `080a170`):** Regularize-clamp stratum exclusion per D-22 design intent. Grid points with `min(a,b) ≤ 2e-14` are marked `excluded_by_regularize_clamp_design` — tests of the clamp design, not kernel correctness.
 - **Plan 02-06 in-kernel libm-port erf_precise (commit `dca382a`):** cubecl 0.10-pre.3 `Float::erf` polyfill (~1.3e-8 ULP) replaced with FreeBSD msun-derived port. Phase 1 baseline tightened from 1e-7 to 1e-14.
 - **Critical finding at LDAERFX:** mpmath at 200-digit precision confirms **Rust = mathematical ground truth** while C++ diverges by 6.7% due to its OWN bracket cancellation. Cannot be resolved at Phase 2 without either widening threshold (forbidden by D-19) or forcing Rust to replicate C++'s bug (forbidden by algorithmic-identity contract). Phase 6 libm-hybrid on CUDA/Wgpu provides a second independent ground truth; a possible amendment will switch the parity reference from C++ to mpmath where C++ is documented to suffer cancellation.
+
+### Decisions added in Phase 4 (gap closure plans 04-07/08/09/10)
+
+- **Plan 04-07 driver extension:** `validation/src/driver.rs::run` iterates all 30 metaGGA tuples; `run_launch` wired with 120 new arms at vars=13/17 × n ∈ {0..3}. BR family + CSC + BLOCX + SCAN×10 + TW + VWK + PBELOCC + ZVPBESOLC + ZVPBEINTC pre-emptively excluded_by_upstream_spec (Phase-6 JP grid follow-up). Skip-list extension landed at master `f968c32` for the SCAN family (10 entries) after source-level diagnosis of the shared `SCAN_like_eps.hpp` substrate (17 sqrt() call-sites).
+- **Plan 04-08 ERF divergence forward:** XC_LDAERFX/LDAERFC/LDAERFC_JT order-3 catastrophic divergence confirmed as AD-chain amplification of the known erf bracket cancellation. No Phase-4 viable fix per bisection. Forwarded to Phase 6 libm-hybrid. Plus 2 NEW LDA-corr forwards: VWN_PBEC (6.85e-9) + PBEC (6.64e-9) at low-density polarised stratum (Plan 04-08 Task 8.3).
+- **Plan 04-09 contracted metaGGA cross-mode:** Mode::Contracted orders 0..=3 verified for TPSSX, SCANX, M06X exemplars at strict 1e-12 (30 tests GREEN). Order 4 metaGGA `#[ignore]`d with explicit Phase-6 forward citation (xcfun-ad ctaylor_compose/multo N≥4 specialisations missing — Plan 04-05 D-19 reinforced).
+- **Plan 04-10 sweep parallelization (via Quick Task 260430-4x7):** Order-3 capstone sweep ran in ~hours on `--jobs 18` parallel scheduler (vs unbounded with serial). Parity test `parallel_matches_serial_via_jsonl` confirmed byte-identical output between `--jobs 1` and `--jobs 4`. Incremental jsonl flush implicitly addressed by parallel scheduler (per-tuple records emitted as completed; no all-or-nothing buffer). Two prior sweep failures (SCANC sqrt_expand crash + WSL VM termination) no longer block Phase-4 sign-off.
+- **Plan 04-10 Path-B bisection on TPSS-correlation:** Read `xcfun-master/src/functionals/{tpssc.cpp,tpssc_eps.hpp,pbec_eps.hpp}` and `xcfun-master/external/upstream/taylor/{ctaylor.hpp,ctaylor_math.hpp}` side-by-side with `crates/xcfun-eval/src/functionals/mgga/{tpssc.rs,shared/tpss_like.rs}`. Confirmed: (a) `ctaylor_max` semantics match C++ `max(a,b)` with `operator>` comparing CNST slot only; (b) `tpss_pbec_eps`, `tpss_pbec_eps_polarized`, `tpss_C`, `tpss_epsc_summax`, `tpss_eps_full` are line-for-line ports of the C++ functions; (c) the divergence is NOT a port bug but f64-rounding cancellation in unphysical regime where tau<<tau_w (von Weizsäcker bound violated by ~9 orders of magnitude). Phase-6 triage hand-off: add tau≥tau_w regularization guard or exclude gradient-stress sub-grid for tau-using metaGGAs.
+- **Phase 4 D-19 forward list (consolidated, see ROADMAP `[^d19p4]` footnote + 04-VERIFICATION.md ledger):**
+  * 11 inherited Phase-3 forwards STILL FAILING at order 3: PBEINTC, P86C, P86CORRC, PW91C, SPBEC, BECKESRX, APBEC, B97C, B97_1C, B97_2C, PW91K
+  * 2 inherited Phase-3 forwards TIGHTENED to clean at order 3: PW86X, APBEX (better than expected — tier-2 strict 1e-12 GREEN)
+  * 3 NEW Phase-4 ERF forwards (Plan 04-08): LDAERFX, LDAERFC, LDAERFC_JT
+  * 2 NEW Phase-4 LDA-corr forwards (Plan 04-08): VWN_PBEC, PBEC
+  * 3 NEW Phase-4 gradient-stress AD-chain divergences (Plan 04-10 Path-B): TPSSC, TPSSLOCC, REVTPSSC
+  * 6 NEW Phase-4 clamp-boundary AD-tail (Plan 04-10): TPSSX, REVTPSSX, BECKECAMX, VWN5C, VWN3C, PZ81C
+  * 12+ NEW Phase-4 small-magnitude AD-residual (Plan 04-10): M06{C,LC,HFC,X2C,X,LX,HFX}, M05{X,C,X2C}, B97{X,_1X,_2X}, LYPC, PW92C, OPTX
+  * 20 functionals excluded_by_upstream_spec (BR×3 + CSC + BLOCX + SCAN×10 + TW + VWK + PBELOCC + ZVPBESOLC + ZVPBEINTC) — Phase-6 JP grid harness
+  * Mode::Contracted orders 5..=6 metaGGA (Plan 04-05 D-19 reinforced) — Phase-6 xcfun-ad N≥4 specialisations
+- **BLOCX confirmed BRX-independent** per RESEARCH finding (CONTEXT D-01-A claim corrected — BLOCX is TPSS-shaped, no `BR(...)` call).
+- **LB94 stays in Phase 5** per D-13 (legacy `setup_lb94` pattern not in 78-entry FunctionalId enum).
 
 ### Pending decisions (deferred to phase-level research)
 

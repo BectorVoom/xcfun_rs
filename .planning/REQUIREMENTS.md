@@ -48,22 +48,22 @@
 
 - [x] **GGA-01**: PBE family (`XC_PBEX`, `XC_PBEC`, `XC_REVPBEX`, `XC_RPBEX`, `XC_PBESOLX`, `XC_PBEINTX`, `XC_PBEINTC`, `XC_SPBEC`, `XC_PBELOCC`, `XC_ZVPBESOLC`, `XC_ZVPBEINTC`, `XC_VWN_PBEC`) ported (Plan 03-02; tier-2 GREEN at 1e-12 except `ZVPBESOLC`/`ZVPBEINTC`/`PBELOCC` which are excluded from tier-2 due to C++ `pow_expand(x≤0)` aborts in `tmath.hpp:156` on the regularize-stress stratum)
 - [x] **GGA-02**: Becke family (`XC_BECKEX`, `XC_BECKECORRX`, `XC_BECKESRX`, `XC_BECKECAMX`) ported (Plan 03-02; tier-2 GREEN per D-18 strict 1e-12 — `erf_precise` libm port from Plan 02-06 inherited)
-- [~] **GGA-03**: Becke–Roussel — DEFERRED to Phase 4 per D-01-A (BRX/BRC/BRXC declare `XC_KINETIC|XC_LAPLACIAN|XC_JP` requiring inlen=11 Vars arm not in D-10 + separate `BR_taylor` Newton-inverse algebra)
+- [~] **GGA-03**: Becke–Roussel (`XC_BRX`, `XC_BRC`, `XC_BRXC`) ported (Plan 04-01; tier-1 self-tests pass). Tier-2 marked `excluded_by_upstream_spec` per `validation/src/driver.rs` skip-list — C++ reference's `tmath::sqrt_expand` aborts at low-density tail on the shared metaGGA substrate; Phase 6 JP grid harness owns the proper resolution.
 - [x] **GGA-04**: LYP correlation (`XC_LYPC`) ported (Plan 03-02; tier-2 GREEN at 1e-12 after Plan 03-05 Rule-1 fix to `build_xc_a_b_2nd_taylor` for `gnn`/`gns`/`gss` derivation)
 - [x] **GGA-05**: OPTX family (`XC_OPTX`, `XC_OPTXCORR`) ported (Plan 03-03; tier-2 GREEN strict 1e-12, 20000/20000 records)
 - [x] **GGA-06**: PW86/PW91 (`XC_PW86X`, `XC_PW91X`, `XC_PW91C`, `XC_PW91K`) ported (Plan 03-03; PW91X/PW91K GREEN; PW86X + PW91C exhibit Rule-1 port-order drift 1e-6..1e-9 — 5 D-19 INCONCLUSIVE entries forwarded to Phase 6 libm-hybrid resolution)
 - [x] **GGA-07**: P86 correlation (`XC_P86C`, `XC_P86CORRC`) ported (Plan 03-03; P86C exhibits ~1e-7 port-order drift — D-19 INCONCLUSIVE forwarded to Phase 6)
 - [x] **GGA-08**: APBE (`XC_APBEX`, `XC_APBEC`) ported (Plan 03-03; both exhibit ~1e-7 port-order drift — D-19 INCONCLUSIVE forwarded to Phase 6)
 - [x] **GGA-09**: B97 family (`XC_B97X`, `XC_B97C`, `XC_B97_1X`, `XC_B97_1C`, `XC_B97_2X`, `XC_B97_2C`) ported (Plan 03-04; X kernels GREEN strict 1e-12; C kernels exhibit 4.88e-11 port-order drift on near-zero polarised gradient_stress — D-19 INCONCLUSIVE forwarded to Phase 6)
-- [~] **GGA-10**: `XC_KTX`, `XC_BTK` ported (Plan 03-04; both GREEN strict 1e-12). `XC_LB94` DEFERRED to Phase 5 per D-19 (legacy `setup_lb94` pattern not in 78-entry FunctionalId enum). `XC_CSC` DEFERRED to Phase 4 per D-01-A (`XC_KINETIC|XC_LAPLACIAN|XC_JP` deps not yet exposed by cubecl DensVarsDev)
+- [~] **GGA-10**: `XC_KTX`, `XC_BTK` ported (Plan 03-04; both GREEN strict 1e-12). `XC_CSC` ported (Plan 04-01; tier-1 passes; tier-2 marked `excluded_by_upstream_spec` per skip-list — same shared-substrate C++ tmath_die pattern as BR family; Phase 6 JP grid resolves). `XC_LB94` DEFERRED to Phase 5 per D-19 (legacy `setup_lb94` pattern not in 78-entry FunctionalId enum).
 
 ### Functional Ports — metaGGA Tier
 
-- [x] **MGGA-01**: TPSS family (`XC_TPSSX`, `XC_TPSSC`, `XC_REVTPSSX`, `XC_REVTPSSC`, `XC_TPSSLOCC`) ported, self-tests pass
-- [ ] **MGGA-02**: SCAN family (`XC_SCANX`, `XC_SCANC`, `XC_RSCANX`, `XC_RSCANC`, `XC_RPPSCANX`, `XC_RPPSCANC`, `XC_R2SCANX`, `XC_R2SCANC`, `XC_R4SCANX`, `XC_R4SCANC`) ported, self-tests pass
-- [ ] **MGGA-03**: Minnesota M05 family (`XC_M05X`, `XC_M05C`, `XC_M05X2X`, `XC_M05X2C`) ported, self-tests pass
-- [ ] **MGGA-04**: Minnesota M06 family (`XC_M06X`, `XC_M06C`, `XC_M06LX`, `XC_M06LC`, `XC_M06HFX`, `XC_M06HFC`, `XC_M06X2X`, `XC_M06X2C`) ported, self-tests pass
-- [ ] **MGGA-05**: `XC_BLOCX` ported, self-test passes
+- [~] **MGGA-01**: TPSS family (`XC_TPSSX`, `XC_TPSSC`, `XC_REVTPSSX`, `XC_REVTPSSC`, `XC_TPSSLOCC`) ported (Plan 04-01; tier-1 self-tests pass). Tier-2 at order 3 (Plan 04-10): TPSSX/REVTPSSX show clamp-boundary AD-tail at rho ≈ 2e-14 (max_rel 2.7e-2 / 1.3e-2) — D-19 INCONCLUSIVE forwarded to Phase 6. **TPSSC/REVTPSSC/TPSSLOCC show catastrophic gradient-stress AD-chain divergence (max_rel 1.09e+30 / 3.73e+15 / 8.89e+27) at pt 9000-9999 where tau << tau_w (von Weizsäcker bound violated by ~9 orders of magnitude); root cause is f64-rounding cancellation in the `eps_pkzb * (1 + 2.8 * eps_pkzb * tauwtau3)` composition where tauwtau3 ≈ 1e+27 amplifies the difference between C++'s and Rust's evaluation orders. Algorithmically faithful port confirmed (Plan 04-10 Path-B bisection); D-19 INCONCLUSIVE forwarded to Phase 6 with explicit triage hand-off: either add `tau ≥ tau_w` regularization guard or exclude gradient-stress sub-grid for tau-using metaGGAs.**
+- [~] **MGGA-02**: SCAN family (`XC_SCANX`, `XC_SCANC`, `XC_RSCANX`, `XC_RSCANC`, `XC_RPPSCANX`, `XC_RPPSCANC`, `XC_R2SCANX`, `XC_R2SCANC`, `XC_R4SCANX`, `XC_R4SCANC`) ported (Plans 04-02 + 04-09 cross-mode; tier-1 self-tests pass). Tier-2 marked `excluded_by_upstream_spec` for all 10 SCAN-family entries per `validation/src/driver.rs` skip-list (commit `f968c32`) — C++ reference's `tmath::sqrt_expand` aborts the entire validation process on the shared `SCAN_like_eps.hpp` substrate (17 sqrt() call-sites inherited by every SCAN-family functional). Phase 6 JP grid harness or guarded sqrt expansion required.
+- [~] **MGGA-03**: Minnesota M05 family (`XC_M05X`, `XC_M05C`, `XC_M05X2X`, `XC_M05X2C`) ported (Plan 04-03; tier-1 self-tests pass). Tier-2 at order 3 (Plan 04-10): M05X2X 100% clean strict 1e-12; M05X/M05C/M05X2C exhibit small-magnitude AD-residual (max_rel 1.89e-12 / 9.26e-12 / 3.02e-11) at low-density polarised stratum — D-19 INCONCLUSIVE forwarded to Phase 6 (same shape as Phase-3 B97C/B97_1C/B97_2C 4.88e-11 forwards).
+- [~] **MGGA-04**: Minnesota M06 family (`XC_M06X`, `XC_M06C`, `XC_M06LX`, `XC_M06LC`, `XC_M06HFX`, `XC_M06HFC`, `XC_M06X2X`, `XC_M06X2C`) ported (Plan 04-03; tier-1 self-tests pass). Tier-2 at order 3 (Plan 04-10): M06X2X 100% clean strict 1e-12; M06X/M06LX/M06HFX small AD-residual (max_rel ≤ 7.85e-12); M06C/M06LC/M06HFC/M06X2C 4.88e-11 to 6.28e-11 at low-density polarised + gradient_stress strata — D-19 INCONCLUSIVE forwarded to Phase 6.
+- [~] **MGGA-05**: `XC_BLOCX` ported (Plan 04-03; tier-1 self-test passes). Tier-2 marked `excluded_by_upstream_spec` per skip-list — C++ reference's `tmath::log_expand` aborts on the BLOCX substrate at low-density tails; Phase 6 JP grid harness or guarded log expansion required. (RESEARCH-confirmed BLOCX is TPSS-shaped and BRX-independent per CONTEXT D-01-A correction.)
 
 ### Evaluation Modes
 
@@ -75,12 +75,12 @@
 
 ### Aliases & Parameters
 
-- [ ] **ALIAS-01**: All 46 aliases from `xcfun-master/src/functionals/aliases.cpp` are present and resolve to the same weight set as the C++ library (including the negative-weight `camcompx` canary)
-- [ ] **ALIAS-02**: Parameter `XC_EXX` settable, default 0.0
-- [ ] **ALIAS-03**: Parameter `XC_RANGESEP_MU` settable, default 0.4
-- [ ] **ALIAS-04**: Parameter `XC_CAM_ALPHA` settable, default 0.19
-- [ ] **ALIAS-05**: Parameter `XC_CAM_BETA` settable, default 0.46
-- [ ] **ALIAS-06**: `Functional::set(name, value)` recurses into aliases with weight multiplication, matches `XCFunctional.cpp` lines 369-405 byte-for-byte
+- [x] **ALIAS-01**: All 46 aliases from `xcfun-master/src/functionals/aliases.cpp` are present and resolve to the same weight set as the C++ library (Plan 04-04; verified by `test_camcompx_negative_weight` + `test_b3lyp_additive_accumulation` + `test_case_insensitive` alias canary tests, GREEN; re-confirmed Plan 04-10 Task 10.1 step 4)
+- [x] **ALIAS-02**: Parameter `XC_EXX` settable, default 0.0 (Plan 04-04; verified by `test_exx_parameter_overwrite` GREEN)
+- [x] **ALIAS-03**: Parameter `XC_RANGESEP_MU` settable, default 0.4 (Plan 04-04; verified by parameter default tests GREEN)
+- [x] **ALIAS-04**: Parameter `XC_CAM_ALPHA` settable, default 0.19 (Plan 04-04; verified by parameter default tests GREEN)
+- [x] **ALIAS-05**: Parameter `XC_CAM_BETA` settable, default 0.46 (Plan 04-04; verified by parameter default tests GREEN)
+- [x] **ALIAS-06**: `Functional::set(name, value)` recurses into aliases with weight multiplication, matches `XCFunctional.cpp` lines 369-405 byte-for-byte (Plan 04-04; verified by `test_b3lyp_additive_accumulation` — `set("b3lyp", 1.0)` followed by `set("slaterx", 0.5)` yields slaterx weight 1.30 GREEN)
 
 ### Rust API (native façade)
 
