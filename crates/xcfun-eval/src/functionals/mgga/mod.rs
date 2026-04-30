@@ -1,7 +1,10 @@
 //! MetaGGA (Meta-Generalised-Gradient-Approximation) functional bodies.
 //!
 //! Phase 4 ships **32 functional IDs** per D-01 (28 metaGGA + 4 carryovers
-//! BRX/BRC/BRXC + CSC). LB94 (id=66) deferred to Phase 5 per D-13.
+//! BRX/BRC/BRXC + CSC). Phase 5 D-16 added LB94 (id=78) as a registry
+//! stub; eval returns XcError::Runtime since lb94.cpp is `#if 0`'d
+//! upstream. (The earlier comment claiming "id=66" was incorrect —
+//! id 66 is XC_CSC.)
 //!
 //! # Layout
 //!

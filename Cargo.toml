@@ -1,11 +1,19 @@
 [workspace]
-# Phase 2: xcfun-core re-included (Plan 02-01 Wave-0f). xcfun-eval added in
+# Phase 5 Plan 05-00: xcfun-ffi → xcfun-capi rename (D-01); xcfun-functionals
+# deletion (D-04); xcfun-rs facade promoted to member (D-02). Phase 2:
+# xcfun-core re-included (Plan 02-01 Wave-0f). xcfun-eval added in
 # Plan 02-03 Wave-1B-1; validation added in Plan 02-06 Wave-2-1. Other crates
-# remain excluded (Phase 4+/5+/7+).
-members = ["crates/xcfun-ad", "crates/xcfun-core", "crates/xcfun-eval", "xtask", "validation"]
+# remain excluded (Phase 6+/7+).
+members = [
+    "crates/xcfun-ad",
+    "crates/xcfun-core",
+    "crates/xcfun-eval",
+    "crates/xcfun-rs",
+    "crates/xcfun-capi",
+    "xtask",
+    "validation",
+]
 exclude = [
-    "crates/xcfun-ffi",
-    "crates/xcfun-functionals",
     "crates/xcfun-gpu",
     "crates/xcfun-python",
 ]
