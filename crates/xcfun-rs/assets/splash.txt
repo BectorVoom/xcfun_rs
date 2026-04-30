@@ -1,0 +1,9 @@
+XCFun DFT library Copyright 2009-2020 Ulf Ekstrom and contributors.
+See http://dftlibs.org/xcfun/ for more information.
+
+This is free software; see the source code for copying conditions.
+There is ABSOLUTELY NO WARRANTY; not even for MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE. For details see the documentation.
+Scientific users of this library should cite
+U. Ekstrom, L. Visscher, R. Bast, A. J. Thorvaldsen and K. Ruud;
+J.Chem.Theor.Comp. 2010, DOI: 10.1021/ct100117s
