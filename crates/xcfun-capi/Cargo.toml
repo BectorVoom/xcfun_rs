@@ -12,3 +12,16 @@ crate-type = ["cdylib", "staticlib", "rlib"]
 [dependencies]
 xcfun-rs   = { path = "../xcfun-rs" }
 xcfun-core = { path = "../xcfun-core" }
+
+[dev-dependencies]
+# Plan 05-04: tests/c_abi.rs uses cc to compile + link tests/c_abi.c
+# against libxcfun_capi.a; examples/gen_expected.rs writes the
+# tests/fixtures/expected.json reference fixtures via serde_json.
+cc         = { workspace = true }
+serde      = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+
+[[example]]
+name = "gen_expected"
+path = "examples/gen_expected.rs"
+required-features = []

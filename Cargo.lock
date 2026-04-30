@@ -4667,6 +4667,9 @@ dependencies = [
 name = "xcfun-capi"
 version = "0.1.0"
 dependencies = [
+ "cc",
+ "serde",
+ "serde_json",
  "xcfun-core",
  "xcfun-rs",
 ]
