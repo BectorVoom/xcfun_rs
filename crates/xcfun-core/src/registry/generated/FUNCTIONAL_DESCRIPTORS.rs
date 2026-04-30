@@ -3,7 +3,7 @@
 // Regenerate with: cargo run -p xtask --bin regen-registry
 // Drift check: cargo run -p xtask --bin regen-registry -- --check (exit 2 on drift)
 
-/// Registry row describing one of the 78 functionals.
+/// Registry row describing one of the 79 functionals.
 ///
 /// See PLAN 02-02 Wave-1A-2 for provenance. The `test_in`/`test_out`/
 /// `test_threshold` slots are populated for the 8 LDA functionals that ship
@@ -119,8 +119,8 @@ static XC_P86C_TEST_OUT: [f64; 21] = [-2.274831748787136e-3, -6.0705512544759296
 static XC_PW91C_TEST_IN: [f64; 5] = [1.3e-1, 9.5e-2, 1.5e-1, 1.8e-1, 2.2e-1];
 static XC_PW91C_TEST_OUT: [f64; 6] = [-4.75398805591e-3, -6.1493081218e-2, -6.82665101239e-2, 4.86210103008e-3, 9.72420206015e-3, 4.86210103008e-3];
 
-/// 78-entry registry table indexed by `FunctionalId as usize`.
-pub static FUNCTIONAL_DESCRIPTORS: [FunctionalDescriptor; 78] = [
+/// 79-entry registry table indexed by `FunctionalId as usize` (78 upstream + LB94 stub per Phase 5 D-16).
+pub static FUNCTIONAL_DESCRIPTORS: [FunctionalDescriptor; 79] = [
     FunctionalDescriptor {
         id: FunctionalId::XC_SLATERX,
         name: "XC_SLATERX",
@@ -654,4 +654,5 @@ pub static FUNCTIONAL_DESCRIPTORS: [FunctionalDescriptor; 78] = [
         test_out: Some(&XC_PW91C_TEST_OUT),
         test_outlen: 6,
     },
+    FunctionalDescriptor::stub(FunctionalId::XC_LB94, "XC_LB94", Dependency::DENSITY.union(Dependency::GRADIENT)),
 ];

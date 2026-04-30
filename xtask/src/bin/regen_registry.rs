@@ -254,6 +254,12 @@ const FUNCTIONAL_IDS: &[&str] = &[
     "XC_TPSSLOCC",      // 75
     "XC_ZVPBEINTC",     // 76
     "XC_PW91C",         // 77
+    "XC_LB94",          // 78 — D-16 (Phase 5): present in Rust
+                        //          registry but NOT in upstream C++
+                        //          `list_of_functionals.hpp`. Body
+                        //          is `#if 0`'d in lb94.cpp. The
+                        //          descriptor is a stub; eval
+                        //          returns Runtime.
 ];
 
 // ---------- Rust source emission ----------
@@ -331,7 +337,7 @@ fn emit_functional_descriptors_rs(functionals: &[FunctionalRec]) -> String {
 
     // FunctionalDescriptor struct definition.
     out.push_str(
-        "/// Registry row describing one of the 78 functionals.\n\
+        "/// Registry row describing one of the 79 functionals.\n\
          ///\n\
          /// See PLAN 02-02 Wave-1A-2 for provenance. The `test_in`/`test_out`/\n\
          /// `test_threshold` slots are populated for the 8 LDA functionals that ship\n\
@@ -400,7 +406,7 @@ fn emit_functional_descriptors_rs(functionals: &[FunctionalRec]) -> String {
     out.push('\n');
 
     // The array literal — 78 entries in FunctionalId order.
-    out.push_str("/// 78-entry registry table indexed by `FunctionalId as usize`.\n");
+    out.push_str("/// 79-entry registry table indexed by `FunctionalId as usize` (78 upstream + LB94 stub per Phase 5 D-16).\n");
     out.push_str(&format!(
         "pub static FUNCTIONAL_DESCRIPTORS: [FunctionalDescriptor; {}] = [\n",
         FUNCTIONAL_IDS.len()
@@ -444,6 +450,15 @@ fn emit_functional_descriptors_rs(functionals: &[FunctionalRec]) -> String {
                     id, id, render_dependency(rec.depends)
                 ));
             }
+        } else if *id == "XC_LB94" {
+            // D-16: LB94 has dependency XC_GGA (= DENSITY | GRADIENT) per
+            // setup_lb94 in xcfun-master/src/functionals/lb94.cpp:48-50.
+            // Even though the body is #if 0'd, the descriptor records the
+            // intended dependency mask for downstream tools.
+            out.push_str(
+                "    FunctionalDescriptor::stub(FunctionalId::XC_LB94, \"XC_LB94\", \
+                 Dependency::DENSITY.union(Dependency::GRADIENT)),\n",
+            );
         } else {
             // Not found by extractor — emit generic stub.
             out.push_str(&format!(
@@ -576,6 +591,13 @@ fn emit_c_stubs_cpp(functionals: &[FunctionalRec]) -> (String, usize) {
     for id in FUNCTIONAL_IDS {
         if PHASE2_LDA_IDS.contains(id) {
             continue; // LDA IDs get the real ENERGY_FUNCTION from their .cpp file.
+        }
+        // D-16: LB94 has no upstream C++ symbol (lb94.cpp is `#if 0`'d
+        // and `XC_LB94` is absent from list_of_functionals.hpp).
+        // Emitting `FUNCTIONAL(XC_LB94)` would fail to compile in the
+        // validation crate. Skip.
+        if *id == "XC_LB94" {
+            continue;
         }
         // Depends bitmask: use the extractor-reported value when available; else
         // fall back to XC_DENSITY (safe default — bit 0 is always set).

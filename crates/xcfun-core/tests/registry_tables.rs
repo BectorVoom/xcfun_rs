@@ -6,12 +6,27 @@
 //!   * xcfun-master/src/xcint.cpp:93-135  — xcint_vars[] table
 //!   * xcfun-master/src/functionals/aliases.cpp — Phase-2 empty, Phase-4 populates
 
-use xcfun_core::{ALIASES, FUNCTIONAL_DESCRIPTORS, FunctionalId, VARS_TABLE};
+use xcfun_core::{ALIASES, Dependency, FUNCTIONAL_DESCRIPTORS, FunctionalId, VARS_TABLE};
 
 #[test]
-fn descriptors_count_is_78() {
-    assert_eq!(FUNCTIONAL_DESCRIPTORS.len(), 78);
+fn descriptors_count_is_79() {
+    // Plan 05-00 D-16: upstream 78 + Rust-only XC_LB94 stub.
+    assert_eq!(FUNCTIONAL_DESCRIPTORS.len(), 79);
     assert_eq!(FUNCTIONAL_DESCRIPTORS.len(), FunctionalId::COUNT);
+}
+
+#[test]
+fn lb94_descriptor_present() {
+    // D-16 — descriptor exists at row 78; depends mask matches
+    // setup_lb94 macro (xcfun-master/src/functionals/lb94.cpp:48-50).
+    let lb94 = &FUNCTIONAL_DESCRIPTORS[78];
+    assert_eq!(lb94.id, FunctionalId::XC_LB94);
+    assert_eq!(lb94.name, "XC_LB94");
+    assert!(lb94.depends.contains(Dependency::DENSITY));
+    assert!(lb94.depends.contains(Dependency::GRADIENT));
+    // No test data for LB94 (body is #if 0'd upstream).
+    assert!(lb94.test_in.is_none());
+    assert!(lb94.test_out.is_none());
 }
 
 #[test]
