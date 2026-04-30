@@ -4,7 +4,9 @@
 //! field is private so callers cannot bypass `set` validation by
 //! mutating `weights` / `settings` directly.
 
-use xcfun_core::{Dependency, Mode, Vars, XcError};
+use xcfun_core::{
+    Dependency, FunctionalId, Mode, Vars, XcError, registry::FUNCTIONAL_DESCRIPTORS,
+};
 
 /// The exchange-correlation functional handle.
 ///
@@ -37,18 +39,22 @@ impl Functional {
     /// RS-02 — case-insensitive name set. Three-case dispatch
     /// (functional / parameter / alias) per XCFunctional.cpp:369-405.
     ///
-    /// **Phase 5 D-02 boundary note:** `xcfun_eval::Functional::set` updates the
-    /// 82-slot `settings` array. The Phase 5 facade does NOT yet rebuild the
-    /// `weights: &'static [(FunctionalId, f64)]` slice from `settings`; the
-    /// existing `weights` slice (default empty for fresh handles) drives
-    /// `dependencies()` and `eval()`. To exercise an active-functional path
-    /// the caller must construct a `Functional` whose inner `weights` field is
-    /// pre-populated — done internally by tests via the
-    /// `with_weights_for_test` helper. End-to-end wiring of `set` →
-    /// `weights` is captured by the C-ABI layer (Plan 05-02) and the Phase 6
-    /// dispatch refactor.
+    /// **Phase 5 Plan 05-02 wiring:** after delegating to
+    /// `xcfun_eval::Functional::set` (which updates the 82-slot `settings`
+    /// array), we rebuild `self.0.weights` from non-zero functional slots
+    /// in `settings`. This mirrors the C++ design where `xcfun_set`
+    /// maintains both `settings[i] += value` and the `active_functionals[]`
+    /// array in lockstep (XCFunctional.cpp:372-385). Without this rebuild,
+    /// downstream `is_gga`, `is_metagga`, `eval_setup`, and `eval` would
+    /// observe an empty weights slice and produce zeroed output.
+    ///
+    /// **Memory note:** the rebuild leaks a small `Box<[(FunctionalId, f64)]>`
+    /// per top-level `set` call (the field type is `&'static`). Phase 6
+    /// will refactor `weights` to `Vec<...>` and drop the leak.
     pub fn set(&mut self, name: &str, value: f64) -> Result<(), XcError> {
-        self.0.set(name, value)
+        self.0.set(name, value)?;
+        self.sync_weights_from_settings();
+        Ok(())
     }
 
     /// RS-03 — read functional weight or parameter value.
@@ -152,6 +158,41 @@ impl Functional {
     #[inline]
     fn input_length_of(vars: Vars) -> usize {
         xcfun_eval::Functional::input_length(vars)
+    }
+
+    // ---------------------------------------------------------------
+    //  Phase 5 Plan 05-02 — weight rebuild from `settings`.
+    //
+    //  Iterates the upstream-78 functional slots of `self.0.settings`
+    //  (indices 0..78) and rebuilds `self.0.weights` from non-zero
+    //  entries. Slots 78..82 are parameters and are NOT included.
+    //  XC_LB94 (FunctionalId::XC_LB94 == 78) is intentionally excluded
+    //  here because its discriminant collides with ParameterId::
+    //  XC_RANGESEP_MU at slot 78; the upstream C ABI never enumerates
+    //  LB94 as a functional weight.
+    //
+    //  The leaked `Box<[(FunctionalId, f64)]>` per call is the documented
+    //  Phase 5 trade-off; Phase 6 refactors `weights` to `Vec<...>` and
+    //  drops the leak.
+    // ---------------------------------------------------------------
+    fn sync_weights_from_settings(&mut self) {
+        const UPSTREAM_FUNCTIONAL_COUNT: usize = 78;
+        let mut active: Vec<(FunctionalId, f64)> = Vec::new();
+        for fd in FUNCTIONAL_DESCRIPTORS.iter() {
+            let idx = fd.id as usize;
+            if idx >= UPSTREAM_FUNCTIONAL_COUNT {
+                continue; // skip XC_LB94 + parameter slots
+            }
+            let w = self.0.settings[idx];
+            if w != 0.0 {
+                active.push((fd.id, w));
+            }
+        }
+        // Box::leak the slice to obtain `&'static [(FunctionalId, f64)]`.
+        // Phase 6: replace `weights: &'static [...]` with `weights: Vec<...>`
+        // and drop the leak (D-13 / Phase 6 follow-up).
+        let leaked: &'static [(FunctionalId, f64)] = Box::leak(active.into_boxed_slice());
+        self.0.weights = leaked;
     }
 
     // ---------------------------------------------------------------
