@@ -1,0 +1,7 @@
+XCFun was written by Ulf Ekstrom, with contributions from
+Andre S. P. Gomes
+Radovan Bast
+Andrea Debnarova
+Paola Gori-Giorgi
+Alexei Yakovlev
+Michael Seth
