@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-04-30T19:00:00.000Z"
+status: planning
+last_updated: "2026-04-30T20:00:00.000Z"
 progress:
   total_phases: 8
   completed_phases: 5
@@ -14,7 +14,9 @@ progress:
 
 # Project State: xcfun_rs
 
-**Last updated:** 2026-04-30 (Phase 5 sign-off — 5/5 plans landed; 16 requirements RS-01..07/09/10 + CAPI-01..07 marked Complete; 10-fixture C-ABI golden test ALL FIXTURES PASS at 1e-12; xcfun-rs facade + xcfun-capi triple crate-type + cbindgen-generated xcfun.h + headers_match drift gate all GREEN; advancing to Phase 6 head-of-line)
+**Last updated:** 2026-04-30 (Phase 6 context gathered via `/gsd:discuss-phase 6` interactive; 18 decisions captured (D-01..D-18 + D-13-A) across 4 gray areas in `06-CONTEXT.md`. Wide Phase 6 with ~10–15 plans (decimal numbering = plan org); strict 1e-13 across all 78 functionals at sign-off via ACC-04 mpmath ground-truth amendment; ROCm/HIP primary GPU + CUDA/Metal opt-in; full xcfun-kernels + xcfun-gpu split per docs/design/05; 30+ Phase-3/4 D-19 forwards land as Plan 06-N1/N2/N3 cleanup. Commit `e9834b3`.)
+
+**2026-04-30 (earlier) entry (superseded):** Phase 5 sign-off — 5/5 plans landed; 16 requirements RS-01..07/09/10 + CAPI-01..07 marked Complete; 10-fixture C-ABI golden test ALL FIXTURES PASS at 1e-12.
 
 **2026-04-30 (earlier) entry (superseded):** Phase 5 context gathered via `/gsd:discuss-phase 5` interactive; 14 decisions captured (D-01..D-17) in 05-CONTEXT.md.
 
@@ -63,6 +65,7 @@ Order-3 full-matrix tier-2 sweep (`cargo run -p validation --release -- --backen
   XcError::InvalidVarsAndMode variant + as_c_code() i32 mapping
   (CAPI-05); LB94 descriptor add-back per D-16 (FunctionalId::XC_LB94 = 78
   with `#if 0`'d upstream body acknowledged in eval path).
+
 - **Plan 05-01 (Wave 2)**: xcfun-rs Functional newtype with 9 methods +
   Default + manual Debug; 11 module-level free functions
   (version/splash/authors/is_compatible_library/self_test/which_vars/
@@ -70,17 +73,20 @@ Order-3 full-matrix tier-2 sweep (`cargo run -p validation --release -- --backen
   describe_long); Send+Sync compile-time gate via static_assertions;
   facade-boundary zero-alloc fall-back form (b) per D-13 (cubecl-cpu
   per-launch substrate cost ~287 allocs/eval forwarded to Phase 6).
+
 - **Plan 05-02 (Wave 3)**: xcfun-capi 23 #[unsafe(no_mangle)] extern "C"
   fn exports + c_entry! macro (catch_unwind + NULL guard + abort);
   xcfun_s opaque handle / xcfun_mode_t / xcfun_vars_t types; cdylib +
   staticlib + rlib triple crate-type; 17/18 api_smoke tests passing
   (1 #[ignore]'d for the abort path).
+
 - **Plan 05-03 (Wave 4)**: cbindgen.toml (documentation=false; XCFun_API
   prefix; after_includes prelude inlining xcfun_mode + xcfun_vars +
   visibility macros + xcfun_t typedef); xtask regen-capi-header binary
   with --check drift gate; headers_match.rs diff harness (5-stage
   normalization, 27 canonical statements set-equal); committed
   xcfun.h + xcfun.h.sha256 stamp.
+
 - **Plan 05-04 (Wave 5)**: 10-fixture tests/c_abi.c golden + tests/c_abi.rs
   cc-driven compile/link/run + Phase 5 sign-off artifacts
   (05-VERIFICATION.md + REQUIREMENTS / ROADMAP / STATE updates). Two
@@ -95,13 +101,16 @@ Order-3 full-matrix tier-2 sweep (`cargo run -p validation --release -- --backen
 05-VERIFICATION.md "D-Decisions Coverage Audit" matrix.
 
 **Phase 5 caveats** (decision-drift documented in 05-VERIFICATION.md):
+
 - D-14 row 10: LB94→LDA(Mode::Potential) runtime substitute. Upstream
   lb94.cpp:15 is `#if 0`'d; LB94 descriptor present in xcfun-core
   (D-16 satisfied) but its eval path returns XcError::Runtime — the
   golden test substitutes LDA on Mode::Potential to preserve the
   Mode::Potential coverage goal of D-14 row 10.
+
 - D-14 row 8: SCANX→TPSSX fallback authorized but **NOT triggered** —
   SCANX evaluated cleanly at the chosen density point.
+
 - D-14 rows 2/3/4/5/9 Vars + alias substitution: dispatcher constraints
   in run_launch (LDA kernels at vars=2 only; GGA kernels at vars=6 only)
   preclude vars ∈ {20, 21} and the LDA+GGA-mixed B3LYP / CAMB3LYP aliases.
@@ -110,10 +119,12 @@ Order-3 full-matrix tier-2 sweep (`cargo run -p validation --release -- --backen
   respectively. Phase 6 work consolidates the dispatch table.
 
 **Phase 5 deferred to Phase 6** (RS-08 + ancillary):
+
 - RS-08 (Functional::eval_vec GPU dispatch) — entire Phase 6 surface.
 - Zero-alloc strict form: cubecl-cpu's per-launch create_from_slice
   drops to a pre-allocated reusable handle; D-13 fall-back tightens to
   strict (delta == 0) form.
+
 - Add LDA-vars=6 launch arms (or alternative DensVars-driven dispatch)
   so mixed LDA+GGA aliases can dispatch in-process — currently routed
   via the C++ validation harness only.
@@ -283,12 +294,23 @@ None.
 - 2026-04-24: `/gsd-discuss-phase 3 --auto` complete. Phase 3 (GGA Tier + Mode::Potential) CONTEXT.md written at `.planning/phases/03-gga-tier-mode-potential/03-CONTEXT.md` with 25 decisions (D-01..D-25) auto-selected across 10 gray areas. Inherits 53 locked decisions from Phases 1+2. DISCUSSION-LOG.md records the auto-selection rationale. Scope-count corrected: 40 GGA functionals (ROADMAP's "45" is loose). LB94 deferred to Phase 5 per D-19 (not in the 78-entry enum; uses legacy `setup_lb94` pattern). xcfun-ad additive extensions queued: `expm1`/`ctaylor_expm1` (D-05) and `sqrtx_asinh_sqrtx` helper (D-06) — mandatory for 6 GGA families. Note: `gsd-sdk` CLI unavailable in this environment; the workflow's final git-commit + auto-advance-to-plan steps were not auto-invoked.
 - 2026-04-24: `/gsd-plan-phase 3 --auto` complete. Research + pattern-mapping + 7 PLAN.md files (03-00..03-06) shipped. CONTEXT.md amended (commit `ee77cd7`): D-01-A scope reduction 40→36 (BRX/BRC/BRXC + CSC deferred to Phase 4 — metaGGA-class deps); D-01-B Wave 1 = 17 kernels; D-01-C Wave 3 = 8 kernels; D-10-A `_2ND_TAYLOR` discriminants corrected to 27..30. Checker GREEN on iteration 3 (5 BLOCKER / 9 WARNING / 3 INFO on iter 1 → 2 BLOCKER / 1 WARNING on iter 2 → 0 on iter 3). Key commits: `eea97b3` (RESEARCH.md), `050d0c6` (VALIDATION.md), `3e35e7b` (PATTERNS.md), `ee77cd7` (CONTEXT amendments), `96932d4` (03-00 plan), `00ce743` (plans 01-06), `1e8c156`..`5ac932f` (r1 revisions), `5d1fe96` (r2 final).
 - 2026-04-30: Quick task `260430-4x7` complete — `validation/` harness parallelised over `(functional, vars, mode, order)` tuples via `std::thread::scope` + `std::sync::mpsc`. New `--jobs auto|N` CLI flag (default = `available_parallelism()`); FFI pre-warm drives `xcint_assure_setup` to `is_setup=true` on the main thread before any worker spawn (no global mutex needed). `--jobs 1` reproduces the legacy serial path byte-for-record-content. Smoke run on `xc_slaterx + xc_pbex` order 0: 13.59s → 8.19s (1.66× on 4 jobs). Numerical contract preserved: `parallel_matches_serial_via_jsonl` + `parallel_matches_serial_via_matrix` integration tests assert byte-identical serialised JSON between `--jobs 1` and `--jobs 4` after sort. CLAUDE.md hard rules respected: no rayon, no crossbeam, no `unsafe impl Send` for `CppXcfun`. Commits: `e79c3ef` (Task 1 — CLI + RunConfig + pre-warm), `8c59675` (Task 2 — parallel scheduler), final docs commit (Task 3 — parity test + tempfile dev-dep + planning artifacts).
+- 2026-04-30: `/gsd:discuss-phase 6` complete (interactive). Phase 6 (GPU Backends + Batch Lifecycle / xcfun-kernels / xcfun-gpu) CONTEXT.md written at `.planning/phases/06-gpu-backends-batch-lifecycle-xcfun-kernels-xcfun-gpu/06-CONTEXT.md` with 18 decisions (D-01..D-18 + D-13-A) across 4 gray areas. DISCUSSION-LOG.md records the turn-by-turn audit trail. Commit `e9834b3`. Highlights: (a) **Wide Phase 6, ~10–15 plans, decimal numbering = plan org**; (b) **Strict 1e-13 across all 78 functionals at sign-off** with mpmath ground-truth amendment to ACC-04 where C++ documents cancellation; (c) **ROCm/HIP primary GPU backend** (`cubecl-hip = "=0.10.0-pre.3"`); CUDA + Metal as opt-in feature flags; user has no CUDA hardware locally; (d) **Full xcfun-kernels + xcfun-gpu split** per docs/design/05 — Plan 06-00 substrate first (AD N≥4 + libm-hybrid erf + tau≥tau_w guard + mpmath fixture generator) in current xcfun-eval tree; Plan 06-01 git-mv to new xcfun-kernels crate; Plan 06-02 unstub xcfun-gpu; Plans 06-03..05 GPU runtimes wiring; Plan 06-06 strict zero-alloc + Phase-5 weights Vec refactor + LDA-vars=6 DensVars-driven dispatch; Plans 06-N1..N3 D-19 cleanup; (e) **Pre-allocated reusable handle in Functional** (~287 → 0 allocs/eval after first call); (f) **Typed XcError::WgpuNoF64** ({ adapter_name: &'static str, requested_runtime: Backend } — preserves Phase 2 D-25 Copy via &'static payload). Memory updated: `project_gpu_target.md` (ROCm primary; CUDA + Metal opt-in), `project_crate_layout.md` (xcfun-kernels + xcfun-gpu split per design doc 05). Updates flagged for sign-off: ROADMAP / REQUIREMENTS / PROJECT.md / CLAUDE.md / docs/design/05+06+07+08+09+10 (Cuda → Rocm primary; ACC-04 mpmath amendment).
 
 ## Session Continuity
 
-**Last session stopped at:** `/gsd-plan-phase 3 --auto` — Phase 3 planned: 7 PLAN.md files across 7 waves; CONTEXT.md amended with D-01-A/B/C + D-10-A; checker GREEN on iteration 3. Git-committed (heads on `master` at `5d1fe96`).
+**Last session stopped at:** `/gsd:discuss-phase 6` (interactive) — Phase 6 CONTEXT gathered: 18 decisions (D-01..D-18 + D-13-A) across 4 gray areas; DISCUSSION-LOG.md records turn-by-turn audit trail. Memory updated with `project_gpu_target.md` + `project_crate_layout.md`. Git-committed (head on `master` at `e9834b3`).
 
-**Next action:** `/gsd-execute-phase 3 --auto` to execute Wave 0 (xcfun-ad primitives D-05/D-06 + fixtures), then waves 1–6 in order.
+**Next action:** `/gsd:plan-phase 6` to research + create Plan 06-00 (substrate: AD N≥4 + libm-hybrid erf + tau≥tau_w guard + mpmath fixture generator) → Plan 06-01 (xcfun-kernels git-mv) → Plans 06-02..05 (xcfun-gpu unstub + ROCm/CUDA/Metal/Wgpu wiring + RS-08) → Plan 06-06 (strict zero-alloc + weights Vec refactor + LDA-vars=6 dispatch) → Plans 06-N1..N3 (D-19 cleanup: root-cause bisection / mpmath-only fixtures for 20 excluded-spec / post-libm-hybrid sweep). Phase 6 research flag: YES per ROADMAP §"Phase 6" — cubecl-hip API surface, RDNA-2 driver requirement, mpmath sidecar pattern, AD `ctaylor_compose`/`multo` N≥4 specialisation strategy.
+
+**Phase 6 scope (locked in 06-CONTEXT.md):**
+
+- **3-axis deliverable:** algebraic substrate (AD N≥4 + libm-hybrid erf + tau guards + mpmath fixtures) + crate reorg (xcfun-kernels + xcfun-gpu split per design-doc-05) + GPU runtimes (ROCm primary, CUDA + Metal opt-in, Wgpu portable fallback) + RS-08 batch dispatch + 30+ D-19 cleanup.
+- **Strict 1e-13 sign-off bar across all 78 functionals.** Tier-3 GREEN via `cargo run -p validation --release -- --backend rocm --order 3 --filter '.*'`.
+- **ACC-04 amendment:** mpmath ground truth at 200-digit precision substitutes for C++ where C++ documents cancellation (LDAERFX bracket; TPSS tau≪tau_w; etc.). Preserves algorithmic-identity contract.
+- **GPU strategy: ROCm/HIP primary** (`cubecl-hip = "=0.10.0-pre.3"`); CUDA + Metal opt-in feature flags (community best-effort); Wgpu at 1e-9 with ERF auto-fallback to CPU; cubecl-* crates lockstep at `=0.10.0-pre.3`.
+- **Pre-allocated reusable handle in Functional** (Phase 5 D-13 forward; ~287 → 0 allocs/eval).
+- **Typed `XcError::WgpuNoF64`** preserving Phase 2 D-25 Copy via `&'static str` payload.
+- **Doc updates flagged for sign-off:** ROADMAP, REQUIREMENTS, PROJECT.md, CLAUDE.md, docs/design/05+06+07+08+09+10.
 
 **Phase 3 scope (locked in CONTEXT.md + amendments):**
 
