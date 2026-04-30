@@ -461,9 +461,12 @@ impl Functional {
                         | Vars::N_2ND_TAYLOR
                         | Vars::N_S_2ND_TAYLOR => {}
                         _ => {
-                            return Err(XcError::InvalidVars {
+                            // D-08-A — XCFunctional.cpp:441-443 returns
+                            // XC_EVARS | XC_EMODE (= 6) for this combined case.
+                            return Err(XcError::InvalidVarsAndMode {
                                 vars,
-                                required: Dependency::GRADIENT,
+                                mode,
+                                depends: deps,
                             });
                         }
                     }
@@ -1952,6 +1955,8 @@ mod tests {
     fn eval_setup_rejects_gga_non_2nd_taylor_potential() {
         // PBEX carries GRADIENT only. For Mode::Potential we must require one of
         // the _2ND_TAYLOR Vars arms; using XC_A_B_GAA_GAB_GBB must reject.
+        // Plan 05-00 D-08-A: error variant is now InvalidVarsAndMode (combined),
+        // mirroring XC_EVARS|XC_EMODE (=6) from XCFunctional.cpp:441-443.
         let f = Functional {
             weights: &[(FunctionalId::XC_PBEX, 1.0)],
             vars: Vars::A_B_GAA_GAB_GBB,
@@ -1959,10 +1964,40 @@ mod tests {
             order: 0,
             settings: DEFAULT_SETTINGS,
         };
-        assert!(matches!(
-            f.eval_setup(Vars::A_B_GAA_GAB_GBB, Mode::Potential, 0),
-            Err(XcError::InvalidVars { .. })
-        ));
+        let err = f
+            .eval_setup(Vars::A_B_GAA_GAB_GBB, Mode::Potential, 0)
+            .unwrap_err();
+        match err {
+            XcError::InvalidVarsAndMode { vars: v, mode: m, depends: d } => {
+                assert_eq!(v, Vars::A_B_GAA_GAB_GBB);
+                assert_eq!(m, Mode::Potential);
+                assert!(d.contains(Dependency::GRADIENT));
+            }
+            e => panic!("expected InvalidVarsAndMode, got {e:?}"),
+        }
+    }
+
+    #[test]
+    fn eval_setup_emits_combined_error_when_gga_potential_with_lda_vars() {
+        // Plan 05-00 D-08-A — PBEX = pure GGA, no laplacian/kinetic.
+        // Vars::A_B is LDA-shaped (no _2ND_TAYLOR). Must emit the combined
+        // InvalidVarsAndMode (XC_EVARS|XC_EMODE = 6).
+        let f = Functional {
+            weights: &[(FunctionalId::XC_PBEX, 1.0)],
+            vars: Vars::A_B,
+            mode: Mode::Potential,
+            order: 0,
+            settings: DEFAULT_SETTINGS,
+        };
+        let err = f.eval_setup(Vars::A_B, Mode::Potential, 0).unwrap_err();
+        match err {
+            XcError::InvalidVarsAndMode { vars, mode, depends } => {
+                assert_eq!(vars, Vars::A_B);
+                assert_eq!(mode, Mode::Potential);
+                assert!(depends.contains(Dependency::GRADIENT));
+            }
+            e => panic!("expected InvalidVarsAndMode, got {e:?}"),
+        }
     }
 
     #[test]
