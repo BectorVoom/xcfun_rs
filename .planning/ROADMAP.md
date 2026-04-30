@@ -162,7 +162,7 @@ Pre-pivot plans (VOID — reverted by Wave 0 of the new plan, retained in git hi
 
 - [x] 05-00-topology-foundation-PLAN.md — Wave 1: rename xcfun-ffi→xcfun-capi + delete xcfun-functionals + register xcfun-rs as workspace member + add XcError::InvalidVarsAndMode + as_c_code mapping (D-01, D-04, D-08-A; CAPI-05 substrate)
 - [x] 05-01-rust-facade-PLAN.md — Wave 2: xcfun-rs Functional newtype + 11 free fns + Send+Sync gate + zero-alloc fixture (D-02, D-03, D-13, D-15-A, D-17; RS-01..07, RS-09, RS-10)
-- [ ] 05-02-c-abi-exports-PLAN.md — Wave 3: xcfun-capi 23 #[no_mangle] extern "C" fns + c_entry! macro + cdylib/staticlib/rlib triple (D-05, D-06, D-07, D-08, D-15; CAPI-01, CAPI-03, CAPI-04, CAPI-06)
+- [x] 05-02-c-abi-exports-PLAN.md — Wave 3: xcfun-capi 23 #[no_mangle] extern "C" fns + c_entry! macro + cdylib/staticlib/rlib triple (D-05, D-06, D-07, D-08, D-15; CAPI-01, CAPI-03, CAPI-04, CAPI-06)
 - [ ] 05-03-cbindgen-headers-match-PLAN.md — Wave 4: cbindgen.toml + xtask regen-capi-header binary + sha256 stamp + headers_match diff test (D-09, D-10, D-11, D-12; CAPI-02)
 - [ ] 05-04-c-abi-golden-signoff-PLAN.md — Wave 5: tests/c_abi.c + tests/c_abi.rs (cc compile/link/run) + 9-fixture golden + Phase 5 sign-off; D-14 row-10 LB94 substitution to SLATERX/Potential per upstream lb94.cpp:15 `#if 0` finding (D-14, D-16; CAPI-07)
 
