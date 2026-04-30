@@ -13,9 +13,14 @@ fn main() -> anyhow::Result<()> {
             println!("Run: cargo run -p xtask --bin regen-ad-fixtures");
             Ok(())
         }
+        Some("regen-capi-header") => {
+            println!("xtask: regen-capi-header is implemented as its own binary.");
+            println!("Run: cargo run -p xtask --bin regen-capi-header");
+            Ok(())
+        }
         Some(other) => anyhow::bail!("unknown xtask subcommand: {other}"),
         None => {
-            println!("xtask subcommands: regen-ad-fixtures");
+            println!("xtask subcommands: regen-ad-fixtures regen-capi-header");
             Ok(())
         }
     }

@@ -47,6 +47,10 @@ name = "gen-potential-fixtures"
 path = "src/bin/gen_potential_fixtures.rs"
 required-features = ["gen-potential-fixtures"]
 
+[[bin]]
+name = "regen-capi-header"
+path = "src/bin/regen_capi_header.rs"
+
 [features]
 default = []
 # Phase 3 plan 03-05 (B5): the gen-potential-fixtures bin pulls in
@@ -80,3 +84,6 @@ rustc-demangle = "0.1"
 walkdir = "2"
 toml = "0.8"
 tempfile = "3"
+# Plan 05-03 D-09: cbindgen header regeneration via `regen-capi-header`
+# binary. Hard-pinned per CLAUDE.md technology stack.
+cbindgen = "=0.29.2"

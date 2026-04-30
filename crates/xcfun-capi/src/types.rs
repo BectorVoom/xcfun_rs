@@ -10,15 +10,28 @@
 
 use xcfun_rs::Functional;
 
+/// cbindgen:no-export
+///
 /// Opaque handle (xcfun_t in C). Owns a heap-allocated `Functional`.
+/// The generated `xcfun.h` declares this type via the prelude block in
+/// cbindgen.toml (`struct xcfun_s; typedef struct xcfun_s xcfun_t;`) to
+/// match upstream `xcfun-master/api/xcfun.h:252-262` byte-for-byte.
+/// Rust-side the struct retains its `inner: Functional` field so the
+/// FFI implementation in lib.rs can reach the wrapped facade.
 #[repr(C)]
 pub struct xcfun_s {
     pub(crate) inner: Functional,
 }
 
-/// `xcfun_mode_t` per xcfun-master/api/xcfun.h:35-41.
-/// Discriminants MUST match `xcfun_core::Mode` (Plan 02 D-07: Mode
-/// has #[repr(u32)] with Unset=0).
+/// cbindgen:no-export
+///
+/// `xcfun_mode_t` per xcfun-master/api/xcfun.h:35-41. Discriminants MUST
+/// match `xcfun_core::Mode` (Plan 02 D-07: Mode has #[repr(u32)] with
+/// Unset=0). The generated `xcfun.h` declares the upstream `xcfun_mode`
+/// enum via the cbindgen.toml prelude (D-12). The Rust FFI surface uses
+/// raw `c_int`, so cbindgen would not auto-emit this type; the prelude
+/// declaration keeps drop-in source compatibility with downstream callers
+/// using `XC_PARTIAL_DERIVATIVES` etc.
 #[repr(i32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum xcfun_mode_t {
@@ -29,9 +42,13 @@ pub enum xcfun_mode_t {
     XC_NR_MODES = 4,
 }
 
-/// `xcfun_vars_t` per xcfun-master/api/xcfun.h:86-122.
-/// 31 active variants + UNSET = -1 + NR_VARS = 31. Discriminants
-/// MUST match `xcfun_core::Vars`. Verified by the smoke test.
+/// cbindgen:no-export
+///
+/// `xcfun_vars_t` per xcfun-master/api/xcfun.h:86-122. 31 active variants
+/// + UNSET = -1 + NR_VARS = 31. Discriminants MUST match `xcfun_core::Vars`.
+/// Verified by the smoke test. Same rationale as `xcfun_mode_t` above —
+/// the upstream-equivalent `xcfun_vars` enum is emitted from the
+/// cbindgen.toml prelude (D-12).
 #[repr(i32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum xcfun_vars_t {
