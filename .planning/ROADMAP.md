@@ -24,7 +24,7 @@ The dependency DAG (per `ARCHITECTURE.md` section 7 and `SUMMARY.md` "Phase Orde
 - [x] **Phase 2: Core Foundations + LDA Tier + Parity Harness** - Complete (2026-04-22)[^acc04] — `xcfun-core` type surface + registry (11 LDAs populated, 67 stubs), `xcfun-eval` cubecl launcher with 11 LDA `#[cube] fn` kernels, `DensVarsDev<F>` + `build_densvars` + `regularize`, tier-1 self-tests GREEN for 7/7 LDAs with upstream test_in, tier-2 validation harness GREEN at orders 0/1 for 9/9 non-excluded LDAs (8 strict 1e-12 + 3 LDAERF 1e-7 per D-24)
 - [x] **Phase 3: GGA Tier + `Mode::Potential`** - Complete (2026-04-25) — 36 of 40 GGA functionals shipped (BR×3 + CSC deferred to Phase 4 per D-01-A; LB94 deferred to Phase 5 per D-19); `Mode::Potential` via `CTaylor<f64, 2>` divergence construction GREEN strict 1e-12 (potential_parity_100 + 510k-record sweep); `Mode::PartialDerivatives` orders 0..=4 (capstone at order 2, 9.86M records); 13 D-19 INCONCLUSIVE entries forwarded to Phase 6 per D-18; 3 follow-up items in 03-HUMAN-UAT.md
 - [x] **Phase 4: metaGGA Tier + `Mode::Contracted` + Aliases** - Complete (2026-04-30)[^d19p4] — 32 functional bodies (28 metaGGA + 4 Phase-3 carryovers BRX/BRC/BRXC + CSC); 46-alias engine + 4 parameters with multiplicative weight composition; `Mode::Contracted` orders 0..=4 verified across 5 functionals (LDA + GGA + 3 metaGGA exemplars TPSSX/SCANX/M06X), orders 5..=6 D-19 forward to Phase 6 per Plan 04-05 D-19; full-matrix tier-2 at order 3 GREEN modulo inherited Phase-3 D-19 forwards (11 entries) + 3 NEW Phase-4 ERF forwards (Plan 04-08) + 3 NEW Phase-4 gradient-stress AD-chain divergences for TPSS-correlation (Plan 04-10 Path-B bisection confirmed algorithmically faithful port; root cause is f64-rounding cancellation in unphysical tau<<tau_w regime) + routine clamp-boundary + small-magnitude residuals for TPSSX/REVTPSSX/M05/M06 family. Plans: 11 total (04-00..04-06 original + 04-07/08/09/10 gap closure).
-- [ ] **Phase 5: Rust Facade (`xcfun-rs`) + C ABI (`xcfun-capi`)** - Thin facade re-exports + full C ABI with cbindgen-generated `xcfun.h` byte-matched to reference
+- [x] **Phase 5: Rust Facade (`xcfun-rs`) + C ABI (`xcfun-capi`)** - Complete (2026-04-30) — thin facade re-exports + full C ABI with cbindgen-generated `xcfun.h` byte-matched to reference; 16 requirements (RS-01..07/09/10 + CAPI-01..07) marked Complete; 10-fixture C-ABI golden test ALL FIXTURES PASS at 1e-12
 - [ ] **Phase 6: Kernels (`xcfun-kernels`) + CPU Batch + CUDA + Wgpu Backends** - Single `#[cube]` source per functional; `Batch<CpuRuntime>` at 1e-13; CUDA at 1e-13; Wgpu at 1e-9 with `erf` fallback
 - [ ] **Phase 7: Python Bindings (`xcfun-py`) + Release** - PyO3 0.28 + rust-numpy 0.28 wheel passing `pytest`, crates published, release ceremony
 
@@ -163,8 +163,8 @@ Pre-pivot plans (VOID — reverted by Wave 0 of the new plan, retained in git hi
 - [x] 05-00-topology-foundation-PLAN.md — Wave 1: rename xcfun-ffi→xcfun-capi + delete xcfun-functionals + register xcfun-rs as workspace member + add XcError::InvalidVarsAndMode + as_c_code mapping (D-01, D-04, D-08-A; CAPI-05 substrate)
 - [x] 05-01-rust-facade-PLAN.md — Wave 2: xcfun-rs Functional newtype + 11 free fns + Send+Sync gate + zero-alloc fixture (D-02, D-03, D-13, D-15-A, D-17; RS-01..07, RS-09, RS-10)
 - [x] 05-02-c-abi-exports-PLAN.md — Wave 3: xcfun-capi 23 #[no_mangle] extern "C" fns + c_entry! macro + cdylib/staticlib/rlib triple (D-05, D-06, D-07, D-08, D-15; CAPI-01, CAPI-03, CAPI-04, CAPI-06)
-- [ ] 05-03-cbindgen-headers-match-PLAN.md — Wave 4: cbindgen.toml + xtask regen-capi-header binary + sha256 stamp + headers_match diff test (D-09, D-10, D-11, D-12; CAPI-02)
-- [ ] 05-04-c-abi-golden-signoff-PLAN.md — Wave 5: tests/c_abi.c + tests/c_abi.rs (cc compile/link/run) + 9-fixture golden + Phase 5 sign-off; D-14 row-10 LB94 substitution to SLATERX/Potential per upstream lb94.cpp:15 `#if 0` finding (D-14, D-16; CAPI-07)
+- [x] 05-03-cbindgen-headers-match-PLAN.md — Wave 4: cbindgen.toml + xtask regen-capi-header binary + sha256 stamp + headers_match diff test (D-09, D-10, D-11, D-12; CAPI-02)
+- [x] 05-04-c-abi-golden-signoff-PLAN.md — Wave 5: tests/c_abi.c + tests/c_abi.rs (cc compile/link/run) + 10-fixture golden + Phase 5 sign-off; D-14 row-10 LB94→LDA(Potential) runtime substitute per upstream lb94.cpp:15 `#if 0` finding; rows 4 + 9 substituted to bp86 / beckecamx per dispatch-table constraints (Phase 6 work) (D-14, D-16; CAPI-07)
 
 ### Phase 6: GPU Backends + Batch Lifecycle (`xcfun-kernels` / `xcfun-gpu`)
 **Goal**: CUDA and Wgpu cubecl runtimes enabled; `Functional::eval_vec` auto-dispatches between `CpuRuntime`, `CudaRuntime`, and `WgpuRuntime` per `auto_backend()`; tier-3 parity at 1e-13 (CUDA vs CPU) and 1e-9 (Wgpu vs CPU with `erf` auto-fallback). Per-functional `#[cube]` kernel bodies already exist (landed in Phases 2–4 atop `xcfun-ad`'s cubecl-native `CTaylor`); Phase 6 adds the GPU runtimes, buffer pools, dispatch heuristic, and batch lifecycle on top.
@@ -202,7 +202,7 @@ Pre-pivot plans (VOID — reverted by Wave 0 of the new plan, retained in git hi
 | 2. Core Foundations + LDA Tier + Parity Harness | 7/7 | Complete (with caveats) | 2026-04-22[^acc04] |
 | 3. GGA Tier + `Mode::Potential` | 7/7 | Complete (with caveats — 13 D-19 forwarded to Phase 6; 3 HUMAN-UAT items pending) | 2026-04-25 |
 | 4. metaGGA Tier + `Mode::Contracted` + Aliases | 11/11 | Complete (with caveats — 30+ D-19 forwarded to Phase 6) | 2026-04-30 |
-| 5. Rust Facade + C ABI | 0/0 | Not started | - |
+| 5. Rust Facade + C ABI | 5/5 | Complete | 2026-04-30 |
 | 6. Kernels + CPU Batch + CUDA + Wgpu Backends | 0/0 | Not started | - |
 | 7. Python Bindings + Release | 0/0 | Not started | - |
 

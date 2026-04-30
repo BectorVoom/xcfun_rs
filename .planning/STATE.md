@@ -3,18 +3,20 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-30T05:26:23.271Z"
+last_updated: "2026-04-30T19:00:00.000Z"
 progress:
   total_phases: 8
-  completed_phases: 3
+  completed_phases: 5
   total_plans: 37
-  completed_plans: 32
-  percent: 86
+  completed_plans: 37
+  percent: 100
 ---
 
 # Project State: xcfun_rs
 
-**Last updated:** 2026-04-30 (Phase 5 context gathered via `/gsd:discuss-phase 5` interactive; 14 decisions captured (D-01..D-17) in 05-CONTEXT.md across 4 areas: crate topology [rename xcfun-ffi→xcfun-capi; new xcfun-rs wrapper crate; lookup tables stay in xcfun-core; delete xcfun-functionals stub], C ABI panic+error contract [c_entry! macro with stderr+abort; void-returning C fns abort on Err mirroring xcfun::die; defensive NULL checks; trust caller-supplied buffer sizes], cbindgen workflow [xtask regen-capi-header + checked-in xcfun.h; headers_match integration test in xcfun-capi; documentation=false; XCFun_API verbatim via cbindgen prefix + inline prelude macro defs], hot-path zero-alloc verification [counting #[global_allocator] in xcfun-rs/tests/zero_alloc.rs; 10-fixture tests/c_abi.c spanning LDA/GGA/metaGGA/alias/Contracted/Potential incl. LB94]; LB94 (Phase-3 D-19 deferred) re-confirmed not alias-feasible per Phase 4 D-13 — additive descriptor entry only; ready for `/gsd:plan-phase 5`)
+**Last updated:** 2026-04-30 (Phase 5 sign-off — 5/5 plans landed; 16 requirements RS-01..07/09/10 + CAPI-01..07 marked Complete; 10-fixture C-ABI golden test ALL FIXTURES PASS at 1e-12; xcfun-rs facade + xcfun-capi triple crate-type + cbindgen-generated xcfun.h + headers_match drift gate all GREEN; advancing to Phase 6 head-of-line)
+
+**2026-04-30 (earlier) entry (superseded):** Phase 5 context gathered via `/gsd:discuss-phase 5` interactive; 14 decisions captured (D-01..D-17) in 05-CONTEXT.md.
 
 **2026-04-25 entry (superseded):** Phase 4 context gathered via `/gsd:discuss-phase --auto`; 11 gray areas auto-resolved as D-01..D-14 in 04-CONTEXT.md.
 
@@ -22,20 +24,20 @@ progress:
 
 **Core Value:** Every functional must produce numerical output matching C++ xcfun within relative error <= 1.0e-12, across all evaluation modes and derivative orders.
 
-**Current focus:** Phase 05 — rust-facade-xcfun-rs-c-abi-xcfun-capi
+**Current focus:** Phase 06 — Kernels + CPU Batch + GPU Backends (NEXT, not yet started)
 
 ## Current Position
 
-Phase: 05 (rust-facade-xcfun-rs-c-abi-xcfun-capi) — EXECUTING
-Plan: 1 of 5
-Plans: 11 (04-00 ✓, 04-01 ✓, 04-02 ✓, 04-03 ✓, 04-04 ✓, 04-05 ✓, 04-06 partial→VERIFICATION gaps_found, 04-07 ✓ gap closure driver extension, 04-08 ✓ gap closure ERF investigation, 04-09 ✓ gap closure contracted metaGGA, 04-10 ✓ phase re-signoff with caveats)
-Scope: 32 functional bodies (28 metaGGA + 4 carryovers BRX/BRC/BRXC + CSC); 46 aliases + 4 parameters; Mode::Contracted orders 0..=4 verified.
+Phase: 06 (kernels-cpu-batch-cuda-wgpu-backends) — NEXT (not yet started)
+Plan: -- (Phase 6 planning pending)
+Plans (Phase 5): 5 (05-00 ✓, 05-01 ✓, 05-02 ✓, 05-03 ✓, 05-04 ✓)
+Scope (Phase 5): xcfun-rs facade with Functional newtype + 11 free fns; xcfun-capi C ABI drop-in (23 #[unsafe(no_mangle)] exports); cbindgen-generated xcfun.h with headers_match drift gate; 10-fixture C-ABI golden test at 1e-12.
 
 - **Milestone:** Initial v1 build-out
-- **Phase:** 04 (metagga-tier-mode-contracted-aliases) — **COMPLETE (2026-04-30)** — signed_off_with_caveats
-- **Plan:** 04-10 complete. All 11 Phase-4 plans shipped.
-- **Status:** Executing Phase 05
-- **Progress:** [████████░░] 50% (4/8 phases; 32/32 known plans)
+- **Phase:** 05 (rust-facade-xcfun-rs-c-abi-xcfun-capi) — **COMPLETE (2026-04-30)** — signed_off
+- **Plan:** 05-04 complete. All 5 Phase-5 plans shipped.
+- **Status:** Phase 6 head-of-line (planning pending)
+- **Progress:** [██████░░] 62% (5/8 phases; 37/37 known plans)
 
 ### Phase 4 sign-off summary (2026-04-30)
 
@@ -50,6 +52,71 @@ Order-3 full-matrix tier-2 sweep (`cargo run -p validation --release -- --backen
   - **3 Phase-4 ERF forwards** (Plan 04-08): LDAERFX 6.7e-2, LDAERFC 4.6e-6, LDAERFC_JT 4.6e-5 — AD-chain amplification of erf bracket cancellation, Phase-6 libm-hybrid required.
   - **11 inherited Phase-3 forwards still failing at order 3**: PBEINTC 6.2e+1, P86C/P86CORRC 9.2e-2, PW91C 1.7e-3, SPBEC 5.3e-4, BECKESRX 2.3e+2, APBEC 5.7e-9, B97{,_1,_2}C 7.8e-11, PW91K 1.4e-11.
 - **Mode::Contracted orders 5..=6 metaGGA** still D-19 forwarded per Plan 04-05 (xcfun-ad ctaylor_compose/multo N≥4 specialisations — Phase-6 prerequisite).
+
+### Phase 5 sign-off summary (2026-04-30)
+
+5 plans landed across Wave 1..5 (Plans 05-00..05-04). 16 requirements
+(RS-01..07/09/10 + CAPI-01..07) marked Complete; RS-08 remains Phase 6.
+
+- **Plan 05-00 (Wave 1)**: workspace topology rename xcfun-ffi→xcfun-capi
+  + delete xcfun-functionals + register xcfun-rs as workspace member;
+  XcError::InvalidVarsAndMode variant + as_c_code() i32 mapping
+  (CAPI-05); LB94 descriptor add-back per D-16 (FunctionalId::XC_LB94 = 78
+  with `#if 0`'d upstream body acknowledged in eval path).
+- **Plan 05-01 (Wave 2)**: xcfun-rs Functional newtype with 9 methods +
+  Default + manual Debug; 11 module-level free functions
+  (version/splash/authors/is_compatible_library/self_test/which_vars/
+  which_mode/enumerate_parameters/enumerate_aliases/describe_short/
+  describe_long); Send+Sync compile-time gate via static_assertions;
+  facade-boundary zero-alloc fall-back form (b) per D-13 (cubecl-cpu
+  per-launch substrate cost ~287 allocs/eval forwarded to Phase 6).
+- **Plan 05-02 (Wave 3)**: xcfun-capi 23 #[unsafe(no_mangle)] extern "C"
+  fn exports + c_entry! macro (catch_unwind + NULL guard + abort);
+  xcfun_s opaque handle / xcfun_mode_t / xcfun_vars_t types; cdylib +
+  staticlib + rlib triple crate-type; 17/18 api_smoke tests passing
+  (1 #[ignore]'d for the abort path).
+- **Plan 05-03 (Wave 4)**: cbindgen.toml (documentation=false; XCFun_API
+  prefix; after_includes prelude inlining xcfun_mode + xcfun_vars +
+  visibility macros + xcfun_t typedef); xtask regen-capi-header binary
+  with --check drift gate; headers_match.rs diff harness (5-stage
+  normalization, 27 canonical statements set-equal); committed
+  xcfun.h + xcfun.h.sha256 stamp.
+- **Plan 05-04 (Wave 5)**: 10-fixture tests/c_abi.c golden + tests/c_abi.rs
+  cc-driven compile/link/run + Phase 5 sign-off artifacts
+  (05-VERIFICATION.md + REQUIREMENTS / ROADMAP / STATE updates). Two
+  Plan-05-04 Rule-1 fixes: (a) cbindgen [export.rename] xcfun_s = xcfun_t
+  fixes bare-struct-tag function signatures; (b) Functional::input_buffer_length
+  helper + xcfun_eval shim fix accounts for Mode::Contracted's
+  inlen × (1 << order) input layout. cc invocation flags per CLAUDE.md
+  ACC-05/06: -fno-fast-math -ffp-contract=off (NEVER -ffast-math). Linux
+  link line: -lstdc++ -lm -lpthread -ldl. ALL FIXTURES PASS at 1e-12 GREEN.
+
+**Phase 5 D-decisions added** (D-01..D-17 + D-08-A + D-15-A): see
+05-VERIFICATION.md "D-Decisions Coverage Audit" matrix.
+
+**Phase 5 caveats** (decision-drift documented in 05-VERIFICATION.md):
+- D-14 row 10: LB94→LDA(Mode::Potential) runtime substitute. Upstream
+  lb94.cpp:15 is `#if 0`'d; LB94 descriptor present in xcfun-core
+  (D-16 satisfied) but its eval path returns XcError::Runtime — the
+  golden test substitutes LDA on Mode::Potential to preserve the
+  Mode::Potential coverage goal of D-14 row 10.
+- D-14 row 8: SCANX→TPSSX fallback authorized but **NOT triggered** —
+  SCANX evaluated cleanly at the chosen density point.
+- D-14 rows 2/3/4/5/9 Vars + alias substitution: dispatcher constraints
+  in run_launch (LDA kernels at vars=2 only; GGA kernels at vars=6 only)
+  preclude vars ∈ {20, 21} and the LDA+GGA-mixed B3LYP / CAMB3LYP aliases.
+  Substituted to vars=6 throughout; rows 4 + 9 use bp86 (additive 2-GGA-
+  term alias) and beckecamx (range-separated GGA exchange functional)
+  respectively. Phase 6 work consolidates the dispatch table.
+
+**Phase 5 deferred to Phase 6** (RS-08 + ancillary):
+- RS-08 (Functional::eval_vec GPU dispatch) — entire Phase 6 surface.
+- Zero-alloc strict form: cubecl-cpu's per-launch create_from_slice
+  drops to a pre-allocated reusable handle; D-13 fall-back tightens to
+  strict (delta == 0) form.
+- Add LDA-vars=6 launch arms (or alternative DensVars-driven dispatch)
+  so mixed LDA+GGA aliases can dispatch in-process — currently routed
+  via the C++ validation harness only.
 
 ## Performance Metrics
 
