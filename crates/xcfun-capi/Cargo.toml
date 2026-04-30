@@ -2,9 +2,13 @@
 name = "xcfun-capi"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 description = "C ABI drop-in replacement for xcfun-master/api/xcfun.h"
 license = "MPL-2.0"
 
+[lib]
+crate-type = ["cdylib", "staticlib", "rlib"]
+
 [dependencies]
+xcfun-rs   = { path = "../xcfun-rs" }
 xcfun-core = { path = "../xcfun-core" }
-# Plan 05-02 adds xcfun-rs dep + crate-type triple. This plan only renames.

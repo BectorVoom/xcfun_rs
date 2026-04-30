@@ -4555,6 +4555,7 @@ name = "xcfun-capi"
 version = "0.1.0"
 dependencies = [
  "xcfun-core",
+ "xcfun-rs",
 ]
 
 [[package]]
