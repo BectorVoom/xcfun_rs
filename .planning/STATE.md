@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-30T05:24:03.990Z"
+last_updated: "2026-04-30T05:26:23.271Z"
 progress:
   total_phases: 8
   completed_phases: 3
@@ -22,18 +22,19 @@ progress:
 
 **Core Value:** Every functional must produce numerical output matching C++ xcfun within relative error <= 1.0e-12, across all evaluation modes and derivative orders.
 
-**Current focus:** Phase 04 — metagga-tier-mode-contracted-aliases
+**Current focus:** Phase 05 — rust-facade-xcfun-rs-c-abi-xcfun-capi
 
 ## Current Position
 
-Phase: 04 (metagga-tier-mode-contracted-aliases) — **COMPLETE WITH GAP CLOSURE (2026-04-30)** — phase-4-complete
+Phase: 05 (rust-facade-xcfun-rs-c-abi-xcfun-capi) — EXECUTING
+Plan: 1 of 5
 Plans: 11 (04-00 ✓, 04-01 ✓, 04-02 ✓, 04-03 ✓, 04-04 ✓, 04-05 ✓, 04-06 partial→VERIFICATION gaps_found, 04-07 ✓ gap closure driver extension, 04-08 ✓ gap closure ERF investigation, 04-09 ✓ gap closure contracted metaGGA, 04-10 ✓ phase re-signoff with caveats)
 Scope: 32 functional bodies (28 metaGGA + 4 carryovers BRX/BRC/BRXC + CSC); 46 aliases + 4 parameters; Mode::Contracted orders 0..=4 verified.
 
 - **Milestone:** Initial v1 build-out
 - **Phase:** 04 (metagga-tier-mode-contracted-aliases) — **COMPLETE (2026-04-30)** — signed_off_with_caveats
 - **Plan:** 04-10 complete. All 11 Phase-4 plans shipped.
-- **Status:** Ready to execute
+- **Status:** Executing Phase 05
 - **Progress:** [████████░░] 50% (4/8 phases; 32/32 known plans)
 
 ### Phase 4 sign-off summary (2026-04-30)
