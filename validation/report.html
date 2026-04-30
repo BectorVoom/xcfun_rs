@@ -22,9 +22,9 @@ td.missing { background: #eef; color: #668; font-style: italic; text-align: cent
 <h1>XCFun Tier-2 Parity Report</h1>
 <p>Backend: <code>CpuRuntime (cubecl-cpu =0.10.0-pre.3)</code></p>
 <p>Reference: <code>xcfun-master/</code> (vendored, cc-compiled static lib <code>xcfun_cpp_lda</code>)</p>
-<p>Generated: <code>1777205086 seconds since Unix epoch (UTC)</code></p>
-<p>Total records: <strong>28680020</strong>; Failed: <strong style="color:#c00">3806228</strong>; Rust-unavailable: <strong style="color:#c60">20</strong> (D-19 INCONCLUSIVE)</p>
-<p>Clamp-stratum excluded (Plan 02-06 Fix 2, D-22): <strong>209364</strong> records (of which <strong>23690</strong> would have failed the threshold but are tests of the `regularize` clamp design, not kernel correctness).</p>
+<p>Generated: <code>1777507450 seconds since Unix epoch (UTC)</code></p>
+<p>Total records: <strong>3000728</strong>; Failed: <strong style="color:#c00">2983450</strong>; Rust-unavailable: <strong style="color:#c60">80</strong> (D-19 INCONCLUSIVE)</p>
+<p>Clamp-stratum excluded (Plan 02-06 Fix 2, D-22): <strong>16966</strong> records (of which <strong>16966</strong> would have failed the threshold but are tests of the `regularize` clamp design, not kernel correctness).</p>
 <table>
 <thead><tr>
 <th>Functional</th>
@@ -32,50 +32,82 @@ td.missing { background: #eef; color: #668; font-style: italic; text-align: cent
 <th>Tolerance</th>
 </tr></thead>
 <tbody>
-<tr><td class="name">XC_APBEC</td><td class="green">3.33e-16</td><td class="green">8.53e-16</td><td class="red">1.09e-12</td><td class="red">5.70e-9</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_APBEX</td><td class="red">2.06e-1</td><td class="red">2.06e-1</td><td class="red">2.06e-1</td><td class="red">2.06e-1</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_B97C</td><td class="green">5.55e-16</td><td class="red">3.41e-12</td><td class="red">4.88e-11</td><td class="red">7.82e-11</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_B97X</td><td class="green">3.07e-16</td><td class="green">6.67e-16</td><td class="green">2.66e-15</td><td class="red">9.46e-12</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_B97_1C</td><td class="green">5.55e-16</td><td class="red">3.20e-12</td><td class="red">4.88e-11</td><td class="red">7.82e-11</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_B97_1X</td><td class="green">3.82e-16</td><td class="green">4.74e-16</td><td class="green">2.42e-15</td><td class="red">9.46e-12</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_B97_2C</td><td class="green">7.51e-16</td><td class="red">3.00e-11</td><td class="red">4.88e-11</td><td class="red">7.82e-11</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_B97_2X</td><td class="green">3.79e-16</td><td class="green">6.66e-16</td><td class="green">3.55e-15</td><td class="red">9.46e-12</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_BECKECAMX</td><td class="green">1.01e-15</td><td class="green">1.24e-14</td><td class="red">6.97e-12</td><td class="red">2.00e-8</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_BECKECORRX</td><td class="green">3.41e-16</td><td class="green">9.69e-15</td><td class="green">5.84e-14</td><td class="yellow">1.91e-13</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_BECKESRX</td><td class="green">9.10e-15</td><td class="red">1.60e-3</td><td class="red">1.05e-1</td><td class="red">2.27e2</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_BECKEX</td><td class="green">3.84e-16</td><td class="green">9.69e-15</td><td class="green">5.84e-14</td><td class="yellow">5.67e-13</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_BTK</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">4.77e-15</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_KTX</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">5.49e-16</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_LDAERFC</td><td class="green">4.44e-16</td><td class="green">5.55e-16</td><td class="red">7.45e-6</td><td class="red">5.10e2</td><td class="tol">1e-7 (D-24 override)</td></tr>
-<tr><td class="name">XC_LDAERFC_JT</td><td class="green">1.56e-9</td><td class="green">2.49e-9</td><td class="red">8.36e-7</td><td class="red">1.07e-4</td><td class="tol">1e-7 (D-24 override)</td></tr>
-<tr><td class="name">XC_LDAERFX</td><td class="green">4.21e-9</td><td class="green">4.21e-9</td><td class="red">6.74e-2</td><td class="red">1.11e1</td><td class="tol">1e-7 (D-24 override)</td></tr>
-<tr><td class="name">XC_LYPC</td><td class="green">4.28e-14</td><td class="red">1.49e-12</td><td class="red">2.03e-12</td><td class="red">1.26e-10</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_OPTX</td><td class="green">3.40e-16</td><td class="green">1.71e-15</td><td class="red">1.16e-12</td><td class="red">5.30e-10</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_OPTXCORR</td><td class="green">4.32e-16</td><td class="green">2.00e-15</td><td class="yellow">4.45e-13</td><td class="red">5.84e-10</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_APBEC</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="red">1.09e-12</td><td class="red">5.70e-9</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_APBEX</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_B97C</td><td class="green">1.30e-18</td><td class="red">3.41e-12</td><td class="red">4.88e-11</td><td class="red">7.82e-11</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_B97X</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="red">9.46e-12</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_B97_1C</td><td class="green">1.73e-18</td><td class="red">3.20e-12</td><td class="red">4.88e-11</td><td class="red">7.82e-11</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_B97_1X</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="red">9.46e-12</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_B97_2C</td><td class="green">1.73e-18</td><td class="red">3.00e-11</td><td class="red">4.88e-11</td><td class="red">7.82e-11</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_B97_2X</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="red">9.46e-12</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_BECKECAMX</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="red">6.97e-12</td><td class="red">2.00e-8</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_BECKECORRX</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_BECKESRX</td><td class="green">1.04e-17</td><td class="red">1.60e-3</td><td class="red">1.05e-1</td><td class="red">2.27e2</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_BECKEX</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_BLOCX</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_BRC</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_BRX</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_BRXC</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_BTK</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_CSC</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_KTX</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_LDAERFC</td><td class="green">8.67e-19</td><td class="green">8.67e-19</td><td class="red">4.57e-6</td><td class="green">8.67e-19</td><td class="tol">1e-7 (D-24 override)</td></tr>
+<tr><td class="name">XC_LDAERFC_JT</td><td class="green">5.08e-11</td><td class="green">5.08e-11</td><td class="red">8.36e-7</td><td class="red">4.56e-5</td><td class="tol">1e-7 (D-24 override)</td></tr>
+<tr><td class="name">XC_LDAERFX</td><td class="green">2.80e-10</td><td class="green">2.80e-10</td><td class="red">6.74e-2</td><td class="red">1.97e-5</td><td class="tol">1e-7 (D-24 override)</td></tr>
+<tr><td class="name">XC_LYPC</td><td class="green">0.00e0</td><td class="red">1.49e-12</td><td class="red">2.03e-12</td><td class="red">1.26e-10</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_M05C</td><td class="green">0.00e0</td><td class="red">8.93e-12</td><td class="green">0.00e0</td><td class="red">9.26e-12</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_M05X</td><td class="green">1.39e-17</td><td class="green">1.39e-17</td><td class="green">1.39e-17</td><td class="red">1.89e-12</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_M05X2C</td><td class="green">0.00e0</td><td class="red">3.02e-11</td><td class="red">1.09e-12</td><td class="red">9.26e-12</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_M05X2X</td><td class="green">2.78e-17</td><td class="green">2.78e-17</td><td class="green">2.78e-17</td><td class="green">2.78e-17</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_M06C</td><td class="green">3.82e-17</td><td class="red">1.07e-11</td><td class="red">4.88e-11</td><td class="red">6.28e-11</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_M06HFC</td><td class="green">3.47e-17</td><td class="red">1.08e-11</td><td class="red">4.88e-11</td><td class="red">1.34e-11</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_M06HFX</td><td class="green">3.47e-18</td><td class="green">3.47e-18</td><td class="green">3.47e-18</td><td class="red">7.84e-12</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_M06LC</td><td class="green">2.08e-17</td><td class="red">1.07e-11</td><td class="red">4.88e-11</td><td class="red">1.14e-11</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_M06LX</td><td class="green">6.94e-18</td><td class="green">6.94e-18</td><td class="green">6.94e-18</td><td class="red">1.46e-12</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_M06X</td><td class="green">1.73e-17</td><td class="green">1.73e-17</td><td class="green">1.73e-17</td><td class="red">4.21e-12</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_M06X2C</td><td class="green">2.78e-17</td><td class="red">1.10e-11</td><td class="red">4.88e-11</td><td class="red">1.40e-11</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_M06X2X</td><td class="green">6.94e-18</td><td class="green">6.94e-18</td><td class="green">6.94e-18</td><td class="green">6.94e-18</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_OPTX</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="red">1.16e-12</td><td class="green">0.00e0</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_OPTXCORR</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="tol">1e-12</td></tr>
 <tr><td class="name">XC_P86C</td><td class="red">3.09e-4</td><td class="red">3.97e-3</td><td class="red">4.69e-2</td><td class="red">9.16e-2</td><td class="tol">1e-12</td></tr>
 <tr><td class="name">XC_P86CORRC</td><td class="red">3.09e-4</td><td class="red">3.97e-3</td><td class="red">4.69e-2</td><td class="red">9.16e-2</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_PBEC</td><td class="green">3.33e-16</td><td class="green">6.96e-16</td><td class="red">1.09e-12</td><td class="red">6.64e-9</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_PBEC</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="red">1.80e-12</td><td class="tol">1e-12</td></tr>
 <tr><td class="name">XC_PBEINTC</td><td class="red">4.54e-1</td><td class="red">9.00e-1</td><td class="red">1.92e0</td><td class="red">6.17e1</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_PBEINTX</td><td class="green">2.16e-16</td><td class="green">6.69e-16</td><td class="yellow">4.33e-13</td><td class="yellow">4.80e-13</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_PBEINTX</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="tol">1e-12</td></tr>
 <tr><td class="name">XC_PBELOCC</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_PBESOLX</td><td class="green">2.25e-16</td><td class="green">6.69e-16</td><td class="green">1.60e-14</td><td class="yellow">1.07e-13</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_PBEX</td><td class="green">5.31e-16</td><td class="green">9.34e-16</td><td class="green">5.79e-15</td><td class="green">4.99e-14</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_PW86X</td><td class="red">2.10e-6</td><td class="red">1.05e-5</td><td class="red">6.59e-5</td><td class="red">6.36e-4</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_PBESOLX</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_PBEX</td><td class="green">6.94e-18</td><td class="green">6.94e-18</td><td class="green">6.94e-18</td><td class="green">6.94e-18</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_PW86X</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="tol">1e-12</td></tr>
 <tr><td class="name">XC_PW91C</td><td class="red">2.62e-7</td><td class="red">4.17e-7</td><td class="red">2.63e-4</td><td class="red">1.72e-3</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_PW91K</td><td class="red">2.16e-5</td><td class="red">2.16e-5</td><td class="red">2.16e-5</td><td class="red">2.16e-5</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_PW91X</td><td class="green">5.38e-16</td><td class="green">3.16e-15</td><td class="green">4.58e-14</td><td class="yellow">7.90e-13</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_PW92C</td><td class="green">3.33e-16</td><td class="green">6.14e-16</td><td class="red">1.09e-12</td><td class="red">8.97e-12</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_PZ81C</td><td class="green">2.22e-16</td><td class="green">2.22e-16</td><td class="red">3.05e-12</td><td class="red">1.10e-11</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_REVPBEX</td><td class="green">5.88e-16</td><td class="green">1.05e-15</td><td class="green">1.24e-14</td><td class="green">6.39e-14</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_RPBEX</td><td class="green">5.31e-16</td><td class="green">9.74e-16</td><td class="green">5.33e-15</td><td class="yellow">1.27e-13</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_SLATERX</td><td class="green">2.29e-16</td><td class="green">2.33e-16</td><td class="green">2.36e-16</td><td class="green">2.37e-16</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_PW91K</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="red">1.44e-11</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_PW91X</td><td class="green">6.94e-18</td><td class="green">6.94e-18</td><td class="green">6.94e-18</td><td class="green">6.94e-18</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_PW92C</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="red">8.97e-12</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_PZ81C</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="red">2.96e-12</td><td class="red">1.38e-12</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_R2SCANC</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_R2SCANX</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_R4SCANC</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_R4SCANX</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_REVPBEX</td><td class="green">6.94e-18</td><td class="green">6.94e-18</td><td class="green">6.94e-18</td><td class="green">6.94e-18</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_REVTPSSC</td><td class="red">2.60e10</td><td class="red">6.65e13</td><td class="red">3.73e15</td><td class="red">8.97e-12</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_REVTPSSX</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="red">1.33e-2</td><td class="red">3.31e-9</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_RPBEX</td><td class="green">6.94e-18</td><td class="green">6.94e-18</td><td class="green">6.94e-18</td><td class="green">6.94e-18</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_RPPSCANC</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_RPPSCANX</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_RSCANC</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_RSCANX</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_SCANC</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_SCANX</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_SLATERX</td><td class="green">6.94e-18</td><td class="green">6.94e-18</td><td class="green">6.94e-18</td><td class="green">6.94e-18</td><td class="tol">1e-12</td></tr>
 <tr><td class="name">XC_SPBEC</td><td class="red">1.19e-5</td><td class="red">1.05e-4</td><td class="red">3.16e-4</td><td class="red">5.27e-4</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_TFK</td><td class="green">4.58e-16</td><td class="green">4.60e-16</td><td class="green">4.60e-16</td><td class="green">4.60e-16</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_TFK</td><td class="green">4.16e-17</td><td class="green">4.16e-17</td><td class="green">4.16e-17</td><td class="green">4.16e-17</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_TPSSC</td><td class="red">1.24e26</td><td class="red">1.09e28</td><td class="red">1.09e30</td><td class="red">1.30e-11</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_TPSSLOCC</td><td class="red">8.65e22</td><td class="red">1.60e27</td><td class="red">8.89e27</td><td class="red">9.13e-12</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_TPSSX</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="red">2.68e-2</td><td class="red">1.12e-8</td><td class="tol">1e-12</td></tr>
 <tr><td class="name">XC_TW</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="tol">1e-12</td></tr>
 <tr><td class="name">XC_VWK</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_VWN3C</td><td class="green">4.44e-16</td><td class="green">4.44e-16</td><td class="red">7.17e-12</td><td class="red">1.24e-11</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_VWN5C</td><td class="green">3.33e-16</td><td class="green">4.44e-16</td><td class="red">1.57e-11</td><td class="red">1.57e-11</td><td class="tol">1e-12</td></tr>
-<tr><td class="name">XC_VWN_PBEC</td><td class="green">3.33e-16</td><td class="green">6.96e-16</td><td class="red">1.57e-11</td><td class="red">6.85e-9</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_VWN3C</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="red">7.17e-12</td><td class="red">1.66e-12</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_VWN5C</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="red">1.57e-11</td><td class="green">0.00e0</td><td class="tol">1e-12</td></tr>
+<tr><td class="name">XC_VWN_PBEC</td><td class="green">0.00e0</td><td class="green">0.00e0</td><td class="red">1.57e-11</td><td class="red">6.85e-9</td><td class="tol">1e-12</td></tr>
 <tr><td class="name">XC_ZVPBEINTC</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="tol">1e-12</td></tr>
 <tr><td class="name">XC_ZVPBESOLC</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="gray">N/A (excluded: no upstream test_in)</td><td class="tol">1e-12</td></tr>
 </tbody></table>
