@@ -82,12 +82,21 @@ fn eval_point_kernel<F: Float>(
 ///     from `common_parameters.cpp:17-29`. Updated *destructively* by
 ///     `set("parameter_name", value)` per `XCFunctional.cpp:381`.
 ///
-/// `weights` retains the Phase 2 static-slice form for the existing
-/// `eval` launch loop. `set/get` operate on `settings` only — wiring the
-/// `set`-built state into `weights` is left to the C ABI / Phase 5 facade.
+/// `weights` was Phase 2's static-slice form for the existing `eval`
+/// launch loop, refactored to `Vec<(FunctionalId, f64)>` in Phase 6 Plan
+/// 06-06 (D-17) to drop the Phase 5 `Box::leak` once-per-`set`.  `set/get`
+/// operate on `settings` only — wiring the `set`-built state into
+/// `weights` happens in `xcfun-rs::Functional::sync_weights_from_settings`.
 pub struct Functional {
     /// (FunctionalId, weight) pairs. Weights sum to the active-functional set.
-    pub weights: &'static [(FunctionalId, f64)],
+    ///
+    /// Phase 6 Plan 06-06 (D-17): changed from `&'static [(FunctionalId, f64)]`
+    /// to `Vec<(FunctionalId, f64)>` to drop the Phase 5 `Box::leak`-per-`set`
+    /// in `xcfun-rs::Functional::sync_weights_from_settings`. `Vec<...>` is
+    /// `Send + Sync` so RS-10 (`assert_impl_all!(Functional: Send, Sync)`) is
+    /// preserved. All read-sites use `weights.iter()` / indexing which work
+    /// unchanged via `Deref<Target = [_]>`.
+    pub weights: Vec<(FunctionalId, f64)>,
     /// Input variable layout. Must match the actual `input.len()`.
     pub vars: Vars,
     /// Evaluation mode. Phase 2 supports `Mode::PartialDerivatives` only.
@@ -145,7 +154,7 @@ impl Functional {
     /// ```
     pub const fn new() -> Self {
         Self {
-            weights: &[],
+            weights: Vec::new(),
             vars: Vars::A_B,
             mode: Mode::Unset,
             order: 0,
@@ -316,7 +325,8 @@ impl Functional {
             });
         }
         // 5. Validate every functional in `weights` is supported.
-        for (id, _w) in self.weights {
+        // Plan 06-06 D-17: weights is now Vec<...>; iterate by reference.
+        for (id, _w) in self.weights.iter() {
             if !dispatch::supports(*id) {
                 return Err(XcError::NotConfigured);
             }
@@ -333,7 +343,7 @@ impl Functional {
         {
             match self.mode {
                 Mode::PartialDerivatives => {
-                    for &(id, weight) in self.weights {
+                    for &(id, weight) in self.weights.iter() {
                         let id_u32 = id as u32;
                         launch_and_accumulate(
                             id_u32,
@@ -617,7 +627,7 @@ impl Functional {
             let mut weighted_energy = 0.0_f64;
             let mut weighted_pot = 0.0_f64;
             let mut kernel_out = vec![0.0_f64; SIZE_N1];
-            for &(id, w) in self.weights {
+            for &(id, w) in self.weights.iter() {
                 self.launch_potential_kernel_n1(id as u32, &ct_in, &mut kernel_out)?;
                 weighted_energy += w * kernel_out[0];
                 weighted_pot += w * kernel_out[1];
@@ -741,7 +751,7 @@ impl Functional {
                 // Launch potential_gga_kernel for each active (id, weight)
                 // and accumulate weighted out[VAR0|VAR1] (slot 3 = 0b11).
                 let mut kernel_out = vec![0.0_f64; SIZE_N2];
-                for &(id, w) in self.weights {
+                for &(id, w) in self.weights.iter() {
                     self.launch_potential_kernel_n2(id as u32, &ct_in, &mut kernel_out)?;
                     divergence_accum += w * kernel_out[3];
                 }
@@ -1346,6 +1356,41 @@ pub(crate) fn run_launch(
             (28, 2, 0) => arm!(28, 2, 0),  (28, 2, 1) => arm!(28, 2, 1),  (28, 2, 2) => arm!(28, 2, 2),
             (55, 2, 0) => arm!(55, 2, 0),  (55, 2, 1) => arm!(55, 2, 1),  (55, 2, 2) => arm!(55, 2, 2),
 
+            // ===== Phase 6 Plan 06-06 (D-18): LDA × vars=6 launch arms. =====
+            //
+            // Resolves the Phase 5 D-14 dispatch-table constraint forward.
+            // A kernel's `Dependency` mask determines which Vars subset arms it
+            // can launch into.  All 11 LDAs (Dependency::DENSITY only) → can
+            // launch in any Vars where DENSITY ⊆ vars_dep_mask, including
+            // A_B_GAA_GAB_GBB (vars=6).  `build_densvars` at vars=6 already
+            // populates `d.n` / `d.s` correctly, so the LDA kernel bodies
+            // (which only read those fields) work unchanged.  Mixed-LDA+GGA
+            // aliases (b3lyp, camb3lyp) now eval in-process.
+            //
+            // Coverage: 11 LDA ids × n ∈ {0,1,2,3,4} = 55 arms.
+            ( 0, 6, 0) => arm!( 0, 6, 0),  ( 0, 6, 1) => arm!( 0, 6, 1),
+            ( 0, 6, 2) => arm!( 0, 6, 2),  ( 0, 6, 3) => arm!( 0, 6, 3),  ( 0, 6, 4) => arm!( 0, 6, 4),
+            ( 2, 6, 0) => arm!( 2, 6, 0),  ( 2, 6, 1) => arm!( 2, 6, 1),
+            ( 2, 6, 2) => arm!( 2, 6, 2),  ( 2, 6, 3) => arm!( 2, 6, 3),  ( 2, 6, 4) => arm!( 2, 6, 4),
+            ( 3, 6, 0) => arm!( 3, 6, 0),  ( 3, 6, 1) => arm!( 3, 6, 1),
+            ( 3, 6, 2) => arm!( 3, 6, 2),  ( 3, 6, 3) => arm!( 3, 6, 3),  ( 3, 6, 4) => arm!( 3, 6, 4),
+            (13, 6, 0) => arm!(13, 6, 0),  (13, 6, 1) => arm!(13, 6, 1),
+            (13, 6, 2) => arm!(13, 6, 2),  (13, 6, 3) => arm!(13, 6, 3),  (13, 6, 4) => arm!(13, 6, 4),
+            (14, 6, 0) => arm!(14, 6, 0),  (14, 6, 1) => arm!(14, 6, 1),
+            (14, 6, 2) => arm!(14, 6, 2),  (14, 6, 3) => arm!(14, 6, 3),  (14, 6, 4) => arm!(14, 6, 4),
+            (15, 6, 0) => arm!(15, 6, 0),  (15, 6, 1) => arm!(15, 6, 1),
+            (15, 6, 2) => arm!(15, 6, 2),  (15, 6, 3) => arm!(15, 6, 3),  (15, 6, 4) => arm!(15, 6, 4),
+            (24, 6, 0) => arm!(24, 6, 0),  (24, 6, 1) => arm!(24, 6, 1),
+            (24, 6, 2) => arm!(24, 6, 2),  (24, 6, 3) => arm!(24, 6, 3),  (24, 6, 4) => arm!(24, 6, 4),
+            (25, 6, 0) => arm!(25, 6, 0),  (25, 6, 1) => arm!(25, 6, 1),
+            (25, 6, 2) => arm!(25, 6, 2),  (25, 6, 3) => arm!(25, 6, 3),  (25, 6, 4) => arm!(25, 6, 4),
+            (28, 6, 0) => arm!(28, 6, 0),  (28, 6, 1) => arm!(28, 6, 1),
+            (28, 6, 2) => arm!(28, 6, 2),  (28, 6, 3) => arm!(28, 6, 3),  (28, 6, 4) => arm!(28, 6, 4),
+            (55, 6, 0) => arm!(55, 6, 0),  (55, 6, 1) => arm!(55, 6, 1),
+            (55, 6, 2) => arm!(55, 6, 2),  (55, 6, 3) => arm!(55, 6, 3),  (55, 6, 4) => arm!(55, 6, 4),
+            (59, 6, 0) => arm!(59, 6, 0),  (59, 6, 1) => arm!(59, 6, 1),
+            (59, 6, 2) => arm!(59, 6, 2),  (59, 6, 3) => arm!(59, 6, 3),  (59, 6, 4) => arm!(59, 6, 4),
+
             // ===== Phase 3 Wave-2 GGAs: 17 ids × 3 orders, vars=6 (XC_A_B_GAA_GAB_GBB). =====
             // Plan 03-03 absorbs the Wave-2 INCONCLUSIVE escalation by wiring all 17 Wave-2
             // ids at vars=6 here.
@@ -1708,7 +1753,7 @@ mod tests {
     #[test]
     fn eval_rejects_unset_mode() {
         let f = Functional {
-            weights: &[],
+            weights: Vec::new(),
             vars: Vars::A_B,
             mode: Mode::Unset,
             order: 0,
@@ -1735,7 +1780,7 @@ mod tests {
         // length is `inlen × (1 << 0) = inlen × 1 = inlen`, output length is 1.
         // With empty weights the output is zero-filled and Ok is returned.
         let f = Functional {
-            weights: &[],
+            weights: Vec::new(),
             vars: Vars::A_B,
             mode: Mode::Contracted,
             order: 0,
@@ -1750,7 +1795,7 @@ mod tests {
     fn eval_rejects_contracted_order_above_6() {
         // Plan 04-05 D-06 + XCFUN_MAX_ORDER = 6: order 7 is rejected.
         let f = Functional {
-            weights: &[],
+            weights: Vec::new(),
             vars: Vars::A_B,
             mode: Mode::Contracted,
             order: 7,
@@ -1799,7 +1844,7 @@ mod tests {
     fn eval_setup_contracted_accepts_orders_0_to_6() {
         // D-06: eval_setup must accept orders 0..=6 for Mode::Contracted.
         let f = Functional {
-            weights: &[(FunctionalId::XC_SLATERX, 1.0)],
+            weights: vec![(FunctionalId::XC_SLATERX, 1.0)],
             vars: Vars::A_B,
             mode: Mode::Contracted,
             order: 0,
@@ -1819,7 +1864,7 @@ mod tests {
     fn eval_setup_contracted_rejects_order_above_6() {
         // D-06 + XCFUN_MAX_ORDER = 6: eval_setup rejects order 7.
         let f = Functional {
-            weights: &[(FunctionalId::XC_SLATERX, 1.0)],
+            weights: vec![(FunctionalId::XC_SLATERX, 1.0)],
             vars: Vars::A_B,
             mode: Mode::Contracted,
             order: 7,
@@ -1836,7 +1881,7 @@ mod tests {
     fn eval_rejects_order_above_4() {
         // Plan 03-06 Task 1: order limit raised to 4 per MODE-01 D-16.
         let f = Functional {
-            weights: &[],
+            weights: Vec::new(),
             vars: Vars::A_B,
             mode: Mode::PartialDerivatives,
             order: 5,
@@ -1853,7 +1898,7 @@ mod tests {
     #[test]
     fn eval_rejects_input_length_mismatch() {
         let f = Functional {
-            weights: &[],
+            weights: Vec::new(),
             vars: Vars::A_B,
             mode: Mode::PartialDerivatives,
             order: 0,
@@ -1873,7 +1918,7 @@ mod tests {
     #[test]
     fn eval_rejects_output_length_mismatch() {
         let f = Functional {
-            weights: &[],
+            weights: Vec::new(),
             vars: Vars::A_B,
             mode: Mode::PartialDerivatives,
             order: 1,
@@ -1897,7 +1942,7 @@ mod tests {
         // Empty weights set means no functional is validated (supports loop no-ops)
         // so the validation path walks through and returns Ok. Output is zero-filled.
         let f = Functional {
-            weights: &[],
+            weights: Vec::new(),
             vars: Vars::A_B,
             mode: Mode::PartialDerivatives,
             order: 0,
@@ -1965,7 +2010,7 @@ mod tests {
     fn eval_setup_rejects_metagga_potential() {
         // M05X carries Dependency::KINETIC — must reject Mode::Potential (D-13).
         let f = Functional {
-            weights: &[(FunctionalId::XC_M05X, 1.0)],
+            weights: vec![(FunctionalId::XC_M05X, 1.0)],
             vars: Vars::A_B_2ND_TAYLOR,
             mode: Mode::Potential,
             order: 0,
@@ -1982,7 +2027,7 @@ mod tests {
     fn eval_setup_rejects_laplacian_potential() {
         // BRX carries Dependency::LAPLACIAN — must reject Mode::Potential.
         let f = Functional {
-            weights: &[(FunctionalId::XC_BRX, 1.0)],
+            weights: vec![(FunctionalId::XC_BRX, 1.0)],
             vars: Vars::A_B_2ND_TAYLOR,
             mode: Mode::Potential,
             order: 0,
@@ -2002,7 +2047,7 @@ mod tests {
         // Plan 05-00 D-08-A: error variant is now InvalidVarsAndMode (combined),
         // mirroring XC_EVARS|XC_EMODE (=6) from XCFunctional.cpp:441-443.
         let f = Functional {
-            weights: &[(FunctionalId::XC_PBEX, 1.0)],
+            weights: vec![(FunctionalId::XC_PBEX, 1.0)],
             vars: Vars::A_B_GAA_GAB_GBB,
             mode: Mode::Potential,
             order: 0,
@@ -2028,7 +2073,7 @@ mod tests {
         // Vars::A_B is LDA-shaped (no _2ND_TAYLOR). Must emit the combined
         // InvalidVarsAndMode (XC_EVARS|XC_EMODE = 6).
         let f = Functional {
-            weights: &[(FunctionalId::XC_PBEX, 1.0)],
+            weights: vec![(FunctionalId::XC_PBEX, 1.0)],
             vars: Vars::A_B,
             mode: Mode::Potential,
             order: 0,
@@ -2050,7 +2095,7 @@ mod tests {
     fn eval_setup_accepts_gga_with_2nd_taylor_potential() {
         // PBEX + A_B_2ND_TAYLOR is the valid combination — must pass.
         let f = Functional {
-            weights: &[(FunctionalId::XC_PBEX, 1.0)],
+            weights: vec![(FunctionalId::XC_PBEX, 1.0)],
             vars: Vars::A_B_2ND_TAYLOR,
             mode: Mode::Potential,
             order: 0,
@@ -2066,7 +2111,7 @@ mod tests {
     fn eval_setup_accepts_lda_with_any_vars_potential() {
         // SLATERX is DENSITY only — any non-metaGGA Vars should pass Mode::Potential.
         let f = Functional {
-            weights: &[(FunctionalId::XC_SLATERX, 1.0)],
+            weights: vec![(FunctionalId::XC_SLATERX, 1.0)],
             vars: Vars::A_B,
             mode: Mode::Potential,
             order: 0,
@@ -2079,7 +2124,7 @@ mod tests {
     #[test]
     fn eval_setup_rejects_unset_mode() {
         let f = Functional {
-            weights: &[(FunctionalId::XC_SLATERX, 1.0)],
+            weights: vec![(FunctionalId::XC_SLATERX, 1.0)],
             vars: Vars::A_B,
             mode: Mode::Unset,
             order: 0,
@@ -2096,7 +2141,7 @@ mod tests {
     fn dependencies_aggregates_across_weights() {
         // PBEX (GRADIENT) + SLATERX (DENSITY) — combined deps = DENSITY | GRADIENT.
         let f = Functional {
-            weights: &[
+            weights: vec![
                 (FunctionalId::XC_SLATERX, 0.5),
                 (FunctionalId::XC_PBEX, 0.5),
             ],

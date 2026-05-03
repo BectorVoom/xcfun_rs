@@ -75,7 +75,7 @@ fn batch_open_returns_wgpu_no_f64_when_probe_fails() {
     // Direct-struct construction (Functional::set does not mutate
     // vars/mode/order — those are facade-controlled).
     let fun = Functional {
-        weights: &[(FunctionalId::XC_SLATERX, 1.0)],
+        weights: vec![(FunctionalId::XC_SLATERX, 1.0)],
         vars: Vars::A_B,
         mode: Mode::PartialDerivatives,
         order: 0,
@@ -132,7 +132,7 @@ fn open_wgpu_with_request_metal_returns_metal_tag_on_no_f64() {
     use xcfun_gpu::{Backend, Batch};
 
     let fun = Functional {
-        weights: &[(FunctionalId::XC_SLATERX, 1.0)],
+        weights: vec![(FunctionalId::XC_SLATERX, 1.0)],
         vars: Vars::A_B,
         mode: Mode::PartialDerivatives,
         order: 0,

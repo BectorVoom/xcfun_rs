@@ -79,7 +79,7 @@ fn wgpu_host_path_matches_cpu_baseline_or_returns_typed_error() {
     // test idiom (potential_lda.rs / self_tests.rs) — `Functional::set`
     // does not mutate vars/mode/order; those are facade-controlled.
     let fun = Functional {
-        weights: &[(FunctionalId::XC_SLATERX, 1.0)],
+        weights: vec![(FunctionalId::XC_SLATERX, 1.0)],
         vars: Vars::A_B,
         mode: Mode::PartialDerivatives,
         order: 1,
@@ -164,7 +164,7 @@ fn ldaerfx_eval_shape_compatible_with_wgpu_host_path() {
     use xcfun_core::FunctionalId;
     use xcfun_eval::functional::DEFAULT_SETTINGS;
     let fun = Functional {
-        weights: &[(FunctionalId::XC_LDAERFX, 1.0)],
+        weights: vec![(FunctionalId::XC_LDAERFX, 1.0)],
         vars: Vars::A_B,
         mode: Mode::PartialDerivatives,
         order: 0,

@@ -152,7 +152,8 @@ pub fn launch_contracted(
     // populate `DensVarsDev<F>` from the flat layout (identical to the
     // PartialDerivatives input contract — see
     // `crates/xcfun-eval/src/density_vars/build.rs:154-189`).
-    for &(id, weight) in functional.weights {
+    // Plan 06-06 D-17: weights is now Vec<...>; iterate by reference.
+    for &(id, weight) in functional.weights.iter() {
         let id_u32 = id as u32;
         let out_vec = crate::functional::run_launch(
             id_u32,

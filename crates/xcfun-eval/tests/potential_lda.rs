@@ -23,7 +23,7 @@ const C_SLATER: f64 = 0.930_525_736_349_100_2_f64;
 fn slaterx_potential_a_b_matches_analytic() {
     // Vars::A_B (inlen = 2; nspin = 2; output = [energy, pot_α, pot_β]).
     let f = Functional {
-        weights: &[(FunctionalId::XC_SLATERX, 1.0)],
+        weights: vec![(FunctionalId::XC_SLATERX, 1.0)],
         vars: Vars::A_B,
         mode: Mode::Potential,
         order: 0,
@@ -55,7 +55,7 @@ fn slaterx_potential_a_b_2nd_taylor_matches_analytic() {
     // 2ND_TAYLOR Vars used by Mode::Potential GGA dispatch. SLATERX (LDA)
     // ignores the gradient slots.
     let f = Functional {
-        weights: &[(FunctionalId::XC_SLATERX, 1.0)],
+        weights: vec![(FunctionalId::XC_SLATERX, 1.0)],
         vars: Vars::A_B_2ND_TAYLOR,
         mode: Mode::Potential,
         order: 0,

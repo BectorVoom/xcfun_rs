@@ -1,6 +1,13 @@
-//! Test helpers for xcfun-eval. Mirrors `xcfun-ad::for_tests::cpu_client` —
-//! independent OnceLock<CpuClient> per crate (cubecl-cpu allows this; both
-//! point at the same physical CpuDevice).
+//! Production CPU substrate. Phase 6 Plan 06-06 (D-12) promoted this
+//! module from `testing`-gated to `cpu`-gated — `xcfun-rs::Functional`'s
+//! reusable handle and `xcfun-gpu::runtime::cpu` both depend on
+//! `cpu_client()` at eval time, not just test time.  The module name
+//! remains `for_tests` to keep import paths stable across the workspace
+//! (rename is deferred to a later plan to avoid touching ~30 import sites).
+//!
+//! Mirrors `xcfun-ad::for_tests::cpu_client` — independent OnceLock<CpuClient>
+//! per crate (cubecl-cpu allows this; both point at the same physical
+//! CpuDevice).
 
 use cubecl::prelude::*;
 use cubecl_cpu::{CpuDevice, CpuRuntime};

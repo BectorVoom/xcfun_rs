@@ -68,9 +68,47 @@
 //!   id == 54 → XC_R4SCANX     (Plan 04-02 — Wave 2)
 
 use cubecl::prelude::*;
-use xcfun_core::FunctionalId;
+use xcfun_core::{Dependency, FunctionalId, Vars, FUNCTIONAL_DESCRIPTORS, VARS_TABLE};
 
 use crate::density_vars::DensVarsDev;
+
+// ---------------------------------------------------------------------------
+//  Phase 6 Plan 06-06 (D-18) — DensVars-driven dispatch.
+//
+//  A kernel's `Dependency` mask determines which `Vars` arms it can launch
+//  into.  This resolves the Phase 5 D-14 dispatch-table constraint forward:
+//  mixed-LDA+GGA aliases (b3lyp / camb3lyp) now eval in-process at
+//  `Vars::A_B_GAA_GAB_GBB` because the LDA kernels (`Dependency::DENSITY`
+//  only) can launch into any Vars whose `vars_dep_mask` is a superset of
+//  their own dependency mask.
+//
+//  The host-side dispatcher in `xcfun-eval::run_launch` enforces the
+//  subset relation indirectly via the explicit (id, vars, n) match arms;
+//  this helper documents the subset rule and is available to host-side
+//  callers (validators, test harnesses, future fully-data-driven dispatch).
+// ---------------------------------------------------------------------------
+
+/// True if a kernel with `kernel_deps` dependency mask can launch into the
+/// `Vars` arm.  Subset rule: `kernel_deps ⊆ vars_dep_mask` per D-18.
+///
+/// LDA kernel (`Dependency::DENSITY`) → launchable in any Vars where
+/// `DENSITY ⊆ vars_dep_mask` (e.g. A_B, A_B_GAA_GAB_GBB, A_B_2ND_TAYLOR, ...).
+/// GGA kernel (`Dependency::DENSITY | Dependency::GRADIENT`) → launchable
+/// in any Vars where `DENSITY|GRADIENT ⊆ vars_dep_mask`.
+pub fn kernel_can_launch_in_vars(kernel_deps: Dependency, vars: Vars) -> bool {
+    // VARS_TABLE[vars].provides = the dependency mask the Vars layout PROVIDES
+    // (i.e., what fields are in DensVarsDev).  Subset: every bit set in
+    // `kernel_deps` must also be set in `vars_dep_mask`.
+    let vars_dep_mask = VARS_TABLE[vars as usize].provides;
+    (kernel_deps & vars_dep_mask) == kernel_deps
+}
+
+/// Host-side guard for D-18: given a `FunctionalId`, returns the kernel's
+/// `Dependency` mask (looked up from `FUNCTIONAL_DESCRIPTORS`).  Wraps the
+/// table read so callers don't need to import the descriptors directly.
+pub fn kernel_deps(id: FunctionalId) -> Dependency {
+    FUNCTIONAL_DESCRIPTORS[id as usize].depends
+}
 
 /// Comptime-dispatched per-functional kernel call. Each arm corresponds to a
 /// `FunctionalId` discriminant (xcfun.h historical-insertion ordering).

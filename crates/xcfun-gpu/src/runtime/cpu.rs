@@ -1,10 +1,12 @@
 //! `cubecl-cpu` substrate — always-on per CONTEXT D-08.
 //!
-//! Re-exports the `OnceLock<CpuClient>` from `xcfun-eval::for_tests`. Plan
-//! 06-06 (D-12) will promote that helper from `for_tests` to a production
-//! module; until then we route through the existing accessor under the
-//! `xcfun-eval/testing` feature (transitively pulled in by xcfun-gpu's
-//! `cpu` feature flag).
+//! Re-exports the `OnceLock<CpuClient>` from `xcfun-eval::for_tests`.
+//!
+//! Plan 06-06 (D-12) PROMOTED that helper from a `testing`-gated test
+//! module to a `cpu`-gated production module — `for_tests::cpu_client()`
+//! is now part of the production CPU substrate, no longer test-only.
+//! The module name remains `for_tests` (rename deferred to avoid touching
+//! ~30 workspace-wide import sites).
 
 pub use xcfun_eval::for_tests::{cpu_client, CpuClient};
 
