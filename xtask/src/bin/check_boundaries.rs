@@ -4,12 +4,14 @@
 //! array, and for each crate in the allowlist asserts that its normal
 //! dependencies (kind is null) are a subset of the allowed set.
 //!
-//! Allowlist (Phase 2 scope):
-//!   - xcfun-core: {thiserror, bitflags}
-//!   - xcfun-ad:   {cubecl, cubecl-cpu, bytemuck}
-//!   - xcfun-eval: {xcfun-core, xcfun-ad, cubecl, cubecl-cpu, thiserror}
-//!     (forward-compatible: Plan 02-03 adds the crate; this gate is OK when
-//!      it's not yet present)
+//! Allowlist (Phase 6 scope, post Plan 06-01 D-08 split):
+//!   - xcfun-core:    {thiserror, bitflags}
+//!   - xcfun-ad:      {cubecl, cubecl-cpu, bytemuck}
+//!   - xcfun-kernels: {xcfun-core, xcfun-ad, cubecl, thiserror}
+//!     (D-08 contract: NEVER depends on cubecl-cpu/-hip/-cuda/-wgpu —
+//!      kernel bodies do not instantiate runtimes; only `cubecl` core.)
+//!   - xcfun-eval:    {xcfun-core, xcfun-ad, xcfun-kernels, cubecl, cubecl-cpu, thiserror}
+//!     (per-point cubecl-cpu validation substrate; consumes xcfun-kernels.)
 //! `validation` / `xtask` — unrestricted (app-boundary).
 //!
 //! Exit codes:
@@ -36,9 +38,26 @@ fn allowlist() -> HashMap<&'static str, &'static [&'static str]> {
     let mut m = HashMap::new();
     m.insert("xcfun-core", &["thiserror", "bitflags"][..]);
     m.insert("xcfun-ad", &["cubecl", "cubecl-cpu", "bytemuck"][..]);
+    // Phase 6 Plan 06-01 (D-08): xcfun-kernels owns the per-functional
+    // #[cube] bodies + DensVarsDev + dispatch_kernel. Runtime-agnostic by
+    // contract — depends on `cubecl` core ONLY (never cubecl-cpu /
+    // cubecl-hip / cubecl-cuda / cubecl-wgpu). xcfun-gpu (Plan 06-02) and
+    // xcfun-eval (this file) are the only crates allowed to instantiate
+    // runtimes against these kernels.
+    m.insert(
+        "xcfun-kernels",
+        &["xcfun-core", "xcfun-ad", "cubecl", "thiserror"][..],
+    );
     m.insert(
         "xcfun-eval",
-        &["xcfun-core", "xcfun-ad", "cubecl", "cubecl-cpu", "thiserror"][..],
+        &[
+            "xcfun-core",
+            "xcfun-ad",
+            "xcfun-kernels", // Plan 06-01 D-08: kernel bodies live here.
+            "cubecl",
+            "cubecl-cpu",
+            "thiserror",
+        ][..],
     );
     m
 }

@@ -8,6 +8,11 @@
 //! `[dev-dependencies]` is ALLOWED (Phase 1 `xcfun-ad` uses anyhow in its
 //! test harness). Only the normal `[dependencies]` table is checked.
 //!
+//! Coverage is automatic: every directory under `crates/` that ships a
+//! `Cargo.toml` is included. Phase 6 Plan 06-01 (D-08) added
+//! `crates/xcfun-kernels/` — it joins the enforced set without any change
+//! to the gate's logic, simply by living under `crates/`.
+//!
 //! Exit codes:
 //!   0 — PASS
 //!   1 — I/O or parse error

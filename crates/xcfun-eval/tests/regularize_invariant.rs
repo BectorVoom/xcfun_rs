@@ -10,7 +10,9 @@
 
 use cubecl::prelude::*;
 use cubecl_cpu::CpuRuntime;
-use xcfun_eval::density_vars::regularize::regularize;
+// Phase 6 Plan 06-01 (D-08): density_vars migrated to xcfun-kernels;
+// cpu_client substrate stays in xcfun-eval.
+use xcfun_kernels::density_vars::regularize::regularize;
 use xcfun_eval::for_tests::cpu_client;
 
 /// Thin `#[cube(launch_unchecked)]` wrapper over `regularize` so we can

@@ -1,0 +1,24 @@
+[package]
+name = "xcfun-kernels"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Per-functional #[cube] kernel bodies + DensVarsDev + dispatch table for xcfun_rs (runtime-agnostic)"
+license = "MPL-2.0"
+
+# Phase 6 D-08: kernel bodies live here, never instantiate a runtime.
+# Runtime concerns are owned by xcfun-eval (cubecl-cpu validation substrate)
+# and xcfun-gpu (cubecl-hip / cubecl-cuda / cubecl-wgpu). This crate's
+# [dependencies] block deliberately omits all cubecl-runtime crates — the
+# `testing` feature in xcfun-eval pulls cubecl-cpu in transitively for any
+# tier-1 self-tests that ever land here.
+
+[features]
+default = []
+testing = []
+
+[dependencies]
+xcfun-core = { path = "../xcfun-core" }
+xcfun-ad   = { path = "../xcfun-ad" }
+cubecl     = { workspace = true }
+thiserror  = { workspace = true }

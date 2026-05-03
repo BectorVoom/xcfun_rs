@@ -1,24 +1,40 @@
 //! `check-no-mul-add` — ACC-06 gate.
 //!
-//! Scans `crates/xcfun-eval/src/functionals/**/*.rs` for `.mul_add(` calls.
+//! Scans the per-functional `#[cube] fn` body trees for `.mul_add(` calls.
 //! `mul_add` lowers to an FMA instruction, which fuses the multiply+add into
 //! a single rounding step. For the 1e-12 algorithmic-identity contract vs.
 //! C++ xcfun (which does NOT use FMA), any `.mul_add(...)` call would break
 //! bit-level parity.
 //!
-//! The target directory does not yet exist — Plan 02-03 creates the
-//! `xcfun-eval` crate and Plan 02-04 lands the LDA bodies. Until then the
-//! scan is vacuously clean; once source files appear, this gate flags any
-//! `.mul_add(` call at CI time.
+//! Phase 6 Plan 06-01 (D-08) split `xcfun-kernels` out of `xcfun-eval`;
+//! after the migration, the 78 functional bodies live under
+//! `crates/xcfun-kernels/src/functionals/`. The legacy
+//! `crates/xcfun-eval/src/functionals/` path is retained in the scan list
+//! because it still hosts host-side launchers (`contracted.rs`) — those
+//! must also stay FMA-free since they ship with the per-point cubecl-cpu
+//! launch loop.
+//!
+//! Either directory missing is OK (vacuously clean); both present is the
+//! steady state.
 //!
 //! Exit codes:
-//!   0 — PASS (or target directory absent)
+//!   0 — PASS (or every target directory absent)
 //!   1 — I/O or setup error
 //!   2 — FAIL: at least one `.mul_add(` call detected
 
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
+
+/// Directories scanned by `check-no-mul-add`. Order is purely cosmetic
+/// (errors are aggregated across all of them).
+///
+/// Phase 6 Plan 06-01 (D-08) added `crates/xcfun-kernels/src/functionals/`
+/// when the 78 `#[cube]` kernel bodies moved there from `xcfun-eval`.
+const SCAN_DIRS: &[&str] = &[
+    "crates/xcfun-eval/src/functionals",      // host-side launchers (contracted.rs); legacy bodies path
+    "crates/xcfun-kernels/src/functionals",   // Phase 6 Plan 06-01: new home for the 78 #[cube] bodies
+];
 
 fn project_root() -> Result<PathBuf> {
     let manifest = std::env::var("CARGO_MANIFEST_DIR")
@@ -57,11 +73,16 @@ fn scan_file(path: &Path) -> Result<Vec<(usize, String)>> {
 
 fn main() -> Result<()> {
     let root = project_root()?;
-    let target = root.join("crates/xcfun-eval/src/functionals");
     let mut violations = Vec::new();
     let mut files_scanned = 0usize;
+    let mut dirs_present = 0usize;
 
-    if target.exists() {
+    for rel in SCAN_DIRS {
+        let target = root.join(rel);
+        if !target.exists() {
+            continue;
+        }
+        dirs_present += 1;
         for entry in WalkDir::new(&target).into_iter().filter_map(|e| e.ok()) {
             if !entry.file_type().is_file() {
                 continue;
@@ -82,16 +103,14 @@ fn main() -> Result<()> {
     }
 
     if violations.is_empty() {
-        if files_scanned == 0 {
+        if dirs_present == 0 {
             println!(
-                "check-no-mul-add: PASS (target {} does not exist yet — \
-                 Plan 02-03 creates it; gate is vacuously clean)",
-                target.display()
+                "check-no-mul-add: PASS (no scan target exists yet — gate vacuously clean)"
             );
         } else {
             println!(
-                "check-no-mul-add: PASS ({} file(s) scanned under crates/xcfun-eval/src/functionals/)",
-                files_scanned
+                "check-no-mul-add: PASS ({} file(s) scanned across {} target directory(ies))",
+                files_scanned, dirs_present
             );
         }
         Ok(())

@@ -35,11 +35,14 @@ use xcfun_core::{
     taylorlen,
 };
 
-use crate::density_vars::DensVarsDev;
-use crate::density_vars::build::build_densvars;
-use crate::density_vars::{DensVarsDevLaunch};
-use crate::dispatch;
-use crate::dispatch::dispatch_kernel;
+// Phase 6 Plan 06-01 (D-08): kernel bodies + DensVarsDev + dispatch_kernel
+// migrated to `xcfun-kernels`. Host-side `Functional::eval` keeps the same
+// shape — only the import paths move.
+use xcfun_kernels::density_vars::DensVarsDev;
+use xcfun_kernels::density_vars::build::build_densvars;
+use xcfun_kernels::density_vars::DensVarsDevLaunch;
+use xcfun_kernels::dispatch;
+use xcfun_kernels::dispatch::dispatch_kernel;
 
 #[cfg(feature = "testing")]
 use crate::for_tests::cpu_client;

@@ -15,8 +15,9 @@
 
 use cubecl::prelude::*;
 use cubecl_cpu::CpuRuntime;
-use xcfun_eval::density_vars::DensVarsDevLaunch;
-use xcfun_eval::density_vars::build::build_densvars;
+// Phase 6 Plan 06-01 (D-08): density_vars migrated to xcfun-kernels.
+use xcfun_kernels::density_vars::DensVarsDevLaunch;
+use xcfun_kernels::density_vars::build::build_densvars;
 use xcfun_eval::for_tests::cpu_client;
 
 /// Thin `#[cube(launch_unchecked)]` wrapper over `build_densvars` so we can
@@ -32,7 +33,7 @@ fn build_kernel<F: Float>(
     build_densvars::<F>(input, out, vars, n);
 }
 
-use xcfun_eval::density_vars::DensVarsDev;
+use xcfun_kernels::density_vars::DensVarsDev;
 
 /// Helper: allocate empty DensVarsDev via cubecl, launch build_densvars,
 /// read every field's slot-0 (CNST coefficient) back. Used to verify the
