@@ -1618,7 +1618,12 @@ pub fn run_contracted(
 //                     Batch::<CpuRuntime>::eval_vec_host_cpu, compares per
 //                     record against scalar Functional::eval at strict
 //                     1e-13. **Skeleton today** — body wired by Plan 06-05.
-//   - Backend::Rocm → bails with "--features hip" hint (Plan 06-03 wires).
+//   - Backend::Rocm → without `--features hip`: bails with hint. With
+//                     `--features hip` (Plan 06-03): probes
+//                     `xcfun_gpu::runtime::hip::rocm_available()`; bails
+//                     on probe failure (no /opt/rocm or RDNA-2 missing
+//                     HSA_OVERRIDE_GFX_VERSION); otherwise dispatches
+//                     to the run_tier3 ROCm skeleton (body lands in 06-05).
 //   - Backend::Cuda → bails with "--features cuda" hint (Plan 06-04 wires).
 //   - Backend::Wgpu → bails with "--features wgpu" hint (Plan 06-04 wires).
 //   - Backend::Metal → bails with "--features wgpu" hint (Plan 06-04
@@ -1721,14 +1726,55 @@ pub fn run_tier3(
             "--backend metal requires --features wgpu (Metal is reached via cubecl-wgpu's Metal \
              adapter per RESEARCH R-02 / Pitfall 9; Plan 06-04 wires the wgpu arm)"
         ),
-        // Plans 06-03 / 06-04 fill these arms when their feature flags are
-        // enabled. The unreachable here documents that Plan 06-02b ships
-        // the skeleton only — flipping the feature flag without the wiring
-        // landing is a `bail!` not a fall-through.
+        // Plan 06-03 — `--backend rocm` arm wired behind `feature = "hip"`.
+        // The HIP probe (`xcfun_gpu::Batch::<HipRuntime>::open_rocm` + the
+        // OnceLock<HipClient> in xcfun-gpu/runtime/hip.rs) is exercised
+        // here. The strict-1e-13 sweep body mirrors the CPU arm shape and
+        // is owned by Plan 06-05 (revision-1 B-4) — for 06-03 we ship the
+        // dispatch wiring + probe gate so a CI runner with ROCm available
+        // can be wired up before the body lands.
+        //
+        // Manual verification command (per Plan 06-03 acceptance):
+        //
+        //   export HSA_OVERRIDE_GFX_VERSION=10.3.0   # RDNA-2 only
+        //   cargo run -p validation --release --features hip -- \
+        //     --backend rocm --tier 3 --order 3 --jobs 4 \
+        //     --filter '^(slaterx|tfk|pbex|revpbex|pbeintx|rpbex|pbesolx|\
+        //               beckex|beckecorrx|pw86x|optxcorr|apbex|pw91x|ktx|\
+        //               btk|m05x2x|m06x2x)$'
+        //
+        // Expected: 0 failing reported (strict 1e-13 vs CPU baseline). The
+        // todo!() below is replaced by Plan 06-05 with the actual sweep
+        // body that uses `Batch::<cubecl_hip::HipRuntime>::eval_vec_host_rocm`
+        // (see crates/xcfun-gpu/src/batch.rs).
         #[cfg(feature = "hip")]
-        Backend::Rocm => anyhow::bail!(
-            "--backend rocm: cubecl-hip wired in Plan 06-03 (06-02b ships skeleton only)"
-        ),
+        Backend::Rocm => {
+            // Probe gate — if ROCm is unavailable, bail with a helpful
+            // error rather than panicking. The probe respects the
+            // `HSA_OVERRIDE_GFX_VERSION=10.3.0` env var (RDNA-2 caveat
+            // documented in xcfun-gpu/README.md) at HipRuntime client
+            // construction time.
+            if !xcfun_gpu::runtime::hip::rocm_available() {
+                anyhow::bail!(
+                    "--backend rocm: HipRuntime probe failed. Verify ROCm \
+                     is installed (`/opt/rocm/bin/rocminfo` should list a \
+                     gfx target) and, on RX 6000-series GPUs, that \
+                     HSA_OVERRIDE_GFX_VERSION=10.3.0 is set in the process \
+                     environment before invoking validation."
+                );
+            }
+            // Mirrors the CPU arm pattern: skeleton + probe + manual
+            // verification command documented above. The strict-1e-13
+            // body lands in Plan 06-05 (revision-1 B-4).
+            let _ = (order, jobs, filter, exclude_erf);
+            todo!(
+                "Plan 06-03 wires the run_tier3 ROCm probe + dispatch \
+                 skeleton; KER-06 sign-off body (the 17-known-clean \
+                 functional sweep at strict 1e-13 vs CPU baseline) lands \
+                 in Plan 06-05 (revision-1 B-4) atop \
+                 `xcfun_gpu::Batch::<cubecl_hip::HipRuntime>::eval_vec_host_rocm`"
+            )
+        }
         #[cfg(feature = "cuda")]
         Backend::Cuda => anyhow::bail!(
             "--backend cuda: cubecl-cuda wired in Plan 06-04 (06-02b ships skeleton only)"
