@@ -51,6 +51,15 @@ required-features = ["gen-potential-fixtures"]
 name = "regen-capi-header"
 path = "src/bin/regen_capi_header.rs"
 
+[[bin]]
+# Phase 6 Plan 06-00 D-04 — mpmath sidecar driver. Spawns
+# `python3 -m xtask.mpmath_eval` to generate 200-digit-precision JSONL
+# ground-truth fixtures for ACC-04-amended functionals (LDAERF + TPSS).
+# `cargo build` of any xcfun-* library crate does NOT require Python
+# (Python is invoked only at fixture regeneration time).
+name = "regen-mpmath-fixtures"
+path = "src/bin/regen_mpmath_fixtures.rs"
+
 [features]
 default = []
 # Phase 3 plan 03-05 (B5): the gen-potential-fixtures bin pulls in
