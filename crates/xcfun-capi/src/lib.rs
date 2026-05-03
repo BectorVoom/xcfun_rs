@@ -423,6 +423,19 @@ pub extern "C" fn xcfun_eval(
 }
 
 /// xcfun.h:382. VOID return — die_with on Err per D-06.
+///
+/// **Phase 6 Plan 06-05 (RS-08 + D-16 + CAPI-01..02):** delegates to
+/// `xcfun_rs::Functional::eval_vec` rather than per-point looping. The Rust
+/// implementation owns the threshold dispatch (D-14: `nr_points >= 64` →
+/// `xcfun-gpu::Batch<R>` with `R = auto_backend()`; below threshold → per-point
+/// fall-through), the auto-backend selection (D-07 priority chain), and the
+/// ERF auto-fallback (GPU-05). The C ABI shim's responsibility shrinks to:
+/// validate non-negative pitches, build pitched flat slices spanning the
+/// full `nr_points * pitch` range, and surface typed errors through `die_with`.
+///
+/// The slice construction MUST cover `nr_points * pitch` (NOT `inlen`) per
+/// `from_raw_parts` safety: the borrow extends across the full pitched range
+/// the underlying `eval_vec` accesses.
 #[unsafe(no_mangle)]
 pub extern "C" fn xcfun_eval_vec(
     fun: *const xcfun_s,
@@ -439,25 +452,29 @@ pub extern "C" fn xcfun_eval_vec(
         if density_pitch < 0 || result_pitch < 0 {
             die_with("xcfun_eval_vec: pitches must be non-negative");
         }
-        let f = unsafe { &(*fun).inner };
-        let inlen = f.input_length();
-        let outlen = match f.output_length() {
-            Ok(n) => n,
-            Err(e) => die_with(&format!("xcfun_eval_vec: output_length failed: {}", e)),
-        };
+        let nr = nr_points as usize;
         let dp = density_pitch as usize;
         let rp = result_pitch as usize;
-        for k in 0..(nr_points as usize) {
-            let in_ptr = unsafe { density.add(k * dp) };
-            let out_ptr = unsafe { result.add(k * rp) };
-            let in_slice = unsafe { std::slice::from_raw_parts(in_ptr, inlen) };
-            let out_slice = unsafe { std::slice::from_raw_parts_mut(out_ptr, outlen) };
-            if let Err(e) = f.eval(in_slice, out_slice) {
-                die_with(&format!(
-                    "xcfun_eval_vec: point {} eval failed: {} -- did you call xcfun_eval_setup?",
-                    k, e
-                ));
-            }
+        let f = unsafe { &(*fun).inner };
+
+        // Reconstruct pitched flat slices spanning the full nr_points * pitch
+        // range. SAFETY: caller is responsible for `density` and `result`
+        // pointing to a valid pitched layout per xcfun-master/api/xcfun.h:54.
+        // For nr == 0 we still construct a 0-length slice (raw_parts allows
+        // this provided ptr is non-null + properly aligned, which `c_entry!`
+        // verified).
+        let density_slice = unsafe { std::slice::from_raw_parts(density, nr * dp) };
+        let result_slice = unsafe { std::slice::from_raw_parts_mut(result, nr * rp) };
+
+        // Phase 6 Plan 06-05 — single eval_vec call replaces the Phase 5
+        // per-point loop. Delegates to xcfun_rs::Functional::eval_vec →
+        // auto_backend → Batch<R>::eval_vec_host_*. GPU-05 ERF auto-fallback
+        // is handled inside that path; CAPI-01..02 drop-in C ABI contract is
+        // preserved (signature unchanged).
+        if let Err(e) = f.eval_vec(density_slice, dp, result_slice, rp, nr) {
+            die_with(&format!(
+                "xcfun_eval_vec: {} -- did you call xcfun_eval_setup?", e
+            ));
         }
     })
 }
