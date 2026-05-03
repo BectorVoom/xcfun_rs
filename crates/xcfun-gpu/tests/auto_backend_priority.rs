@@ -52,12 +52,40 @@ fn with_env<F: FnOnce()>(value: Option<&str>, f: F) {
     }
 }
 
+/// Plan 06-02a behaviour test: when no GPU runtime feature is enabled,
+/// the cascade bottoms out at `Backend::Cpu`. Gate on the absence of
+/// every GPU feature so that builds with `--features hip` (Plan 06-03)
+/// or `--features cuda` / `--features wgpu` (Plan 06-04) do NOT trigger
+/// this assertion: those builds wire real probes that return the GPU
+/// variant when the machine has the corresponding hardware available.
+#[cfg(not(any(feature = "hip", feature = "cuda", feature = "wgpu")))]
 #[test]
 fn no_env_falls_through_to_cpu() {
-    // With no GPU runtime probes wired in Plan 06-02a, the cascade
-    // bottoms out at `Backend::Cpu`.
+    // With no GPU runtime probes compiled in, the cascade bottoms out
+    // at `Backend::Cpu`.
     with_env(None, || {
         assert_eq!(auto_backend(), Backend::Cpu);
+    });
+}
+
+/// Plan 06-03 behaviour test (feature `hip`): with the ROCm probe wired,
+/// the no-env cascade returns `Backend::Rocm` when ROCm is installed
+/// locally OR `Backend::Cpu` when the probe correctly reports
+/// "ROCm unavailable" (no `/opt/rocm`, no AMD GPU, etc.). Either outcome
+/// is acceptable per the priority chain — what we MUST NOT see is a
+/// non-`Rocm`/`Cpu` variant (which would indicate the probe escaped its
+/// `catch_unwind` / probe-failure return path and crashed into Cuda /
+/// Wgpu / Metal arms despite no other GPU feature being enabled).
+#[cfg(all(feature = "hip", not(any(feature = "cuda", feature = "wgpu"))))]
+#[test]
+fn no_env_with_hip_feature_resolves_to_rocm_or_cpu() {
+    with_env(None, || {
+        let b = auto_backend();
+        assert!(
+            b == Backend::Rocm || b == Backend::Cpu,
+            "expected Rocm (probe succeeded) or Cpu (probe failed); got {:?}",
+            b
+        );
     });
 }
 

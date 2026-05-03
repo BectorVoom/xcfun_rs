@@ -309,3 +309,169 @@ impl<'fun> Batch<'fun, cubecl_cpu::CpuRuntime> {
         Ok(())
     }
 }
+
+// ---------------------------------------------------------------------------
+//  HIP/ROCm specialisation — Plan 06-03 (D-05 ROCm primary).
+//
+//  Mirrors the CPU impl block above: `open_rocm()` constructs a
+//  `Batch<'fun, HipRuntime>` from the cached `OnceLock<HipClient>` and
+//  pre-allocates the D-15 buffer-handle bundle (fixed weights + active_ids
+//  + initial 64-point density/result). `eval_vec_host_rocm()` is the
+//  ROCm twin of `eval_vec_host_cpu()`.
+//
+//  Per Plan 06-03 acceptance criteria, the body shape mirrors the CPU
+//  arm; the *kernel-launch* path (real `eval_point_kernel::launch_unchecked`
+//  on HipRuntime) is owned by Plan 06-05 / RS-08 dispatch wiring. For
+//  06-03 the per-point body falls back to scalar `Functional::eval` so
+//  the validation harness `--backend rocm --tier 3` flag has a working
+//  end-to-end code path that exercises HIP client init + buffer
+//  allocation lifecycle without requiring the not-yet-monomorphised
+//  `eval_point_kernel::launch_unchecked::<f64, HipRuntime>` arm. The
+//  comment above each call site documents the Plan-06-05 follow-up.
+// ---------------------------------------------------------------------------
+
+#[cfg(feature = "hip")]
+impl<'fun> Batch<'fun, cubecl_hip::HipRuntime> {
+    /// Open a HIP-arm Batch on the cached `OnceLock<HipClient>`. Mirrors
+    /// `Batch::<CpuRuntime>::open_cpu()` — fixed-size weights + active_ids
+    /// allocated once; density/result start at 64 points and double on
+    /// overflow per CONTEXT D-15.
+    ///
+    /// Returns `XcError::Runtime` when `rocm_available()` returned false
+    /// (no `/opt/rocm`, no GPU visible, HIP init panic). Callers SHOULD
+    /// call `auto_backend()` first and only invoke `open_rocm` on
+    /// `Backend::Rocm`; bypassing the priority chain is supported but
+    /// the typed error will reach you instead of a panic.
+    pub fn open_rocm(
+        fun: &'fun xcfun_eval::Functional,
+    ) -> Result<Self, XcError> {
+        if !crate::runtime::hip::rocm_available() {
+            return Err(XcError::Runtime);
+        }
+        let client = crate::runtime::hip::hip_client().clone();
+        let f64_size = core::mem::size_of::<f64>();
+        let u32_size = core::mem::size_of::<u32>();
+
+        // Fixed-size buffers (D-15): 82 settings entries + 78 functional ids.
+        let weights_buf = client.empty(82 * f64_size);
+        let active_ids_buf = client.empty(78 * u32_size);
+
+        // Initial capacity = 64 points (CONTEXT D-14 default
+        // XCFUN_MIN_BATCH_SIZE). Open with eager 64-point allocations so
+        // reserve(<= 64) is a no-op (parity with the CPU arm).
+        let initial_capacity = 64_usize;
+        let inlen = xcfun_eval::Functional::input_length(fun.vars);
+        let outlen = xcfun_eval::Functional::output_length(
+            fun.vars, fun.mode, fun.order,
+        )
+        .unwrap_or(0);
+
+        let density_buf = client.empty(initial_capacity * inlen.max(1) * f64_size);
+        let result_buf = client.empty(initial_capacity * outlen.max(1) * f64_size);
+
+        Ok(Self {
+            fun,
+            client,
+            bufs: BatchBuffers {
+                weights_buf,
+                active_ids_buf,
+                density_buf,
+                result_buf,
+                capacity: initial_capacity,
+            },
+            cached_gen: u64::MAX,
+        })
+    }
+
+    /// Read-only accessor for the current density/result buffer
+    /// capacity. Mirrors the CPU-arm `capacity()` so tests can assert
+    /// the powers-of-two growth contract uniformly across runtimes.
+    pub fn capacity_rocm(&self) -> usize {
+        self.bufs.capacity
+    }
+
+    /// HIP-arm `eval_vec_host`. Plan 06-03 ships the lifecycle skeleton
+    /// (probe → client clone → reserve → per-point dispatch); the
+    /// real `eval_point_kernel::launch_unchecked::<f64, HipRuntime>`
+    /// monomorphisation is owned by Plan 06-05 / RS-08. Until then the
+    /// per-point inner loop falls back to scalar `Functional::eval` so
+    /// the validation harness `--backend rocm --tier 3` path exercises
+    /// HIP init + buffer allocation lifecycle without claiming the
+    /// strict-1e-13 GPU-vs-CPU parity contract (which inherently
+    /// requires the kernel monomorphisation).
+    ///
+    /// Pitch validation matches `eval_vec_host_cpu`:
+    /// `density_pitch >= inlen` and `out_pitch >= outlen` enforced
+    /// up-front; under-sized buffers reported as
+    /// `XcError::InputLengthMismatch` / `XcError::OutputLengthMismatch`.
+    pub fn eval_vec_host_rocm(
+        fun: &'fun xcfun_eval::Functional,
+        density: &[f64],
+        density_pitch: usize,
+        out: &mut [f64],
+        out_pitch: usize,
+        nr_points: usize,
+    ) -> Result<(), XcError> {
+        // Probe gate — bail with typed error if ROCm is unavailable so
+        // downstream test harnesses see Result::Err rather than a panic
+        // on a CI runner without an AMD GPU.
+        if !crate::runtime::hip::rocm_available() {
+            return Err(XcError::Runtime);
+        }
+
+        let inlen = xcfun_eval::Functional::input_length(fun.vars);
+        let outlen = xcfun_eval::Functional::output_length(
+            fun.vars, fun.mode, fun.order,
+        )?;
+
+        if density_pitch < inlen {
+            return Err(XcError::InputLengthMismatch {
+                expected: inlen,
+                got: density_pitch,
+            });
+        }
+        if out_pitch < outlen {
+            return Err(XcError::OutputLengthMismatch {
+                expected: outlen,
+                got: out_pitch,
+            });
+        }
+        if nr_points == 0 {
+            return Ok(());
+        }
+        if density.len() < nr_points * density_pitch {
+            return Err(XcError::InputLengthMismatch {
+                expected: nr_points * density_pitch,
+                got: density.len(),
+            });
+        }
+        if out.len() < nr_points * out_pitch {
+            return Err(XcError::OutputLengthMismatch {
+                expected: nr_points * out_pitch,
+                got: out.len(),
+            });
+        }
+
+        // Open a HIP batch (allocates D-15 buffers on the cached
+        // HipClient). The buffer allocations exercise the cubecl-hip
+        // ComputeClient API surface (`client.empty`) so any
+        // version-drift between cubecl-hip and the rest of the cubecl
+        // 0.10-pre.3 family surfaces here at first launch rather than
+        // at validation-time.
+        let _batch = Self::open_rocm(fun)?;
+
+        // Per-point dispatch — falls back to the scalar Functional::eval
+        // path until Plan 06-05 wires `eval_point_kernel::launch_unchecked
+        // ::<f64, HipRuntime>` (RS-08 dispatch). The pitched-layout
+        // contract here is identical to `eval_vec_host_cpu` per Phase 5
+        // D-08-A C ABI mapping.
+        for p in 0..nr_points {
+            let din_start = p * density_pitch;
+            let dout_start = p * out_pitch;
+            let din = &density[din_start..din_start + inlen];
+            let dout = &mut out[dout_start..dout_start + outlen];
+            fun.eval(din, dout)?;
+        }
+        Ok(())
+    }
+}

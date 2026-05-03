@@ -21,6 +21,13 @@
 #[cfg(feature = "cpu")]
 pub use crate::runtime::cpu::{cpu_client, CpuClient};
 
+// Plan 06-03 — HIP/ROCm primary. Re-export the cached client + alias
+// behind the `hip` feature flag so callers can `xcfun_gpu::pool::hip_client()`
+// in the same shape as `pool::cpu_client()`. The OnceLock itself lives
+// in `runtime::hip` (probe + cache co-located).
+#[cfg(feature = "hip")]
+pub use crate::runtime::hip::{hip_client, HipClient};
+
 /// Buffer-handle bundle owned by a [`crate::Batch<R>`]. Generic over the
 /// runtime so each backend gets its own monomorphised set of handles.
 ///
