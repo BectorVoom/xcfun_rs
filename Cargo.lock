@@ -4725,7 +4725,11 @@ dependencies = [
 name = "xcfun-kernels"
 version = "0.1.0"
 dependencies = [
+ "approx",
  "cubecl",
+ "cubecl-cpu",
+ "serde",
+ "serde_json",
  "thiserror",
  "xcfun-ad",
  "xcfun-core",
