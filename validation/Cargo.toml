@@ -17,6 +17,14 @@ path = "src/lib.rs"
 [dependencies]
 xcfun-eval = { path = "../crates/xcfun-eval", features = ["testing"] }
 xcfun-core = { path = "../crates/xcfun-core" }
+# Phase 6 Plan 06-01 (D-08): kernel bodies + dispatch_kernel split out into
+# xcfun-kernels. validation does not yet import from this crate (the
+# tier-2 harness still goes through Functional::eval), but the explicit
+# dep declaration future-proofs Plan 06-N1/N2 which will use
+# xcfun_kernels::dispatch::supports + xcfun_kernels::dispatch::run_launch
+# directly when wiring the mpmath ground-truth path and the per-functional
+# bisection sweep.
+xcfun-kernels = { path = "../crates/xcfun-kernels" }
 anyhow = { workspace = true }
 approx = { workspace = true }
 serde = { workspace = true }

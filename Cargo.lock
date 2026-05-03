@@ -3842,6 +3842,7 @@ dependencies = [
  "tracing-subscriber",
  "xcfun-core",
  "xcfun-eval",
+ "xcfun-kernels",
 ]
 
 [[package]]
