@@ -1775,18 +1775,128 @@ pub fn run_tier3(
                  `xcfun_gpu::Batch::<cubecl_hip::HipRuntime>::eval_vec_host_rocm`"
             )
         }
+        // Plan 06-04 — `--backend cuda` arm wired behind `feature =
+        // "cuda"`. The CUDA probe
+        // (`xcfun_gpu::Batch::<CudaRuntime>::open_cuda` + the
+        // `OnceLock<Option<CudaClient>>` in
+        // `xcfun-gpu/runtime/cuda.rs`) is exercised here. The CUDA
+        // tier-3 strict-1e-13 sweep body is owned by Plan 06-05
+        // (revision-1 B-4) and runs on cloud CI — there is no NVIDIA
+        // hardware in the dev environment per CONTEXT D-06 / D-07.
+        //
+        // Manual verification command (cloud-CI / NVIDIA-equipped
+        // runner per Plan 06-04 acceptance):
+        //
+        //   cargo run -p validation --release --features cuda -- \
+        //     --backend cuda --tier 3 --order 3 --jobs 4 \
+        //     --filter '^(slaterx|tfk|pbex|revpbex|pbeintx|rpbex|pbesolx|\
+        //               beckex|beckecorrx|pw86x|optxcorr|apbex|pw91x|ktx|\
+        //               btk|m05x2x|m06x2x)$'
+        //
+        // Expected: 0 failing reported (strict 1e-13 vs CPU baseline,
+        // matching the ROCm contract per D-02). The probe gate
+        // surfaces missing CUDA toolkit / GPU as an `anyhow::bail!`
+        // and missing f64 device support as
+        // `XcError::CudaNoF64` (W-7 revision-1; surfaced via
+        // `Batch::<CudaRuntime>::open_cuda` once Plan 06-05 wires the
+        // sweep body).
         #[cfg(feature = "cuda")]
-        Backend::Cuda => anyhow::bail!(
-            "--backend cuda: cubecl-cuda wired in Plan 06-04 (06-02b ships skeleton only)"
-        ),
+        Backend::Cuda => {
+            if !xcfun_gpu::runtime::cuda::cuda_available() {
+                anyhow::bail!(
+                    "--backend cuda: CudaRuntime probe failed. Verify the CUDA \
+                     toolkit is installed (`nvidia-smi` should list a device) \
+                     and that the device passes the f64 gate (W-7). cubecl-cuda \
+                     0.10.0-pre.3 caches the negative probe result, so \
+                     repeated invocations on a runner without CUDA hardware \
+                     re-bail without re-attempting init."
+                );
+            }
+            let _ = (order, jobs, filter, exclude_erf);
+            todo!(
+                "Plan 06-04 wires the run_tier3 CUDA probe + dispatch \
+                 skeleton; the strict-1e-13 sweep body is owned by Plan \
+                 06-05 (revision-1 B-4) and runs on cloud CI with NVIDIA \
+                 hardware atop \
+                 `xcfun_gpu::Batch::<cubecl_cuda::CudaRuntime>::eval_vec_host_cuda`"
+            )
+        }
+
+        // Plan 06-04 — `--backend wgpu` arm wired behind `feature =
+        // "wgpu"`. The Wgpu probe enforces the SHADER_F64 gate per
+        // CONTEXT D-13/D-13-A — devices that fail the gate surface
+        // `XcError::WgpuNoF64` once the sweep body wires the
+        // typed-error mapping. The tier-3 tolerance for Wgpu is
+        // RELAXED to 1e-9 per CONTEXT D-02 (driver-dependent variance
+        // in `erf` / `log` intrinsics on Vulkan/SPIR-V backends);
+        // ERF-bearing functionals auto-fall-back to CPU at
+        // `Batch::eval_vec_host_wgpu` time per GPU-05 and are
+        // implicitly excluded by `--exclude-erf`.
+        //
+        // Manual verification command (Linux + Vulkan + f64 ext per
+        // Plan 06-04 acceptance):
+        //
+        //   cargo run -p validation --release --features wgpu -- \
+        //     --backend wgpu --tier 3 --order 3 --exclude-erf \
+        //     --filter '^(slaterx|tfk|pbex|revpbex|pbeintx|rpbex|pbesolx|\
+        //               beckex|beckecorrx|pw86x|optxcorr|apbex|pw91x|ktx|\
+        //               btk|m05x2x|m06x2x)$'
+        //
+        // Expected: 0 failing reported at the relaxed 1e-9 tolerance.
+        // GPU-08 (ROADMAP success criterion 4) is signed off when this
+        // sweep is GREEN on a Linux/Vulkan runner.
         #[cfg(feature = "wgpu")]
-        Backend::Wgpu => anyhow::bail!(
-            "--backend wgpu: cubecl-wgpu wired in Plan 06-04 (06-02b ships skeleton only)"
-        ),
+        Backend::Wgpu => {
+            if !xcfun_gpu::runtime::wgpu::wgpu_with_shader_f64_available() {
+                anyhow::bail!(
+                    "--backend wgpu: WgpuRuntime SHADER_F64 probe failed. The \
+                     default Wgpu adapter either is unavailable or lacks f64 \
+                     support. Apple Silicon GPUs and WGSL-only Vulkan drivers \
+                     are common offenders (see RESEARCH §Pitfall 5 / \
+                     crates/xcfun-gpu/README.md). On Linux, install Vulkan \
+                     drivers with the `VK_KHR_shader_float64` extension."
+                );
+            }
+            let _ = (order, jobs, filter, exclude_erf);
+            todo!(
+                "Plan 06-04 wires the run_tier3 Wgpu probe + dispatch \
+                 skeleton; the relaxed-1e-9 sweep body (GPU-08; ROADMAP \
+                 success criterion 4) lands in Plan 06-05 (revision-1 B-4) \
+                 atop `xcfun_gpu::Batch::<cubecl_wgpu::WgpuRuntime>::eval_vec_host_wgpu` \
+                 with `--exclude-erf` filtering range-separated functionals \
+                 (which auto-fall-back to CPU per GPU-05)"
+            )
+        }
+
+        // Plan 06-04 — `--backend metal` arm. Metal is reached through
+        // cubecl-wgpu's Metal backend per RESEARCH §R-02 / Pitfall 9
+        // (no separate cubecl-metal crate exists). The `metal` Cargo
+        // feature is a transparent alias of `wgpu` per
+        // `crates/xcfun-gpu/Cargo.toml`. Apple Silicon GPUs lack
+        // hardware f64 — the SHADER_F64 probe will return false on
+        // M1/M2/M3 and the bail!() below fires. Intel Mac with
+        // discrete f64-capable GPU is the only non-bail path on macOS.
         #[cfg(feature = "wgpu")]
-        Backend::Metal => anyhow::bail!(
-            "--backend metal: cubecl-wgpu Metal arm wired in Plan 06-04 (06-02b ships skeleton only)"
-        ),
+        Backend::Metal => {
+            if !xcfun_gpu::runtime::wgpu::metal_with_f64_available() {
+                anyhow::bail!(
+                    "--backend metal: Metal-via-Wgpu f64 probe failed. Apple \
+                     Silicon (M1/M2/M3/A17) GPUs lack hardware f64 — the \
+                     numerical contract cannot be honoured on these adapters \
+                     (see RESEARCH §R-02 / CONTEXT D-06). Use --backend cpu \
+                     on Apple Silicon."
+                );
+            }
+            let _ = (order, jobs, filter, exclude_erf);
+            todo!(
+                "Plan 06-04 wires the run_tier3 Metal-via-Wgpu probe + \
+                 dispatch skeleton; the sweep body lands in Plan 06-05 \
+                 (revision-1 B-4) atop \
+                 `xcfun_gpu::Batch::<cubecl_wgpu::WgpuRuntime>::eval_vec_host_wgpu_with_request` \
+                 with `Backend::Metal` propagated so XcError::WgpuNoF64 \
+                 payloads carry the correct request tag"
+            )
+        }
     }
 }
 
