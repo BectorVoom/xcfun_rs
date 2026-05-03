@@ -475,3 +475,350 @@ impl<'fun> Batch<'fun, cubecl_hip::HipRuntime> {
         Ok(())
     }
 }
+
+// ---------------------------------------------------------------------------
+//  CUDA specialisation — Plan 06-04 (D-06 NVIDIA opt-in best-effort).
+//
+//  Mirrors the HIP arm: probe → cached `CudaClient` clone → fixed weights
+//  / active-ids buffers → 64-point density/result allocations. The
+//  per-point kernel-launch path remains a scalar `Functional::eval`
+//  fallback today; Plan 06-05 wires `eval_point_kernel::launch_unchecked
+//  ::<f64, CudaRuntime>` once RS-08 dispatch is in place. The
+//  open_cuda lifecycle exercises the cubecl-cuda ComputeClient API
+//  surface (probe gate, client.empty allocations) so any version drift
+//  between cubecl-cuda and the rest of the cubecl 0.10-pre.3 family
+//  surfaces here at first launch rather than in the validation harness.
+// ---------------------------------------------------------------------------
+
+#[cfg(feature = "cuda")]
+impl<'fun> Batch<'fun, cubecl_cuda::CudaRuntime> {
+    /// Open a CUDA-arm Batch on the cached `OnceLock<CudaClient>`.
+    ///
+    /// Returns `XcError::CudaNoF64` when the probe was reached but the
+    /// device failed the f64 gate (W-7 revision-1) — semantically
+    /// distinct from `XcError::Runtime` which signals "init itself
+    /// failed" (no CUDA toolkit, no GPU, driver mismatch). The probe
+    /// outcome is cached, so the f64-gate check is effectively free
+    /// after the first call.
+    pub fn open_cuda(
+        fun: &'fun xcfun_eval::Functional,
+    ) -> Result<Self, XcError> {
+        // Probe gate. The cuda_no_f64_error helper handles both
+        // sub-cases: f64-gate-failed (real adapter name) and
+        // init-failed (sentinel adapter name). One typed error variant
+        // is enough; downstream callers don't need to distinguish.
+        if !crate::runtime::cuda::cuda_available() {
+            return Err(crate::runtime::cuda::cuda_no_f64_error(crate::Backend::Cuda));
+        }
+        let client = crate::runtime::cuda::cuda_client().clone();
+        let f64_size = core::mem::size_of::<f64>();
+        let u32_size = core::mem::size_of::<u32>();
+
+        // Fixed-size buffers (D-15) — 82 settings entries + 78 ids.
+        let weights_buf = client.empty(82 * f64_size);
+        let active_ids_buf = client.empty(78 * u32_size);
+
+        // Initial 64-point capacity (CONTEXT D-14 default).
+        let initial_capacity = 64_usize;
+        let inlen = xcfun_eval::Functional::input_length(fun.vars);
+        let outlen = xcfun_eval::Functional::output_length(
+            fun.vars, fun.mode, fun.order,
+        )
+        .unwrap_or(0);
+
+        let density_buf = client.empty(initial_capacity * inlen.max(1) * f64_size);
+        let result_buf = client.empty(initial_capacity * outlen.max(1) * f64_size);
+
+        Ok(Self {
+            fun,
+            client,
+            bufs: BatchBuffers {
+                weights_buf,
+                active_ids_buf,
+                density_buf,
+                result_buf,
+                capacity: initial_capacity,
+            },
+            cached_gen: u64::MAX,
+        })
+    }
+
+    /// Read-only accessor for the current density/result buffer
+    /// capacity (parity with the CPU/HIP arms; tests rely on the
+    /// uniform name to assert the powers-of-two growth contract D-15).
+    pub fn capacity_cuda(&self) -> usize {
+        self.bufs.capacity
+    }
+
+    /// CUDA-arm `eval_vec_host`. Plan 06-04 ships the lifecycle
+    /// skeleton (probe → client clone → reserve → per-point dispatch).
+    /// The real `eval_point_kernel::launch_unchecked::<f64, CudaRuntime>`
+    /// monomorphisation lands in Plan 06-05 / RS-08; until then the
+    /// per-point inner loop falls back to scalar `Functional::eval`.
+    pub fn eval_vec_host_cuda(
+        fun: &'fun xcfun_eval::Functional,
+        density: &[f64],
+        density_pitch: usize,
+        out: &mut [f64],
+        out_pitch: usize,
+        nr_points: usize,
+    ) -> Result<(), XcError> {
+        if !crate::runtime::cuda::cuda_available() {
+            return Err(crate::runtime::cuda::cuda_no_f64_error(crate::Backend::Cuda));
+        }
+
+        let inlen = xcfun_eval::Functional::input_length(fun.vars);
+        let outlen = xcfun_eval::Functional::output_length(
+            fun.vars, fun.mode, fun.order,
+        )?;
+
+        if density_pitch < inlen {
+            return Err(XcError::InputLengthMismatch {
+                expected: inlen,
+                got: density_pitch,
+            });
+        }
+        if out_pitch < outlen {
+            return Err(XcError::OutputLengthMismatch {
+                expected: outlen,
+                got: out_pitch,
+            });
+        }
+        if nr_points == 0 {
+            return Ok(());
+        }
+        if density.len() < nr_points * density_pitch {
+            return Err(XcError::InputLengthMismatch {
+                expected: nr_points * density_pitch,
+                got: density.len(),
+            });
+        }
+        if out.len() < nr_points * out_pitch {
+            return Err(XcError::OutputLengthMismatch {
+                expected: nr_points * out_pitch,
+                got: out.len(),
+            });
+        }
+
+        // Open a CUDA batch (allocates D-15 buffers on the cached
+        // CudaClient). Exercises cubecl-cuda's ComputeClient API
+        // surface so version drift surfaces here rather than at
+        // validation time.
+        let _batch = Self::open_cuda(fun)?;
+
+        // Per-point dispatch — scalar fallback until Plan 06-05 wires
+        // CUDA kernel monomorphisation.
+        for p in 0..nr_points {
+            let din_start = p * density_pitch;
+            let dout_start = p * out_pitch;
+            let din = &density[din_start..din_start + inlen];
+            let dout = &mut out[dout_start..dout_start + outlen];
+            fun.eval(din, dout)?;
+        }
+        Ok(())
+    }
+}
+
+// ---------------------------------------------------------------------------
+//  Wgpu specialisation — Plan 06-04 (D-06 portable fallback;
+//  RESEARCH §"Pitfall 5" SHADER_F64 gate).
+//
+//  Two distinct contracts apply here vs. CPU/HIP/CUDA:
+//
+//  1. **Open-time SHADER_F64 gate** — Wgpu devices without f64 support
+//     get the typed `XcError::WgpuNoF64` (D-13/D-13-A). Apple Silicon
+//     and WGSL-only Vulkan drivers are common offenders. NEVER silently
+//     downgrades to f32.
+//
+//  2. **Open-time ERF auto-fallback** — functionals carrying
+//     `Dependency::ERF` cannot run on Wgpu/Metal at f64 precision (WGSL
+//     has no f64; even with SHADER_F64 the range-separated kernels
+//     compile to f32-degraded code). `must_fall_back_to_cpu` is checked
+//     in `eval_vec_host_wgpu` and the kernel is re-dispatched on the
+//     CPU substrate (GPU-05 contract).
+//
+//  Plan 06-05 wires the real Wgpu kernel-launch path. Plan 06-04 ships
+//  the open/probe/dispatch lifecycle so the typed-error contract is
+//  testable today (see crates/xcfun-gpu/tests/wgpu_no_f64.rs and
+//  erf_fallback.rs).
+// ---------------------------------------------------------------------------
+
+#[cfg(feature = "wgpu")]
+impl<'fun> Batch<'fun, cubecl_wgpu::WgpuRuntime> {
+    /// Open a Wgpu-arm Batch. Returns `XcError::WgpuNoF64` when the
+    /// default Wgpu adapter lacks SHADER_F64 (D-13 contract). The
+    /// `requested_runtime` payload defaults to `Backend::Wgpu`; callers
+    /// who pre-selected `Backend::Metal` should call
+    /// [`Batch::open_wgpu_with_request`] instead so the typed error
+    /// reflects the actual user request.
+    pub fn open_wgpu(
+        fun: &'fun xcfun_eval::Functional,
+    ) -> Result<Self, XcError> {
+        Self::open_wgpu_with_request(fun, crate::Backend::Wgpu)
+    }
+
+    /// Open a Wgpu-arm Batch, recording `requested` in the typed error
+    /// payload if the f64 probe fails. Plan 06-05's `auto_backend()`
+    /// + Metal arm path uses this overload to surface the correct
+    /// `BackendTag::Metal` in `XcError::WgpuNoF64.requested_runtime`.
+    pub fn open_wgpu_with_request(
+        fun: &'fun xcfun_eval::Functional,
+        requested: crate::Backend,
+    ) -> Result<Self, XcError> {
+        if !crate::runtime::wgpu::wgpu_with_shader_f64_available() {
+            return Err(crate::runtime::wgpu::wgpu_no_f64_error(requested));
+        }
+        let client = crate::runtime::wgpu::wgpu_client().clone();
+        let f64_size = core::mem::size_of::<f64>();
+        let u32_size = core::mem::size_of::<u32>();
+
+        let weights_buf = client.empty(82 * f64_size);
+        let active_ids_buf = client.empty(78 * u32_size);
+
+        let initial_capacity = 64_usize;
+        let inlen = xcfun_eval::Functional::input_length(fun.vars);
+        let outlen = xcfun_eval::Functional::output_length(
+            fun.vars, fun.mode, fun.order,
+        )
+        .unwrap_or(0);
+
+        let density_buf = client.empty(initial_capacity * inlen.max(1) * f64_size);
+        let result_buf = client.empty(initial_capacity * outlen.max(1) * f64_size);
+
+        Ok(Self {
+            fun,
+            client,
+            bufs: BatchBuffers {
+                weights_buf,
+                active_ids_buf,
+                density_buf,
+                result_buf,
+                capacity: initial_capacity,
+            },
+            cached_gen: u64::MAX,
+        })
+    }
+
+    /// Read-only accessor (parity with CPU/HIP/CUDA arms).
+    pub fn capacity_wgpu(&self) -> usize {
+        self.bufs.capacity
+    }
+
+    /// Wgpu-arm `eval_vec_host`. Two routing decisions happen up-front
+    /// per GPU-05 (ERF auto-fallback) + GPU-06 (SHADER_F64 gate):
+    ///
+    /// 1. If the functional set carries `Dependency::ERF`, route to the
+    ///    CPU substrate via `Batch::<CpuRuntime>::eval_vec_host_cpu`.
+    ///    This preserves strict 1e-13 parity for range-separated
+    ///    functionals on Wgpu (which would otherwise compile to
+    ///    f32-degraded WGSL even on f64-capable adapters).
+    /// 2. Otherwise probe SHADER_F64 (via `open_wgpu_with_request`); on
+    ///    probe failure return the typed `XcError::WgpuNoF64`.
+    ///
+    /// On the happy path the per-point loop today falls back to scalar
+    /// `Functional::eval`; Plan 06-05 wires the real Wgpu kernel
+    /// launch.
+    pub fn eval_vec_host_wgpu(
+        fun: &'fun xcfun_eval::Functional,
+        density: &[f64],
+        density_pitch: usize,
+        out: &mut [f64],
+        out_pitch: usize,
+        nr_points: usize,
+    ) -> Result<(), XcError> {
+        Self::eval_vec_host_wgpu_with_request(
+            fun, density, density_pitch, out, out_pitch, nr_points,
+            crate::Backend::Wgpu,
+        )
+    }
+
+    /// Wgpu-arm `eval_vec_host` with explicit request tag — used by the
+    /// Metal dispatch site so the GPU-05 fallback decision is correct
+    /// (`Backend::Metal` triggers `must_fall_back_to_cpu` for ERF
+    /// functionals exactly like `Backend::Wgpu`) AND the typed
+    /// `XcError::WgpuNoF64.requested_runtime` payload is correct.
+    pub fn eval_vec_host_wgpu_with_request(
+        fun: &'fun xcfun_eval::Functional,
+        density: &[f64],
+        density_pitch: usize,
+        out: &mut [f64],
+        out_pitch: usize,
+        nr_points: usize,
+        requested: crate::Backend,
+    ) -> Result<(), XcError> {
+        // GPU-05: ERF-bearing functional + Wgpu/Metal route → CPU
+        // substrate. Decision happens host-side BEFORE the SHADER_F64
+        // probe so an Apple Silicon caller of LDAERFX gets a working
+        // result (via CPU fallback) rather than a refusal.
+        if crate::error_routing::must_fall_back_to_cpu(fun.dependencies(), requested) {
+            #[cfg(feature = "cpu")]
+            {
+                return Batch::<cubecl_cpu::CpuRuntime>::eval_vec_host_cpu(
+                    fun, density, density_pitch, out, out_pitch, nr_points,
+                );
+            }
+            // No `cpu` feature compiled — surface XcError::Runtime so
+            // the test harness sees a clean failure mode (this branch
+            // is unreachable in practice because xcfun-gpu's default
+            // features include "cpu").
+            #[cfg(not(feature = "cpu"))]
+            {
+                return Err(XcError::Runtime);
+            }
+        }
+
+        // GPU-06: SHADER_F64 gate. Returns XcError::WgpuNoF64 with the
+        // caller's request tag baked into the payload.
+        if !crate::runtime::wgpu::wgpu_with_shader_f64_available() {
+            return Err(crate::runtime::wgpu::wgpu_no_f64_error(requested));
+        }
+
+        let inlen = xcfun_eval::Functional::input_length(fun.vars);
+        let outlen = xcfun_eval::Functional::output_length(
+            fun.vars, fun.mode, fun.order,
+        )?;
+
+        if density_pitch < inlen {
+            return Err(XcError::InputLengthMismatch {
+                expected: inlen,
+                got: density_pitch,
+            });
+        }
+        if out_pitch < outlen {
+            return Err(XcError::OutputLengthMismatch {
+                expected: outlen,
+                got: out_pitch,
+            });
+        }
+        if nr_points == 0 {
+            return Ok(());
+        }
+        if density.len() < nr_points * density_pitch {
+            return Err(XcError::InputLengthMismatch {
+                expected: nr_points * density_pitch,
+                got: density.len(),
+            });
+        }
+        if out.len() < nr_points * out_pitch {
+            return Err(XcError::OutputLengthMismatch {
+                expected: nr_points * out_pitch,
+                got: out.len(),
+            });
+        }
+
+        // Open + allocate D-15 buffers — exercises cubecl-wgpu's
+        // ComputeClient API surface so version drift surfaces here.
+        let _batch = Self::open_wgpu_with_request(fun, requested)?;
+
+        // Per-point dispatch — scalar Functional::eval until Plan
+        // 06-05 wires Wgpu kernel monomorphisation.
+        for p in 0..nr_points {
+            let din_start = p * density_pitch;
+            let dout_start = p * out_pitch;
+            let din = &density[din_start..din_start + inlen];
+            let dout = &mut out[dout_start..dout_start + outlen];
+            fun.eval(din, dout)?;
+        }
+        Ok(())
+    }
+}

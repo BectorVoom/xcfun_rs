@@ -28,6 +28,19 @@ pub use crate::runtime::cpu::{cpu_client, CpuClient};
 #[cfg(feature = "hip")]
 pub use crate::runtime::hip::{hip_client, HipClient};
 
+// Plan 06-04 — CUDA opt-in. Re-export mirrors `hip_client` shape; the
+// OnceLock<Option<CudaClient>> lives in `runtime::cuda`.
+#[cfg(feature = "cuda")]
+pub use crate::runtime::cuda::{cuda_client, CudaClient};
+
+// Plan 06-04 — Wgpu (Vulkan/Metal/DX12/WebGPU) opt-in. Re-export
+// mirrors `hip_client` shape; the OnceLock<Option<WgpuClient>> lives in
+// `runtime::wgpu`. The `metal` Cargo feature is a transparent alias of
+// `wgpu` (RESEARCH §"Pitfall 9" / R-02), so no separate metal_client is
+// needed — Metal is reached through the same `wgpu_client` accessor.
+#[cfg(feature = "wgpu")]
+pub use crate::runtime::wgpu::{wgpu_client, WgpuClient};
+
 /// Buffer-handle bundle owned by a [`crate::Batch<R>`]. Generic over the
 /// runtime so each backend gets its own monomorphised set of handles.
 ///
