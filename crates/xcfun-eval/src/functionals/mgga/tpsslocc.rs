@@ -418,13 +418,23 @@ fn locc_epsc_summax<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime
 }
 
 /// `epsc_revpkzb(d)`. Port of `tpsslocc.cpp:84-90`.
+///
+/// Phase 6 D-10 — takes an explicit `tau` parameter so the kernel-body
+/// clamp `ctaylor_max(d.tau, tau_w)` flows through. Body otherwise
+/// line-for-line identical to the original (Plan 04-10 Path-B-confirmed
+/// algorithmically faithful port).
 #[cube]
-fn locc_epsc_revpkzb<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
+fn locc_epsc_revpkzb_with_tau<F: Float>(
+    d: &DensVarsDev<F>,
+    tau: &Array<F>,
+    out: &mut Array<F>,
+    #[comptime] n: u32,
+) {
     let size = comptime!((1_u32 << n) as usize);
 
-    // tauwtau2 = (gnn / (8*n*tau))^2
+    // tauwtau2 = (gnn / (8*n*tau))^2 — uses explicit `tau` (clamped).
     let mut eight_n_tau_raw = Array::<F>::new(size);
-    ctaylor_mul::<F>(&d.n, &d.tau, &mut eight_n_tau_raw, n);
+    ctaylor_mul::<F>(&d.n, tau, &mut eight_n_tau_raw, n);
     let mut eight_n_tau = Array::<F>::new(size);
     ctaylor_scalar_mul::<F>(&eight_n_tau_raw, F::cast_from(8.0_f64), &mut eight_n_tau, n);
     let mut inv_8nt = Array::<F>::new(size);
@@ -471,12 +481,25 @@ fn locc_epsc_revpkzb<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptim
 pub fn tpsslocc_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
-    let mut eps_pkzb = Array::<F>::new(size);
-    locc_epsc_revpkzb::<F>(d, &mut eps_pkzb, n);
+    // Phase 6 D-10 — hard-clamp tau to tau_w. See `tpssc.rs` for rationale.
+    // The clamped tau flows into BOTH the inner `locc_epsc_revpkzb_with_tau`
+    // helper AND the outer `tauwtau3 = (gnn/(8 n tau))^3` factor here.
+    let mut tau_w = Array::<F>::new(size);
+    crate::functionals::mgga::shared::tpss_like::build_tau_w::<F>(d, &mut tau_w, n);
+    let mut tau_clamped = Array::<F>::new(size);
+    crate::functionals::mgga::shared::tpss_like::ctaylor_max::<F>(
+        &d.tau,
+        &tau_w,
+        &mut tau_clamped,
+        n,
+    );
 
-    // tauwtau3 = (gnn / (8*n*tau))^3
+    let mut eps_pkzb = Array::<F>::new(size);
+    locc_epsc_revpkzb_with_tau::<F>(d, &tau_clamped, &mut eps_pkzb, n);
+
+    // tauwtau3 = (gnn / (8*n*tau))^3 — uses clamped tau.
     let mut eight_n_tau_raw = Array::<F>::new(size);
-    ctaylor_mul::<F>(&d.n, &d.tau, &mut eight_n_tau_raw, n);
+    ctaylor_mul::<F>(&d.n, &tau_clamped, &mut eight_n_tau_raw, n);
     let mut eight_n_tau = Array::<F>::new(size);
     ctaylor_scalar_mul::<F>(&eight_n_tau_raw, F::cast_from(8.0_f64), &mut eight_n_tau, n);
     let mut inv_8nt = Array::<F>::new(size);
