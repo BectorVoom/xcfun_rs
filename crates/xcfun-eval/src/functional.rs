@@ -1356,6 +1356,41 @@ pub(crate) fn run_launch(
             (28, 2, 0) => arm!(28, 2, 0),  (28, 2, 1) => arm!(28, 2, 1),  (28, 2, 2) => arm!(28, 2, 2),
             (55, 2, 0) => arm!(55, 2, 0),  (55, 2, 1) => arm!(55, 2, 1),  (55, 2, 2) => arm!(55, 2, 2),
 
+            // ===== Phase 6 Plan 06-06 (D-18): LDA × vars=6 launch arms. =====
+            //
+            // Resolves the Phase 5 D-14 dispatch-table constraint forward.
+            // A kernel's `Dependency` mask determines which Vars subset arms it
+            // can launch into.  All 11 LDAs (Dependency::DENSITY only) → can
+            // launch in any Vars where DENSITY ⊆ vars_dep_mask, including
+            // A_B_GAA_GAB_GBB (vars=6).  `build_densvars` at vars=6 already
+            // populates `d.n` / `d.s` correctly, so the LDA kernel bodies
+            // (which only read those fields) work unchanged.  Mixed-LDA+GGA
+            // aliases (b3lyp, camb3lyp) now eval in-process.
+            //
+            // Coverage: 11 LDA ids × n ∈ {0,1,2,3,4} = 55 arms.
+            ( 0, 6, 0) => arm!( 0, 6, 0),  ( 0, 6, 1) => arm!( 0, 6, 1),
+            ( 0, 6, 2) => arm!( 0, 6, 2),  ( 0, 6, 3) => arm!( 0, 6, 3),  ( 0, 6, 4) => arm!( 0, 6, 4),
+            ( 2, 6, 0) => arm!( 2, 6, 0),  ( 2, 6, 1) => arm!( 2, 6, 1),
+            ( 2, 6, 2) => arm!( 2, 6, 2),  ( 2, 6, 3) => arm!( 2, 6, 3),  ( 2, 6, 4) => arm!( 2, 6, 4),
+            ( 3, 6, 0) => arm!( 3, 6, 0),  ( 3, 6, 1) => arm!( 3, 6, 1),
+            ( 3, 6, 2) => arm!( 3, 6, 2),  ( 3, 6, 3) => arm!( 3, 6, 3),  ( 3, 6, 4) => arm!( 3, 6, 4),
+            (13, 6, 0) => arm!(13, 6, 0),  (13, 6, 1) => arm!(13, 6, 1),
+            (13, 6, 2) => arm!(13, 6, 2),  (13, 6, 3) => arm!(13, 6, 3),  (13, 6, 4) => arm!(13, 6, 4),
+            (14, 6, 0) => arm!(14, 6, 0),  (14, 6, 1) => arm!(14, 6, 1),
+            (14, 6, 2) => arm!(14, 6, 2),  (14, 6, 3) => arm!(14, 6, 3),  (14, 6, 4) => arm!(14, 6, 4),
+            (15, 6, 0) => arm!(15, 6, 0),  (15, 6, 1) => arm!(15, 6, 1),
+            (15, 6, 2) => arm!(15, 6, 2),  (15, 6, 3) => arm!(15, 6, 3),  (15, 6, 4) => arm!(15, 6, 4),
+            (24, 6, 0) => arm!(24, 6, 0),  (24, 6, 1) => arm!(24, 6, 1),
+            (24, 6, 2) => arm!(24, 6, 2),  (24, 6, 3) => arm!(24, 6, 3),  (24, 6, 4) => arm!(24, 6, 4),
+            (25, 6, 0) => arm!(25, 6, 0),  (25, 6, 1) => arm!(25, 6, 1),
+            (25, 6, 2) => arm!(25, 6, 2),  (25, 6, 3) => arm!(25, 6, 3),  (25, 6, 4) => arm!(25, 6, 4),
+            (28, 6, 0) => arm!(28, 6, 0),  (28, 6, 1) => arm!(28, 6, 1),
+            (28, 6, 2) => arm!(28, 6, 2),  (28, 6, 3) => arm!(28, 6, 3),  (28, 6, 4) => arm!(28, 6, 4),
+            (55, 6, 0) => arm!(55, 6, 0),  (55, 6, 1) => arm!(55, 6, 1),
+            (55, 6, 2) => arm!(55, 6, 2),  (55, 6, 3) => arm!(55, 6, 3),  (55, 6, 4) => arm!(55, 6, 4),
+            (59, 6, 0) => arm!(59, 6, 0),  (59, 6, 1) => arm!(59, 6, 1),
+            (59, 6, 2) => arm!(59, 6, 2),  (59, 6, 3) => arm!(59, 6, 3),  (59, 6, 4) => arm!(59, 6, 4),
+
             // ===== Phase 3 Wave-2 GGAs: 17 ids × 3 orders, vars=6 (XC_A_B_GAA_GAB_GBB). =====
             // Plan 03-03 absorbs the Wave-2 INCONCLUSIVE escalation by wiring all 17 Wave-2
             // ids at vars=6 here.
