@@ -49,7 +49,7 @@
 
 use crate::ctaylor_rec::multo::{
     ctaylor_multo_skipconst_n1, ctaylor_multo_skipconst_n2,
-    ctaylor_multo_skipconst_n3,
+    ctaylor_multo_skipconst_n3, ctaylor_multo_skipconst_n4,
 };
 use cubecl::prelude::*;
 
@@ -205,13 +205,77 @@ pub(crate) fn ctaylor_compose_rec_n2<F: Float>(
     out[0] = out[0] + f[0];
 }
 
+/// N=4 compose — Phase 6 Plan 06-00 Task 1.
+///
+/// Implemented via the general recursion at `ctaylor.hpp:74-81`:
+/// ```cpp
+/// res[0] = coeff[4];
+/// for (i = 1..15) res[i] = 0;
+/// for (i = 3 downto 0) {
+///   ctaylor_rec<T, 4>::multo_skipconst(res, x);
+///   res[0] += coeff[i];
+/// }
+/// ```
+///
+/// Each step:
+///   i=3: multo_skipconst_n4(out, x); out[0] += f[3];
+///   i=2: multo_skipconst_n4(out, x); out[0] += f[2];
+///   i=1: multo_skipconst_n4(out, x); out[0] += f[1];
+///   i=0: multo_skipconst_n4(out, x); out[0] += f[0];
+///
+/// `f` is the (Nvar+1)-length scalar-series coefficient table; `x` and
+/// `out` are length 1<<4 = 16.
+#[cube]
+pub fn ctaylor_compose_n4<F: Float>(
+    out: &mut Array<F>,
+    x: &Array<F>,
+    f: &Array<F>,
+) {
+    let zero = F::new(0.0);
+
+    // Seed with coeff[N=4] and zero out higher-order slots (size 16).
+    out[0] = f[4];
+    out[1] = zero;
+    out[2] = zero;
+    out[3] = zero;
+    out[4] = zero;
+    out[5] = zero;
+    out[6] = zero;
+    out[7] = zero;
+    out[8] = zero;
+    out[9] = zero;
+    out[10] = zero;
+    out[11] = zero;
+    out[12] = zero;
+    out[13] = zero;
+    out[14] = zero;
+    out[15] = zero;
+
+    // Descending Horner: i = 3, 2, 1, 0.
+    ctaylor_multo_skipconst_n4::<F>(out, x);
+    out[0] = out[0] + f[3];
+
+    ctaylor_multo_skipconst_n4::<F>(out, x);
+    out[0] = out[0] + f[2];
+
+    ctaylor_multo_skipconst_n4::<F>(out, x);
+    out[0] = out[0] + f[1];
+
+    ctaylor_multo_skipconst_n4::<F>(out, x);
+    out[0] = out[0] + f[0];
+}
+
 // ---------------------------------------------------------------------------
 //  Outer dispatch
 // ---------------------------------------------------------------------------
 
-/// Outer dispatch for `out = f(x)` across N ∈ {0, 1, 2, 3}. `f` must have
+/// Outer dispatch for `out = f(x)` across N ∈ {0, 1, 2, 3, 4}. `f` must have
 /// length `n + 1` (scalar-series coefficients); `x` and `out` are length
 /// `1 << n`.
+///
+/// **Phase 6 status:** N=4 lands in Plan 06-00 Task 1 (D-19 forward from
+/// Phase-4 Plan 04-05 — Mode::Contracted order-5 metaGGA). N=5 / N=6 are
+/// pending; a follow-up plan will land them.
 #[cube]
 pub fn ctaylor_compose<F: Float>(
     out: &mut Array<F>,
@@ -227,5 +291,7 @@ pub fn ctaylor_compose<F: Float>(
         ctaylor_compose_n2::<F>(out, x, f);
     } else if comptime!(n == 3) {
         ctaylor_compose_n3::<F>(out, x, f);
+    } else if comptime!(n == 4) {
+        ctaylor_compose_n4::<F>(out, x, f);
     }
 }

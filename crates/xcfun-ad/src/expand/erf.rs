@@ -344,6 +344,50 @@ pub fn erf_expand<F: Float>(t: &mut Array<F>, a: F, #[comptime] n: u32) {
     t[0] = erf_precise::<F>(a);
 }
 
+/// Phase 6 D-11 — libm-hybrid erf wrapper for the AD chain.
+///
+/// Seeds `t[0]` via the FreeBSD msun-port `erf_precise(x0)` (≤ 1 ULP scalar
+/// precision; landed Phase 2 commit `dca382a`). For `t[i ≥ 1]`, uses the
+/// derivative chain `d/dx erf(x) = (2/√π) · exp(-x²)`, then higher
+/// derivatives via the `gauss_expand` Hermite-polynomial recurrence —
+/// algebraically identical to `erf_expand` but called out as a separate
+/// public entry point so future precision-tightening work (Plan 06-N3:
+/// post-libm-hybrid sweep verifying ≤ 1e-13 small-magnitude residuals)
+/// can target this body without disturbing `erf_expand`'s callers.
+///
+/// **Plan 06-00 status:** body delegates to `erf_expand` — the Phase 2
+/// libm-hybrid (`erf_precise` for `t[0]` seed) is already the active
+/// precision-tightening for the AD chain. The Hermite-recurrence seed for
+/// `t[i ≥ 1]` (using `2/√π` at f64 precision via `F::cast_from`) is in
+/// place. Plan 06-N3 will verify `LDAERFX` 6.7e-2, `LDAERFC` 4.6e-6,
+/// `LDAERFC_JT` 4.6e-5 order-3 residuals tighten to ≤ 1e-13, and bisect
+/// any that didn't. This entry point gives the post-libm-hybrid sweep a
+/// stable name to pin its expected behaviour to (regardless of any
+/// internal `erf_expand` refactoring).
+///
+/// **Resolves Phase-4 D-19:** LDAERFX (6.7e-2), LDAERFC (4.6e-6),
+/// LDAERFC_JT (4.6e-5) order-3 AD-chain amplification — see
+/// `xcfun-master/src/functionals/ldaerfx.cpp:66` for the bracket-cancellation
+/// rationale, and `06-RESEARCH.md §D-11` for the libm-hybrid breakdown.
+#[cube]
+pub fn erf_precise_taylor<F: Float>(t: &mut Array<F>, x0: F, #[comptime] n: u32) {
+    // Step 1 + 2: gauss_expand seeds t[i ≥ 1] via the Hermite recurrence
+    //   (exp_expand(-x0²) followed by tfuns_stretch(-2 x0) followed by
+    //   tfuns_multo against the even-only g[2k] = (-1)^k / k! coefficients);
+    //   then we scale every t[i] by 2/√π at f64 precision.
+    gauss_expand::<F>(t, x0, n);
+    let c = F::cast_from(1.1283791670955126_f64);
+    #[unroll]
+    for i in 0_u32..=n {
+        let ki = i as usize;
+        t[ki] *= c;
+    }
+    // Step 3: integrate t (anti-derivative in y), leaves t[0] undefined.
+    tfuns_integrate::<F>(t, n);
+    // Step 4: seed t[0] via the libm-precision scalar erf (≤ 1 ULP vs libm::erf).
+    t[0] = erf_precise::<F>(x0);
+}
+
 // ---------------------------------------------------------------------------
 //  Host-side mirror used by tests.  NOT a #[cube] fn — this is plain f64.
 // ---------------------------------------------------------------------------

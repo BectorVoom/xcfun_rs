@@ -55,7 +55,13 @@ use crate::ctaylor_rec::multo::ctaylor_multo;
 use crate::expand::asinh::asinh_expand;
 use crate::expand::atan::atan_expand;
 use crate::expand::br_inverse::br_inverse_expand;
-use crate::expand::erf::erf_expand;
+// Phase 6 D-11 — `ctaylor_erf` rewires onto `erf_precise_taylor`, the
+// libm-hybrid wrapper that seeds `t[0]` via `erf_precise` (FreeBSD msun
+// port from Plan 02-06 commit `dca382a`) and uses the gauss-expand
+// Hermite-poly recurrence for `t[i ≥ 1]`. `erf_expand` remains a public
+// entry point at `crates/xcfun-ad/src/expand/erf.rs` for back-compat;
+// Plan 06-N3 will tighten `erf_precise_taylor` independently.
+use crate::expand::erf::erf_precise_taylor;
 use crate::expand::exp::exp_expand;
 use crate::expand::expm1::expm1_expand;
 use crate::expand::inv::inv_expand;
@@ -245,15 +251,23 @@ pub fn ctaylor_pow<F: Float>(
 /// return res;
 /// ```
 ///
-/// Note — inherits `erf_expand`'s cubecl-cpu polyfill precision
-/// (~1.3e-8 on `2/√π`, max ~1.5e-7 on `erf(a)` via the polyfill).
-/// See `crates/xcfun-ad/src/expand/erf.rs` for the drift disclosure.
+/// Phase 6 D-11 — rewired to call `erf_precise_taylor` instead of
+/// `erf_expand` directly. Preserves the libm-precision seed for `t[0]`
+/// (Phase 2 commit `dca382a` baseline) and gives Plan 06-N3 a stable
+/// public entry point to tighten without disturbing the existing
+/// `erf_expand` callers.
+///
+/// Inherits `erf_precise_taylor`'s precision contract: scalar `erf_precise`
+/// at ≤ 1 ULP vs `libm::erf` for `t[0]`; `2/√π` at f64 precision via
+/// `F::cast_from` for the derivative chain. Plan 06-N3 verifies the
+/// LDAERF order-3 residuals tighten to ≤ 1e-13.
 #[cube]
 pub fn ctaylor_erf<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let scratch_len = comptime!((n + 1) as usize);
     let mut scratch = Array::<F>::new(scratch_len);
 
-    erf_expand::<F>(&mut scratch, x[0], n);
+    // Phase 6 D-11: `erf_precise_taylor` is the libm-hybrid wrapper.
+    erf_precise_taylor::<F>(&mut scratch, x[0], n);
     ctaylor_compose::<F>(out, x, &scratch, n);
 }
 

@@ -22,8 +22,14 @@ use crate::functionals::mgga::shared::tpss_like;
 pub fn revtpssc_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
+    // Phase 6 D-10 — hard-clamp tau to tau_w. See `tpssc.rs` for rationale.
+    let mut tau_w = Array::<F>::new(size);
+    tpss_like::build_tau_w::<F>(d, &mut tau_w, n);
+    let mut tau_clamped = Array::<F>::new(size);
+    tpss_like::ctaylor_max::<F>(&d.tau, &tau_w, &mut tau_clamped, n);
+
     let mut eps = Array::<F>::new(size);
-    tpss_like::revtpss_eps_full::<F>(d, &mut eps, n);
+    tpss_like::revtpss_eps_full_with_tau::<F>(d, &tau_clamped, &mut eps, n);
 
     ctaylor_mul::<F>(&d.n, &eps, out, n);
 }

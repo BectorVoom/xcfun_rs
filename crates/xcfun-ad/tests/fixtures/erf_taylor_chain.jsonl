@@ -1,0 +1,4 @@
+{"x0": 0.0, "n": 1, "expected": [0.0, 1.1283791670955126], "mpmath_prec": 200, "source": "libm_reference_placeholder"}
+{"x0": 0.5, "n": 1, "expected": [0.5204998778130465, 0.8788007830714048], "mpmath_prec": 200, "source": "libm_reference_placeholder"}
+{"x0": 1.0, "n": 1, "expected": [0.8427007929497149, 0.4151074974205947], "mpmath_prec": 200, "source": "libm_reference_placeholder"}
+{"x0": 2.0, "n": 1, "expected": [0.9953222650189527, 0.020666985354092280], "mpmath_prec": 200, "source": "libm_reference_placeholder"}

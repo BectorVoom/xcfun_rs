@@ -837,6 +837,114 @@ pub fn ctaylor_max<F: Float>(
     }
 }
 
+/// Phase 6 D-10 — von Weizsäcker tau_w = `|∇ρ|² / (8 ρ)` = gnn / (8 n).
+///
+/// Used inside the TPSS-correlation `tau ≥ tau_w` clamp guard. Plan 04-10
+/// Path-B bisection confirmed that the algorithmically faithful TPSSC /
+/// TPSSLOCC / REVTPSSC port diverges by ~1e+27 in the unphysical regime
+/// where `tau ≪ tau_w` (von Weizsäcker bound violated) due to f64-rounding
+/// cancellation in `eps_pkzb * (1 + dd * eps_pkzb * tauwtau3)` with
+/// `tauwtau3 ≈ 1e+27`.
+///
+/// The clamp `tau_clamped = max(tau, tau_w)` collapses tau to the von
+/// Weizsäcker bound in this regime — algorithmically faithful (TPSS
+/// correlation is undefined for `tau < tau_w`). C++ has no equivalent
+/// guard; ACC-04 amendment (Plan 06 D-03) covers boundary verification
+/// via mpmath truth.
+#[cube]
+pub fn build_tau_w<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
+    let size = comptime!((1_u32 << n) as usize);
+    // 8 * n
+    let mut eight_n = Array::<F>::new(size);
+    ctaylor_scalar_mul::<F>(&d.n, F::cast_from(8.0_f64), &mut eight_n, n);
+    // 1 / (8 * n)
+    let mut inv_8n = Array::<F>::new(size);
+    ctaylor_reciprocal::<F>(&eight_n, &mut inv_8n, n);
+    // gnn / (8 * n)
+    ctaylor_mul::<F>(&d.gnn, &inv_8n, out, n);
+}
+
+/// Phase 6 D-10 — `tpss_eps_full` variant taking an explicit `tau` array.
+///
+/// The kernel-level guard wrapping (per Plan 06-00 Task 3) calls
+/// `build_tau_w` + `ctaylor_max(d.tau, tau_w)` to produce a clamped tau,
+/// then dispatches into this function. The body is line-for-line identical
+/// to `tpss_eps_full` except that every reference to `d.tau` is replaced
+/// with the explicit `tau` parameter — keeping the C++ summation order
+/// unchanged at the 1e-12 parity gate (D-08).
+#[cube]
+pub fn tpss_eps_full_with_tau<F: Float>(
+    d: &DensVarsDev<F>,
+    tau: &Array<F>,
+    out: &mut Array<F>,
+    #[comptime] n: u32,
+) {
+    let size = comptime!((1_u32 << n) as usize);
+
+    // tauwtau2 = (gnn / (8*n*tau))^2  — uses explicit `tau` (clamped).
+    let mut eight_n_tau_raw = Array::<F>::new(size);
+    ctaylor_mul::<F>(&d.n, tau, &mut eight_n_tau_raw, n);
+    let mut eight_n_tau = Array::<F>::new(size);
+    ctaylor_scalar_mul::<F>(&eight_n_tau_raw, F::cast_from(8.0_f64), &mut eight_n_tau, n);
+    let mut gnn_8nt = Array::<F>::new(size);
+    let mut inv_8nt = Array::<F>::new(size);
+    ctaylor_reciprocal::<F>(&eight_n_tau, &mut inv_8nt, n);
+    ctaylor_mul::<F>(&d.gnn, &inv_8nt, &mut gnn_8nt, n);
+    let mut tauwtau2 = Array::<F>::new(size);
+    ctaylor_powi_2::<F>(&gnn_8nt, &mut tauwtau2, n);
+
+    // epsc_pbe = tpss_pbec_eps(d) — does NOT use d.tau, faithful to original.
+    let mut epsc_pbe = Array::<F>::new(size);
+    tpss_pbec_eps::<F>(d, &mut epsc_pbe, n);
+
+    // epsc_sum = tpss_epsc_summax(d) — does NOT use d.tau.
+    let mut epsc_sum = Array::<F>::new(size);
+    tpss_epsc_summax::<F>(d, &mut epsc_sum, n);
+
+    // C_zeta_xi = tpss_C(d) — does NOT use d.tau.
+    let mut C_zeta_xi = Array::<F>::new(size);
+    tpss_C::<F>(d, &mut C_zeta_xi, n);
+
+    // eps_pkzb = epsc_pbe * (1 + C*tauwtau2) - (1+C)*tauwtau2*epsc_sum
+    let mut C_tauwtau2 = Array::<F>::new(size);
+    ctaylor_mul::<F>(&C_zeta_xi, &tauwtau2, &mut C_tauwtau2, n);
+
+    let mut pbe_C_t2 = Array::<F>::new(size);
+    ctaylor_mul::<F>(&epsc_pbe, &C_tauwtau2, &mut pbe_C_t2, n);
+
+    let mut eps_pkzb = Array::<F>::new(size);
+    ctaylor_add::<F>(&epsc_pbe, &pbe_C_t2, &mut eps_pkzb, n);
+
+    // (1 + C) * tauwtau2 * epsc_sum
+    let mut one_C = Array::<F>::new(size);
+    #[unroll]
+    for i in 0..size {
+        one_C[i] = C_zeta_xi[i];
+    }
+    one_C[0] = one_C[0] + F::new(1.0);
+
+    let mut one_C_t2 = Array::<F>::new(size);
+    ctaylor_mul::<F>(&one_C, &tauwtau2, &mut one_C_t2, n);
+
+    let mut rhs = Array::<F>::new(size);
+    ctaylor_mul::<F>(&one_C_t2, &epsc_sum, &mut rhs, n);
+
+    let mut eps_pkzb2 = Array::<F>::new(size);
+    ctaylor_sub::<F>(&eps_pkzb, &rhs, &mut eps_pkzb2, n);
+
+    // tauwtau3 = (gnn / (8*n*tau))^3 — uses explicit `tau`.
+    let mut tauwtau3 = Array::<F>::new(size);
+    ctaylor_powi_3::<F>(&gnn_8nt, &mut tauwtau3, n);
+
+    // out = eps_pkzb * (1 + dd * eps_pkzb * tauwtau3)
+    let mut dd_eps_t3_raw = Array::<F>::new(size);
+    ctaylor_mul::<F>(&eps_pkzb2, &tauwtau3, &mut dd_eps_t3_raw, n);
+    let mut dd_eps_t3 = Array::<F>::new(size);
+    ctaylor_scalar_mul::<F>(&dd_eps_t3_raw, F::cast_from(TPSS_DD_F64), &mut dd_eps_t3, n);
+    dd_eps_t3[0] = dd_eps_t3[0] + F::new(1.0);
+    ctaylor_mul::<F>(&eps_pkzb2, &dd_eps_t3, out, n);
+}
+
 /// TPSS `epsc_summax(d)` — `(a * max(eps_pbe, eps_pbe_a) + b * max(eps_pbe, eps_pbe_b)) / n`.
 /// Port of `tpssc_eps.hpp:33-42`.
 #[cube]
@@ -1399,6 +1507,70 @@ pub fn revtpss_eps_full<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comp
     ctaylor_sub::<F>(&eps_pkzb, &rhs, &mut eps_pkzb2, n);
 
     // out = eps_pkzb * (1 + 2.8 * eps_pkzb * tauwtau2)
+    let mut dd_eps_t2_raw = Array::<F>::new(size);
+    ctaylor_mul::<F>(&eps_pkzb2, &tauwtau2, &mut dd_eps_t2_raw, n);
+    let mut dd_eps_t2 = Array::<F>::new(size);
+    ctaylor_scalar_mul::<F>(&dd_eps_t2_raw, F::cast_from(2.8_f64), &mut dd_eps_t2, n);
+    dd_eps_t2[0] = dd_eps_t2[0] + F::new(1.0);
+    ctaylor_mul::<F>(&eps_pkzb2, &dd_eps_t2, out, n);
+}
+
+/// Phase 6 D-10 — `revtpss_eps_full` variant taking an explicit `tau` array.
+///
+/// Body line-for-line identical to `revtpss_eps_full` except `d.tau` is
+/// replaced with the explicit `tau` parameter (clamped at the kernel-body
+/// level via `ctaylor_max(d.tau, tau_w)`). See `tpss_eps_full_with_tau`
+/// for the rationale.
+#[cube]
+pub fn revtpss_eps_full_with_tau<F: Float>(
+    d: &DensVarsDev<F>,
+    tau: &Array<F>,
+    out: &mut Array<F>,
+    #[comptime] n: u32,
+) {
+    let size = comptime!((1_u32 << n) as usize);
+
+    // tauwtau2 = (gnn / (8*n*tau))^2 — uses explicit `tau` (clamped).
+    let mut eight_n_tau_raw = Array::<F>::new(size);
+    ctaylor_mul::<F>(&d.n, tau, &mut eight_n_tau_raw, n);
+    let mut eight_n_tau = Array::<F>::new(size);
+    ctaylor_scalar_mul::<F>(&eight_n_tau_raw, F::cast_from(8.0_f64), &mut eight_n_tau, n);
+    let mut inv_8nt = Array::<F>::new(size);
+    ctaylor_reciprocal::<F>(&eight_n_tau, &mut inv_8nt, n);
+    let mut gnn_8nt = Array::<F>::new(size);
+    ctaylor_mul::<F>(&d.gnn, &inv_8nt, &mut gnn_8nt, n);
+    let mut tauwtau2 = Array::<F>::new(size);
+    ctaylor_powi_2::<F>(&gnn_8nt, &mut tauwtau2, n);
+
+    let mut epsc_pbe = Array::<F>::new(size);
+    revtpss_pbec_eps::<F>(d, &mut epsc_pbe, n);
+
+    let mut epsc_sum = Array::<F>::new(size);
+    revtpss_epsc_summax::<F>(d, &mut epsc_sum, n);
+
+    let mut C_zeta_xi = Array::<F>::new(size);
+    revtpss_C::<F>(d, &mut C_zeta_xi, n);
+
+    let mut C_t2 = Array::<F>::new(size);
+    ctaylor_mul::<F>(&C_zeta_xi, &tauwtau2, &mut C_t2, n);
+    let mut pbe_C_t2 = Array::<F>::new(size);
+    ctaylor_mul::<F>(&epsc_pbe, &C_t2, &mut pbe_C_t2, n);
+    let mut eps_pkzb = Array::<F>::new(size);
+    ctaylor_add::<F>(&epsc_pbe, &pbe_C_t2, &mut eps_pkzb, n);
+
+    let mut one_C = Array::<F>::new(size);
+    #[unroll]
+    for i in 0..size {
+        one_C[i] = C_zeta_xi[i];
+    }
+    one_C[0] = one_C[0] + F::new(1.0);
+    let mut one_C_t2 = Array::<F>::new(size);
+    ctaylor_mul::<F>(&one_C, &tauwtau2, &mut one_C_t2, n);
+    let mut rhs = Array::<F>::new(size);
+    ctaylor_mul::<F>(&one_C_t2, &epsc_sum, &mut rhs, n);
+    let mut eps_pkzb2 = Array::<F>::new(size);
+    ctaylor_sub::<F>(&eps_pkzb, &rhs, &mut eps_pkzb2, n);
+
     let mut dd_eps_t2_raw = Array::<F>::new(size);
     ctaylor_mul::<F>(&eps_pkzb2, &tauwtau2, &mut dd_eps_t2_raw, n);
     let mut dd_eps_t2 = Array::<F>::new(size);

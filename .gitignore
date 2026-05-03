@@ -7,3 +7,6 @@ xcfun-master
 validation/report.jsonl
 # Ephemeral GSD executor worktrees — should never be tracked.
 .claude/worktrees/
+# Phase 6 D-04 — Python sidecar bytecode caches (xtask/mpmath_eval).
+__pycache__/
+*.pyc
