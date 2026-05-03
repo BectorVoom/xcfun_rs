@@ -27,6 +27,7 @@ requirements:
   - KER-05
 must_haves:
   truths:
+    - "D-09: Migration ordering preserved — Plan 06-00 (Wave 1) lands all algebraic substrate (AD N≥4 + libm-hybrid erf + tau guards + mpmath fixtures) in CURRENT xcfun-eval/ tree FIRST; this plan performs the git mv SECOND with zero concurrent algebraic deltas. Enforced structurally via `depends_on: 06-00` (Wave 2 cannot start until Wave 1 closes). Any post-mv test regression is unambiguously a 'move bug', never a 'substrate bug' — bisectable via `git diff` against the move commit."
     - "crates/xcfun-kernels/ exists as workspace member with 78 functional bodies + DensVarsDev<F> + dispatch_kernel — per D-08 design-doc-05 split."
     - "xcfun-kernels has NO direct dependency on cubecl-cpu / cubecl-hip / cubecl-cuda / cubecl-wgpu — only `cubecl` core (per D-08 contract: never instantiates a runtime)."
     - "xcfun-eval depends on xcfun-kernels; retains only Functional + eval_point_kernel + cpu_client substrate (per D-08)."
