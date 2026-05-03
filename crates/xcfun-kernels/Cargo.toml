@@ -22,3 +22,19 @@ xcfun-core = { path = "../xcfun-core" }
 xcfun-ad   = { path = "../xcfun-ad" }
 cubecl     = { workspace = true }
 thiserror  = { workspace = true }
+
+# Phase 6 Plan 06-N3 (W-9 / I-3 Option B): per-functional D-19 fixtures +
+# unit tests live in `crates/xcfun-kernels/tests/d19_<name>.rs`. Each test
+# loads `validation/fixtures/d19_n3/<name>_baseline.jsonl`, builds a
+# `Functional` (in xcfun-eval) at order 3 over the curated density strata,
+# and asserts strict 1e-13 vs the committed snapshot. The tests are
+# pure-verification regression contracts (I-3 Option B) — they do not
+# exercise any code path inside this crate directly, but they exercise the
+# `xcfun_kernels` public surface transitively via the
+# `xcfun_eval::Functional::eval` → `dispatch_kernel` chain. Dev-deps are
+# crate-graph local; library deps above are unchanged.
+[dev-dependencies]
+xcfun-eval = { path = "../xcfun-eval", features = ["testing"] }
+approx     = { workspace = true }
+serde      = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
