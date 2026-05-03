@@ -1,7 +1,11 @@
 //! `validation` binary — tier-2 parity harness CLI.
 //!
 //! Usage:
-//!   cargo run -p validation --release -- [--backend cpu] [--order N] [--filter REGEX]
+//!   cargo run -p validation --release -- [--backend {cpu|rocm|cuda|wgpu|metal}]
+//!                                        [--tier {2|3}]
+//!                                        [--reference {cpp|mpmath}]
+//!                                        [--exclude-erf]
+//!                                        [--order N] [--filter REGEX]
 //!                                        [--mode {partial_derivatives,potential,contracted}]
 //!                                        [--grid {default,supplemental}]
 //!                                        [--resume]
@@ -10,6 +14,23 @@
 //!   0 — all records within their per-functional threshold
 //!   2 — at least one record exceeded its threshold (ACC-03 merge block)
 //!   1 — internal error (bad CLI flag, build/FFI failure, etc.)
+//!
+//! ## Phase 6 Plan 06-02b — `--tier`, `--reference`, `--exclude-erf`, extended `--backend`
+//!
+//! - `--tier 2` (default) preserves Phase 2-5 cc-vs-Rust behaviour at 1e-12.
+//! - `--tier 3` dispatches to the cross-backend `Batch<R>` parity skeleton
+//!   (`run_tier3` in driver.rs). Plan 06-02b implements the Cpu arm
+//!   skeleton; the actual KER-06 strict-1e-13 sweep + 17-functional bar is
+//!   owned by Plan 06-05 (revision-1 B-4).
+//! - `--reference {cpp|mpmath}` selects ground truth. Default `cpp`. The
+//!   `mpmath` branch is wired by Plan 06-N2 (mpmath-only fixtures for the
+//!   20 `excluded_by_upstream_spec` functionals + the 5 ERF cases per
+//!   ACC-04 amendment / D-03).
+//! - `--exclude-erf` filters out functionals carrying `Dependency::ERF`
+//!   (consumed by Plan 06-04 for the Wgpu tier-3 1e-9 sweep per GPU-08).
+//! - `--backend` accepts `cpu | rocm | cuda | wgpu | metal`. Plans 06-03 /
+//!   06-04 wire concrete arms; until then non-cpu values bail with a
+//!   helpful error message identifying the required `--features` flag.
 //!
 //! ## --resume (Plan 04-10, 2026-04-28)
 //!
@@ -48,6 +69,38 @@ fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
     let args: Vec<String> = std::env::args().skip(1).collect();
     let backend = parse_arg(&args, "--backend").unwrap_or("cpu");
+    // Phase 6 Plan 06-02b — `--tier {2|3}`. Default 2 preserves Phase 2-5
+    // cc-vs-Rust behaviour. Tier 3 dispatches to `run_tier3` (cross-backend
+    // Batch<R> parity skeleton; Cpu arm wired in 06-02b, GPU arms in 06-03/04).
+    let tier: u32 = parse_arg(&args, "--tier")
+        .unwrap_or("2")
+        .parse()
+        .context("--tier must be 2 or 3")?;
+    if tier != 2 && tier != 3 {
+        anyhow::bail!("--tier must be 2 or 3; got {}", tier);
+    }
+    // Phase 6 Plan 06-02b — `--reference {cpp|mpmath}`. Default `cpp` preserves
+    // existing behaviour. Plan 06-N2 wires the `mpmath` branch (ACC-04 / D-03
+    // mpmath-truth amendment for the 20 `excluded_by_upstream_spec` functionals
+    // and the 5 ERF range-separated functionals where C++ is documentably
+    // unstable in the cancellation regime).
+    let reference = parse_arg(&args, "--reference").unwrap_or("cpp");
+    if reference != "cpp" && reference != "mpmath" {
+        anyhow::bail!(
+            "--reference must be 'cpp' or 'mpmath'; got {}",
+            reference
+        );
+    }
+    if reference == "mpmath" {
+        anyhow::bail!(
+            "--reference mpmath not yet wired (Plan 06-N2 owns the mpmath fixture loader)"
+        );
+    }
+    // Phase 6 Plan 06-02b — `--exclude-erf` filter; consumed by Plan 06-04 for
+    // the Wgpu tier-3 1e-9 sweep per GPU-08 (range-separated functionals
+    // carrying Dependency::ERF route to CPU on Wgpu/Metal backends).
+    let exclude_erf = has_flag(&args, "--exclude-erf");
+
     let order: u32 = parse_arg(&args, "--order")
         .unwrap_or("2")
         .parse()
@@ -101,9 +154,26 @@ fn main() -> Result<()> {
         jobs.get()
     );
 
+    // Phase 6 Plan 06-02b — Tier-3 dispatch. The actual KER-06 sign-off
+    // command is owned by Plan 06-05 (revision-1 B-4); Plan 06-02b ships the
+    // CLI wiring + the `run_tier3` driver skeleton (Cpu arm scoped for 06-05,
+    // ROCm/CUDA/Wgpu/Metal arms bail with feature-flag hints).
+    if tier == 3 {
+        return validation::driver::run_tier3(
+            backend,
+            order,
+            jobs.get(),
+            filter,
+            exclude_erf,
+        );
+    }
+
+    // Tier-2 path (default; Phase 2-5 behaviour). Only `--backend cpu` is
+    // wired here today. Plans 06-03 / 06-04 may add tier-2 GPU dispatch if
+    // ever needed; not in 06-02b scope.
     if backend != "cpu" {
         anyhow::bail!(
-            "Phase 2 only supports --backend cpu; got {} (D-23)",
+            "Tier-2 harness supports --backend cpu only; got {} (use --tier 3 for cross-backend dispatch)",
             backend
         );
     }

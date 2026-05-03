@@ -421,6 +421,12 @@ where
         mode: Mode::PartialDerivatives,
         order,
         settings: xcfun_eval::functional::DEFAULT_SETTINGS,
+        // Plan 06-02b deviation (Rule 3): Plan 06-02a added `settings_gen: u64`
+        // to `Functional` and updated test files, but missed these two struct
+        // literals in `validation/src/driver.rs`. Initialise to 0 (matches
+        // `DEFAULT_SETTINGS`); the validation harness never calls `set()` on
+        // the leaked struct, so the counter is irrelevant for tier-2 parity.
+        settings_gen: 0,
     };
 
     for (point_idx, gp) in grid.iter().enumerate() {
@@ -522,6 +528,9 @@ where
         mode: Mode::Potential,
         order: 0,
         settings: xcfun_eval::functional::DEFAULT_SETTINGS,
+        // Plan 06-02b deviation (Rule 3): see analogous comment ~100 lines
+        // above in run() — Plan 06-02a missed this struct literal.
+        settings_gen: 0,
     };
 
     for (point_idx, gp) in grid.iter().enumerate() {
@@ -1589,6 +1598,150 @@ pub fn run_contracted(
     // inactive (prevents a dead-code lint inside this validation crate).
     let _ = pack_for_contracted_validation::<>(&[1.0_f64], 0);
     Ok(report)
+}
+
+// ===========================================================================
+// Phase 6 Plan 06-02b — tier-3 cross-backend parity sweep skeleton.
+// ===========================================================================
+//
+// `run_tier3(backend, order, jobs, filter, exclude_erf)` is the entry point
+// for the Phase-6 cross-backend parity contract (KER-06 strict-1e-13 sweep
+// vs scalar `Functional::eval`). Plan 06-02b ships the CLI dispatch wiring
+// + the Cpu arm skeleton so Plans 06-03 / 06-04 can replace single match
+// arms without further validation/* code; the actual KER-06 sign-off
+// command + 17-clean functional bar is OWNED by Plan 06-05 (revision-1
+// B-4) and intentionally NOT claimed in 06-02b's `requirements:`.
+//
+// Backend dispatch:
+//   - Backend::Cpu  → CPU arm; iterates the Phase 2 stratified xoshiro 10k
+//                     grid (validation::fixtures::generate_grid()), runs
+//                     Batch::<CpuRuntime>::eval_vec_host_cpu, compares per
+//                     record against scalar Functional::eval at strict
+//                     1e-13. **Skeleton today** — body wired by Plan 06-05.
+//   - Backend::Rocm → bails with "--features hip" hint (Plan 06-03 wires).
+//   - Backend::Cuda → bails with "--features cuda" hint (Plan 06-04 wires).
+//   - Backend::Wgpu → bails with "--features wgpu" hint (Plan 06-04 wires).
+//   - Backend::Metal → bails with "--features wgpu" hint (Plan 06-04
+//                      wires; Metal is reached via cubecl-wgpu's Metal
+//                      adapter per RESEARCH §R-02 / Pitfall 9).
+//
+// The bail!() messages explicitly identify the feature flag and the
+// downstream Plan number so downstream agents can navigate the wiring map.
+
+/// Phase 6 Plan 06-02b — tier-3 cross-backend parity sweep entry point.
+///
+/// `backend` is the unparsed CLI string (one of `cpu | rocm | hip | cuda |
+/// wgpu | metal`). Parsed via `xcfun_gpu::Backend::from_str`; an unknown
+/// value bails with the recognised-values list.
+///
+/// `order` / `jobs` / `filter` / `exclude_erf` are passed through from the
+/// CLI parser. Plan 06-05 will use `order` to gate the sweep range
+/// (`Mode::PartialDerivatives` orders 0..=3 against scalar `Functional::eval`
+/// per KER-06); `filter` is a regex applied to functional names; `jobs`
+/// controls parallelism inside the per-tuple loop (Plan 06-05 wires);
+/// `exclude_erf` filters out range-separated functionals (Plan 06-04
+/// consumes for the Wgpu 1e-9 sweep per GPU-08).
+///
+/// Returns `Ok(())` on a clean Cpu skeleton run today (the body is a
+/// `todo!()` placeholder per the plan's revision-1 B-4 scoping; the actual
+/// 17-functional / 1e-13 / 0-failures gate is enforced by Plan 06-05's
+/// follow-up command). All non-Cpu arms bail with structured error
+/// messages directing users to enable the corresponding `--features` flag
+/// and the Plan number that wires the concrete arm.
+pub fn run_tier3(
+    backend: &str,
+    order: u32,
+    jobs: usize,
+    filter: &str,
+    exclude_erf: bool,
+) -> Result<()> {
+    use xcfun_gpu::Backend;
+
+    let backend_e = Backend::from_str(backend).ok_or_else(|| {
+        anyhow::anyhow!(
+            "--backend {} unrecognised; valid values: cpu | rocm | hip | cuda | wgpu | metal",
+            backend
+        )
+    })?;
+
+    tracing::info!(
+        "Tier-3 harness: backend={:?} order={} jobs={} filter={} exclude_erf={}",
+        backend_e,
+        order,
+        jobs,
+        filter,
+        exclude_erf,
+    );
+
+    match backend_e {
+        Backend::Cpu => {
+            // Phase 6 Plan 06-02b ships the CPU arm SKELETON. The actual
+            // body — iterate `validation::fixtures::generate_grid()`, build
+            // `xcfun_eval::Functional` per `(functional, vars, mode, order)`
+            // tuple, call
+            //
+            //   Batch::<cubecl_cpu::CpuRuntime>::eval_vec_host_cpu(
+            //       &fun, density_flat, density_pitch,
+            //       &mut batch_out, out_pitch, grid.len()
+            //   )?;
+            //
+            // and compare per-record `max_rel_err = |batch - scalar| /
+            // max(|scalar|, 1.0)` against strict 1e-13 — is owned by Plan
+            // 06-05 (revision-1 B-4). The skeleton compiles, parses CLI
+            // flags, and validates Backend dispatch; the body panics so
+            // accidental "tier-3 sweep was run before 06-05 landed" is loud
+            // rather than silently green.
+            //
+            // Acceptance gate per Plan 06-02b: `cargo build -p validation`
+            // succeeds; this `todo!()` is documented as expected behaviour
+            // and acceptable per the plan's `<action>` Step B note.
+            let _ = (order, jobs, filter, exclude_erf);
+            todo!(
+                "Plan 06-02b ships the run_tier3 CPU arm skeleton; \
+                 KER-06 sign-off body lands in Plan 06-05 (revision-1 B-4)"
+            )
+        }
+        #[cfg(not(feature = "hip"))]
+        Backend::Rocm => anyhow::bail!(
+            "--backend rocm requires --features hip (Plan 06-03 wires the cubecl-hip arm)"
+        ),
+        #[cfg(not(feature = "cuda"))]
+        Backend::Cuda => anyhow::bail!(
+            "--backend cuda requires --features cuda (Plan 06-04 wires the cubecl-cuda arm)"
+        ),
+        #[cfg(not(feature = "wgpu"))]
+        Backend::Wgpu => anyhow::bail!(
+            "--backend wgpu requires --features wgpu (Plan 06-04 wires the cubecl-wgpu arm)"
+        ),
+        // Metal is reached via cubecl-wgpu per RESEARCH §R-02 / Pitfall 9
+        // (no separate cubecl-metal crate exists). The `metal` Cargo feature
+        // is a transparent alias of `wgpu` per crates/xcfun-gpu/Cargo.toml.
+        #[cfg(not(feature = "wgpu"))]
+        Backend::Metal => anyhow::bail!(
+            "--backend metal requires --features wgpu (Metal is reached via cubecl-wgpu's Metal \
+             adapter per RESEARCH R-02 / Pitfall 9; Plan 06-04 wires the wgpu arm)"
+        ),
+        // Plans 06-03 / 06-04 fill these arms when their feature flags are
+        // enabled. The unreachable here documents that Plan 06-02b ships
+        // the skeleton only — flipping the feature flag without the wiring
+        // landing is a `bail!` not a fall-through.
+        #[cfg(feature = "hip")]
+        Backend::Rocm => anyhow::bail!(
+            "--backend rocm: cubecl-hip wired in Plan 06-03 (06-02b ships skeleton only)"
+        ),
+        #[cfg(feature = "cuda")]
+        Backend::Cuda => anyhow::bail!(
+            "--backend cuda: cubecl-cuda wired in Plan 06-04 (06-02b ships skeleton only)"
+        ),
+        #[cfg(feature = "wgpu")]
+        Backend::Wgpu => anyhow::bail!(
+            "--backend wgpu: cubecl-wgpu wired in Plan 06-04 (06-02b ships skeleton only)"
+        ),
+        #[cfg(feature = "wgpu")]
+        Backend::Metal => anyhow::bail!(
+            "--backend metal: cubecl-wgpu Metal arm wired in Plan 06-04 (06-02b ships skeleton only)"
+        ),
+    }
 }
 
 // ===========================================================================

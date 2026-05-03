@@ -25,6 +25,13 @@ xcfun-core = { path = "../crates/xcfun-core" }
 # directly when wiring the mpmath ground-truth path and the per-functional
 # bisection sweep.
 xcfun-kernels = { path = "../crates/xcfun-kernels" }
+# Phase 6 Plan 06-02b: validation harness gains tier-3 cross-backend driver
+# skeleton via `xcfun-gpu`. Default `cpu` feature pulls cubecl-cpu through
+# xcfun-eval/testing; downstream feature flags (hip/cuda/wgpu/metal) forward
+# directly to xcfun-gpu and stay opt-in (Plans 06-03 / 06-04 wire concrete
+# Batch arms behind these flags).
+xcfun-gpu = { path = "../crates/xcfun-gpu", default-features = false, features = ["cpu"] }
+cubecl-cpu = { workspace = true }
 anyhow = { workspace = true }
 approx = { workspace = true }
 serde = { workspace = true }
@@ -33,6 +40,15 @@ rand_xoshiro = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 regex = "1.10"
+
+[features]
+# Phase 6 Plan 06-02b: forward GPU runtime feature flags to xcfun-gpu.
+# Default = empty (CPU is always available via xcfun-gpu's `cpu` feature).
+default = []
+hip   = ["xcfun-gpu/hip"]    # Plan 06-03 — ROCm primary
+cuda  = ["xcfun-gpu/cuda"]   # Plan 06-04 — NVIDIA opt-in
+wgpu  = ["xcfun-gpu/wgpu"]   # Plan 06-04 — portable fallback
+metal = ["xcfun-gpu/metal"]  # Plan 06-04 — alias of wgpu (R-02 / Pitfall 9)
 
 [build-dependencies]
 cc = { workspace = true }

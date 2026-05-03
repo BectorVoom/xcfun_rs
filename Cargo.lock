@@ -3833,6 +3833,7 @@ dependencies = [
  "anyhow",
  "approx",
  "cc",
+ "cubecl-cpu",
  "rand_xoshiro",
  "regex",
  "serde",
@@ -3842,6 +3843,7 @@ dependencies = [
  "tracing-subscriber",
  "xcfun-core",
  "xcfun-eval",
+ "xcfun-gpu",
  "xcfun-kernels",
 ]
 
