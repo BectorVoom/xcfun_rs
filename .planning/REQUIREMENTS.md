@@ -126,12 +126,12 @@
 ### GPU Backend (Batch lifecycle)
 
 - [ ] **GPU-01**: `Batch<'fun, R: cubecl::Runtime>` exposes `reserve`, `upload_density`, `launch`, `download_result`, `eval_vec_host`
-- [ ] **GPU-02**: `Backend` enum (`Cpu`, `Cuda`, `Wgpu`); `auto_backend()` selects CUDA if available, else Wgpu with f64, else CPU
+- [ ] **GPU-02**: `Backend` enum (Cpu, Rocm, Cuda, Metal, Wgpu); `auto_backend()` priority chain per CONTEXT.md D-07 — `XCFUN_FORCE_BACKEND` > Rocm > Cuda > Metal-with-f64 > Wgpu-with-SHADER_F64 > Cpu
 - [ ] **GPU-03**: `cubecl-cuda` enabled under feature `cuda`; Wgpu under `wgpu`; CPU always on
 - [ ] **GPU-04**: Device-buffer pool grows with powers-of-two; weights uploaded once per batch (generation-counter guarded)
 - [ ] **GPU-05**: On Wgpu, functionals with `Dependency::ERF` are routed to `Backend::Cpu` automatically
 - [ ] **GPU-06**: Wgpu without `SHADER_F64` returns `Err(XcError::Runtime)` at batch open; compile-time `size_of::<Scalar>() == 8` assertion
-- [ ] **GPU-07**: Tier-3 parity on CUDA — 10k-point grid within 1e-13 rel-err vs. CPU
+- [ ] **GPU-07**: Tier-3 parity on ROCm (PRIMARY per CONTEXT.md D-05) — 10k-point grid within 1e-13 rel-err vs. CPU. CUDA + Metal are opt-in best-effort per D-06.
 - [ ] **GPU-08**: Tier-3 parity on Wgpu — 10k-point grid (excluding range-separated functionals) within 1e-9 rel-err vs. CPU
 
 ### Accuracy & Validation

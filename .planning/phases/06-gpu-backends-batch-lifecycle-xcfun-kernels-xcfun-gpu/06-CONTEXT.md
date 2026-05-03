@@ -50,6 +50,11 @@ Three deliverable axes stack:
 
 - **D-05:** **ROCm/HIP is the PRIMARY GPU backend.** `cubecl-hip = "=0.10.0-pre.3"` (feature flag `hip`) carries the strict 1e-13 tier-3 contract. `Backend::Rocm` + `HipRuntime` are first-class. Dev/CI loops run on ROCm; RDNA-2 GPUs need `HSA_OVERRIDE_GFX_VERSION=10.3.0` documented in `xcfun-gpu/README.md`. Reason: project dev environment is AMD; no CUDA hardware available locally. ROADMAP / REQUIREMENTS / PROJECT.md / CLAUDE.md / `docs/design/06-cubecl-strategy.md §2` rename `Cuda` → `Rocm` in primary path.
 - **D-06:** **CUDA + Metal as opt-in best-effort feature flags.** `cubecl-cuda = "=0.10.0-pre.3"` (feature `cuda`) ships for NVIDIA users; tier-3 only via cloud CI when available, no local validation. `cubecl-metal = "=0.10.0-pre.3"` (feature `metal`) ships for macOS / Apple Silicon. **Apple Silicon caveat:** Apple Silicon GPUs lack hardware f64; cubecl-metal must runtime-probe f64 support and refuse if absent (analogous to Wgpu `SHADER_F64` gate). Both are community-maintained; numerical contract relaxes to "best-effort" for these — never gate the primary v1 release on either.
+
+### Amended on revision-1 (2026-04-30)
+
+**D-06 correction:** `cubecl-metal` does NOT exist as a separate crate on crates.io (verified by RESEARCH §"Standard Stack" + Pitfall 9 + R-02). Metal is reached via `cubecl-wgpu`'s Metal adapter; the `metal` cargo feature in `xcfun-gpu` is an alias of `wgpu` (`metal = ["wgpu"]`). The original D-06 text above mentioning `cubecl-metal = "=0.10.0-pre.3"` is preserved for audit-trail but superseded by this amendment. All Plan 06-02a / 06-04 implementation work uses the `metal = ["wgpu"]` alias model. The `metal` cargo feature is therefore a transparent alias of `wgpu` and pulls the same `cubecl-wgpu` crate under the hood; the runtime probe distinguishes Metal-adapter f64 support via `wgpu::Features::SHADER_F64` exactly as for any other Wgpu adapter.
+
 - **D-07:** **`auto_backend()` priority order:** env `XCFUN_FORCE_BACKEND` → ROCm-if-available → CUDA-if-available-and-`cuda`-feature → Metal-if-available-and-f64-and-`metal`-feature → Wgpu-if-`SHADER_F64`-and-`wgpu`-feature → CPU. Documented in `xcfun-gpu/src/auto_backend.rs` doc-comment.
 
 ### Crate boundary (resurrect design-doc-05 layout)
