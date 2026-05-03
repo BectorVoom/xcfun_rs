@@ -410,11 +410,8 @@ where
         );
     }
 
-    // Rust side: leak a per-iteration `weights` slice — acceptable in
-    // a one-shot validation binary (total leak across run < 1 KB).
-    // `Box::leak` is thread-safe; multiple workers leaking concurrently
-    // is fine.
-    let weights: &'static [(FunctionalId, f64)] = Box::leak(Box::new([(id, 1.0)]));
+    // Phase 6 Plan 06-06 (D-17): weights is Vec<(FunctionalId, f64)>; no leak.
+    let weights: Vec<(FunctionalId, f64)> = vec![(id, 1.0)];
     let rust_fun = Functional {
         weights,
         vars,
@@ -521,7 +518,7 @@ where
         );
     }
 
-    let weights: &'static [(FunctionalId, f64)] = Box::leak(Box::new([(id, 1.0)]));
+    let weights: Vec<(FunctionalId, f64)> = vec![(id, 1.0)];
     let rust_fun = Functional {
         weights,
         vars,
@@ -1994,10 +1991,9 @@ fn run_tier3_cpu_body(order: u32, filter: &str) -> Result<()> {
 
             // Build Functional via direct struct construction (validation
             // harness idiom; tier-2 uses the same pattern at line 417).
-            let weights: &'static [(FunctionalId, f64)] =
-                Box::leak(Box::new([(*id, 1.0)]));
+            // Phase 6 Plan 06-06 (D-17): weights is Vec<(FunctionalId, f64)>; no leak.
             let fun = Functional {
-                weights,
+                weights: vec![(*id, 1.0)],
                 vars: *vars,
                 mode: Mode::PartialDerivatives,
                 order: ord,

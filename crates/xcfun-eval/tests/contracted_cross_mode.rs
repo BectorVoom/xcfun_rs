@@ -80,7 +80,7 @@ fn run_contracted(
     order: u32,
     input: &[f64],
 ) -> Vec<f64> {
-    let weights: &'static [(FunctionalId, f64)] = Box::leak(Box::new([(id, 1.0)]));
+    let weights: Vec<(FunctionalId, f64)> = vec![(id, 1.0)];
     let f = Functional {
         weights,
         vars,
@@ -106,7 +106,7 @@ fn run_partial_derivatives(
     order: u32,
     input: &[f64],
 ) -> Vec<f64> {
-    let weights: &'static [(FunctionalId, f64)] = Box::leak(Box::new([(id, 1.0)]));
+    let weights: Vec<(FunctionalId, f64)> = vec![(id, 1.0)];
     let f = Functional {
         weights,
         vars,

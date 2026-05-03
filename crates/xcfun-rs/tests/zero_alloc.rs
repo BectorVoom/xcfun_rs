@@ -78,8 +78,8 @@ fn eval_facade_boundary_is_zero_alloc() {
     // zero-alloc; the `weights` slice is a `&'static`, so no allocation
     // is added by setting it.
     let mut inner = xcfun_eval::Functional::new();
-    static W: &[(FunctionalId, f64)] = &[(FunctionalId::XC_SLATERX, 1.0)];
-    inner.weights = W;
+    // Plan 06-06 D-17: weights is now Vec<(FunctionalId, f64)>.
+    inner.weights = vec![(FunctionalId::XC_SLATERX, 1.0)];
     inner.vars = Vars::A_B;
     inner.mode = Mode::PartialDerivatives;
     inner.order = 0;

@@ -32,7 +32,14 @@
 pub mod functional;
 pub mod functionals;
 
-#[cfg(feature = "testing")]
+// Phase 6 Plan 06-06 (D-12): `for_tests` promoted from `testing`-gated to
+// `cpu`-gated.  `for_tests::cpu_client()` is now part of the production
+// CPU substrate — `xcfun-rs::Functional`'s reusable handle (see D-12) and
+// `xcfun-gpu::runtime::cpu` both depend on it at eval time, not just test
+// time.  The `cpu` feature still drags in `cubecl-cpu` for `CpuRuntime`,
+// so the gate now matches the real dependency.  The module name remains
+// `for_tests` to keep import paths stable across the workspace.
+#[cfg(feature = "cpu")]
 pub mod for_tests;
 
 pub use functional::Functional;

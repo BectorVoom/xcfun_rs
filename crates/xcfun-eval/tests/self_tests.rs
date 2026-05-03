@@ -145,13 +145,10 @@ fn tier1_self_tests_pass() {
             continue;
         }
 
-        // Leak a static slice for the per-descriptor weights — the Functional struct
-        // (D-21 minimal slice) uses `&'static [(FunctionalId, f64)]`. In a test
-        // context this is acceptable (one leak per LDA ≈ 16 bytes × 9 = 144 bytes
-        // of test-binary bloat).
-        let weights: &'static [(_, _)] = Box::leak(Box::new([(desc.id, 1.0_f64)]));
+        // Phase 6 Plan 06-06 (D-17): weights is now `Vec<(FunctionalId, f64)>`;
+        // no leak required.
         let fun = Functional {
-            weights,
+            weights: vec![(desc.id, 1.0_f64)],
             vars: test_vars,
             mode: Mode::PartialDerivatives,
             order: test_order,

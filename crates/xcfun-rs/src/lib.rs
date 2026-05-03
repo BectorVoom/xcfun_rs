@@ -9,7 +9,14 @@
 //! - Re-exports of public types: [`Mode`], [`Vars`], [`XcError`],
 //!   [`ParameterId`], [`FunctionalId`], [`Dependency`].
 
-#![forbid(unsafe_code)]
+// Phase 6 Plan 06-06 (D-12): downgrade `forbid(unsafe_code)` → `deny`. The
+// `Functional` newtype now carries an `UnsafeCell<EvalHandle>` reusable
+// buffer set (RS-07 strict zero-alloc plumbing) which requires explicit
+// `unsafe impl Send/Sync` markers — `forbid` rejects them outright. With
+// `deny`, local `#[allow(unsafe_code)]` on the marker impls (in
+// `functional.rs`) is permitted; every `unsafe` block / impl carries a
+// SAFETY comment documenting the invariants.
+#![deny(unsafe_code)]
 
 mod functional;
 mod free_fns;

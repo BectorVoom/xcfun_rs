@@ -66,10 +66,9 @@ fn potential_parity_100() {
             rec.vars, "A_B_2ND_TAYLOR",
             "fixture vars must be A_B_2ND_TAYLOR"
         );
-        let weights: &'static [(FunctionalId, f64)] =
-            Box::leak(Box::new([(id, 1.0)]));
         let f = Functional {
-            weights,
+            // Plan 06-06 D-17: weights is now Vec<(FunctionalId, f64)>; no leak.
+            weights: vec![(id, 1.0)],
             vars: Vars::A_B_2ND_TAYLOR,
             mode: Mode::Potential,
             order: 0,
@@ -167,10 +166,9 @@ fn potential_parity_100() {
     // binary.
     if let Some(rec) = records.first() {
         let id = fid_from_name(&rec.functional_name).unwrap();
-        let weights: &'static [(FunctionalId, f64)] =
-            Box::leak(Box::new([(id, 1.0)]));
         let f = Functional {
-            weights,
+            // Plan 06-06 D-17: weights is now Vec<(FunctionalId, f64)>; no leak.
+            weights: vec![(id, 1.0)],
             vars: Vars::A_B_2ND_TAYLOR,
             mode: Mode::Potential,
             order: 0,

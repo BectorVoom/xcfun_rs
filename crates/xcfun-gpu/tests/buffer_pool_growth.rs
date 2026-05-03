@@ -13,11 +13,11 @@ use xcfun_eval::Functional;
 use xcfun_eval::functional::DEFAULT_SETTINGS;
 use xcfun_gpu::Batch;
 
-static SLATERX_WEIGHTS: &[(FunctionalId, f64)] = &[(FunctionalId::XC_SLATERX, 1.0)];
+// Plan 06-06 D-17: weights field is now Vec; helper is built per-call.
 
 fn slater_functional() -> Functional {
     Functional {
-        weights: SLATERX_WEIGHTS,
+        weights: vec![(FunctionalId::XC_SLATERX, 1.0)],
         vars: Vars::A_B,
         mode: Mode::PartialDerivatives,
         order: 0,

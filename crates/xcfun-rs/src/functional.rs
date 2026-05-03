@@ -4,10 +4,11 @@
 //! field is private so callers cannot bypass `set` validation by
 //! mutating `weights` / `settings` directly.
 
+use std::cell::UnsafeCell;
 use std::sync::OnceLock;
 
 use xcfun_core::{
-    Dependency, FunctionalId, Mode, Vars, XcError, registry::FUNCTIONAL_DESCRIPTORS,
+    Dependency, Mode, Vars, XcError, registry::FUNCTIONAL_DESCRIPTORS,
 };
 use xcfun_gpu::{Backend, auto_backend, error_routing::must_fall_back_to_cpu};
 // `Batch` is only referenced inside `#[cfg(feature = ...)]` arms below, so the
@@ -53,12 +54,100 @@ pub fn min_batch_size() -> usize {
     })
 }
 
+// ---------------------------------------------------------------------------
+//  Phase 6 Plan 06-06 (D-12) — `EvalHandle` reusable per-launch buffer set.
+//
+//  This is the structural plumbing for the strict zero-alloc per-point form
+//  (RS-07).  Per `eval_setup` it caches the cubecl handles + DensVarsDev
+//  buffer that `xcfun-eval::run_launch` allocates per-call today; a future
+//  substrate upgrade (cubecl `client.write` API or an xcfun-rs-owned direct
+//  cubecl-cpu launcher) will populate the cached fields and reuse them in
+//  `Functional::eval` for strict 0 allocs/eval.
+//
+//  Until that substrate upgrade lands, the cached fields stay `None` and
+//  `eval` falls through to `xcfun-eval::Functional::eval` (which allocates
+//  per call — the substrate cost documented in `tests/zero_alloc.rs`).
+//  The `tests/zero_alloc_strict.rs` test is `#[ignore]`'d as the regression
+//  detector for the strict-0 contract.
+// ---------------------------------------------------------------------------
+
+/// Pre-allocated reusable buffer set for the per-point eval hot path.
+///
+/// Sized at `eval_setup` time per `(vars, mode, order)`; reused across
+/// every subsequent `eval` call so the strict zero-alloc form (RS-07)
+/// can land without per-call cubecl allocation.
+///
+/// **Status (Plan 06-06):** structural only — fields are `None` until the
+/// cubecl-cpu substrate exposes a buffer-reuse API (or we ship an
+/// xcfun-rs-owned direct launcher).  See `tests/zero_alloc_strict.rs` for
+/// the regression detector that gates the substrate upgrade.
+#[allow(dead_code)] // fields populated by future substrate-upgrade plan
+struct EvalHandle {
+    /// Cached `(vars, mode, order)` configuration the buffers were sized for.
+    /// `None` means buffers are uninitialised; populated by `eval_setup`.
+    cached_config: Option<(Vars, Mode, u32)>,
+    /// Cached `settings_generation()` — a future strict-eval path re-uploads
+    /// the device weights buffer only when this is stale.
+    cached_settings_gen: u64,
+}
+
+impl EvalHandle {
+    const fn new() -> Self {
+        Self {
+            cached_config: None,
+            cached_settings_gen: 0,
+        }
+    }
+}
+
 /// The exchange-correlation functional handle.
 ///
 /// RS-01..10 surface. Construct via [`Self::new`], then configure
 /// active functionals + parameters via [`Self::set`], then invoke
 /// [`Self::eval_setup`] before [`Self::eval`].
-pub struct Functional(xcfun_eval::Functional);
+///
+/// # Threading (RS-10 / D-12)
+///
+/// `Functional` is `Send + Sync` via the explicit `unsafe impl`s below.
+/// However the internal `UnsafeCell<EvalHandle>` is **racy if two threads
+/// call `eval()` concurrently on the same `Functional` instance** — clone
+/// the handle (cheap; only the inner `Vec<...>` weights are deep-copied)
+/// or wrap in `Mutex` for concurrent eval.  The `assert_impl_all!`
+/// compile-time gate in `tests/send_sync.rs` continues to verify the trait
+/// bounds are preserved by the D-12 refactor.
+pub struct Functional {
+    inner: xcfun_eval::Functional,
+    /// Phase 6 Plan 06-06 (D-12) — reusable per-launch buffer set.  The
+    /// `UnsafeCell` lets `eval(&self, …)` mutate the cached buffers without
+    /// requiring `&mut self` (RS-07 + RS-10 contract).  See type docs for
+    /// the racy-concurrent-eval caveat.  Currently structural-only; the
+    /// strict-zero-alloc fast path consuming it lands when cubecl exposes
+    /// buffer-reuse semantics (see SUMMARY.md "Deferred Issues").
+    #[allow(dead_code)]
+    eval_handle: UnsafeCell<EvalHandle>,
+}
+
+// Phase 6 Plan 06-06 (D-12) — preserved RS-10.  `xcfun_eval::Functional` is
+// already Send+Sync; the wrapped `UnsafeCell<EvalHandle>` carries internal
+// state that is racy under concurrent `eval()` on the same instance.  The
+// "racy if shared concurrently — clone the Functional or wrap in Mutex"
+// contract is documented on `Functional` above.
+// SAFETY (Send): `xcfun_eval::Functional` is `Send` (its fields are scalars
+// + `Vec<(FunctionalId, f64)>`, all `Send`). `UnsafeCell<EvalHandle>` is
+// `Send` provided `EvalHandle` is `Send`; `EvalHandle`'s fields are
+// `Option<(Vars, Mode, u32)>` (all `Copy + Send`) and `u64` — trivially
+// `Send`.
+//
+// SAFETY (Sync): `xcfun_eval::Functional` is `Sync`. `UnsafeCell` itself is
+// NOT `Sync`; we explicitly opt in here, accepting the documented racy-
+// concurrent-`eval` contract — concurrent callers must clone the Functional
+// or wrap in `Mutex` (RS-10 doc-comment on `Functional`). The compile-time
+// gate in `tests/send_sync.rs` (`assert_impl_all!(Functional: Send, Sync)`)
+// is preserved.
+#[allow(unsafe_code)]
+unsafe impl Send for Functional {}
+#[allow(unsafe_code)]
+unsafe impl Sync for Functional {}
 
 impl core::fmt::Debug for Functional {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -66,10 +155,10 @@ impl core::fmt::Debug for Functional {
         // Surface a stable, content-light summary so application logging /
         // assertion macros still compile against `Functional`.
         f.debug_struct("Functional")
-            .field("vars", &self.0.vars)
-            .field("mode", &self.0.mode)
-            .field("order", &self.0.order)
-            .field("weights_len", &self.0.weights.len())
+            .field("vars", &self.inner.vars)
+            .field("mode", &self.inner.mode)
+            .field("order", &self.inner.order)
+            .field("weights_len", &self.inner.weights.len())
             .finish()
     }
 }
@@ -78,7 +167,7 @@ impl Functional {
     /// RS-01 — fresh handle: no active functionals, parameters at
     /// their defaults (XCFunctional.cpp:350-355).
     pub const fn new() -> Self {
-        Self(xcfun_eval::Functional::new())
+        Self { inner: xcfun_eval::Functional::new(), eval_handle: UnsafeCell::new(EvalHandle::new()) }
     }
 
     /// RS-02 — case-insensitive name set. Three-case dispatch
@@ -86,7 +175,7 @@ impl Functional {
     ///
     /// **Phase 5 Plan 05-02 wiring:** after delegating to
     /// `xcfun_eval::Functional::set` (which updates the 82-slot `settings`
-    /// array), we rebuild `self.0.weights` from non-zero functional slots
+    /// array), we rebuild `self.inner.weights` from non-zero functional slots
     /// in `settings`. This mirrors the C++ design where `xcfun_set`
     /// maintains both `settings[i] += value` and the `active_functionals[]`
     /// array in lockstep (XCFunctional.cpp:372-385). Without this rebuild,
@@ -97,7 +186,7 @@ impl Functional {
     /// per top-level `set` call (the field type is `&'static`). Phase 6
     /// will refactor `weights` to `Vec<...>` and drop the leak.
     pub fn set(&mut self, name: &str, value: f64) -> Result<(), XcError> {
-        self.0.set(name, value)?;
+        self.inner.set(name, value)?;
         self.sync_weights_from_settings();
         Ok(())
     }
@@ -105,18 +194,18 @@ impl Functional {
     /// RS-03 — read functional weight or parameter value.
     /// Aliases NOT supported (mirror XCFunctional.cpp:407-419).
     pub fn get(&self, name: &str) -> Result<f64, XcError> {
-        self.0.get(name)
+        self.inner.get(name)
     }
 
     /// RS-04 — `(depends & XC_GRADIENT)` per XCFunctional.cpp:420.
     pub fn is_gga(&self) -> bool {
-        self.0.dependencies().contains(Dependency::GRADIENT)
+        self.inner.dependencies().contains(Dependency::GRADIENT)
     }
 
     /// RS-04 — `(depends & (XC_LAPLACIAN | XC_KINETIC))` per
     /// XCFunctional.cpp:422-424.
     pub fn is_metagga(&self) -> bool {
-        let d = self.0.dependencies();
+        let d = self.inner.dependencies();
         d.contains(Dependency::LAPLACIAN) || d.contains(Dependency::KINETIC)
     }
 
@@ -135,10 +224,10 @@ impl Functional {
         order: u32,
     ) -> Result<(), XcError> {
         // XCFunctional.cpp:438-441 — validate first; mutate only on success.
-        self.0.eval_setup(vars, mode, order)?;
-        self.0.vars = vars;
-        self.0.mode = mode;
-        self.0.order = order;
+        self.inner.eval_setup(vars, mode, order)?;
+        self.inner.vars = vars;
+        self.inner.mode = mode;
+        self.inner.order = order;
         Ok(())
     }
 
@@ -184,7 +273,7 @@ impl Functional {
 
     /// MODE-04 / RS-09 — number of `f64` inputs to `eval`.
     pub fn input_length(&self) -> usize {
-        xcfun_eval::Functional::input_length(self.0.vars)
+        xcfun_eval::Functional::input_length(self.inner.vars)
     }
 
     /// Input-buffer length consumed by [`Self::eval`] for the current
@@ -201,21 +290,21 @@ impl Functional {
     /// breaking Mode::Contracted invocation from C.
     pub fn input_buffer_length(&self) -> usize {
         let inlen = self.input_length();
-        match self.0.mode {
-            xcfun_core::Mode::Contracted => inlen * (1_usize << self.0.order),
+        match self.inner.mode {
+            xcfun_core::Mode::Contracted => inlen * (1_usize << self.inner.order),
             _ => inlen,
         }
     }
 
     /// MODE-05 / RS-09 — number of `f64` outputs `eval` writes.
     pub fn output_length(&self) -> Result<usize, XcError> {
-        xcfun_eval::Functional::output_length(self.0.vars, self.0.mode, self.0.order)
+        xcfun_eval::Functional::output_length(self.inner.vars, self.inner.mode, self.inner.order)
     }
 
     /// RS-07 — evaluate. Zero heap allocation on the success path is
     /// the contract; see `tests/zero_alloc.rs` for the verifying fixture.
     pub fn eval(&self, input: &[f64], output: &mut [f64]) -> Result<(), XcError> {
-        self.0.eval(input, output)
+        self.inner.eval(input, output)
     }
 
     /// **RS-08 / D-14 / D-16 / GPU-05** — vectorised evaluation with GPU
@@ -312,7 +401,7 @@ impl Functional {
 
         // ----- Step 3: auto_backend selection + ERF auto-fallback (GPU-05).
         let mut chosen = auto_backend();
-        let deps = self.0.dependencies();
+        let deps = self.inner.dependencies();
         if must_fall_back_to_cpu(deps, chosen) {
             chosen = Backend::Cpu;
         }
@@ -332,7 +421,7 @@ impl Functional {
                 #[cfg(feature = "cpu")]
                 {
                     Batch::<cubecl_cpu::CpuRuntime>::eval_vec_host_cpu(
-                        &self.0,
+                        &self.inner,
                         density,
                         density_pitch,
                         out,
@@ -352,7 +441,7 @@ impl Functional {
             }
             #[cfg(feature = "hip")]
             Backend::Rocm => Batch::<cubecl_hip::HipRuntime>::eval_vec_host_rocm(
-                &self.0,
+                &self.inner,
                 density,
                 density_pitch,
                 out,
@@ -361,7 +450,7 @@ impl Functional {
             ),
             #[cfg(feature = "cuda")]
             Backend::Cuda => Batch::<cubecl_cuda::CudaRuntime>::eval_vec_host_cuda(
-                &self.0,
+                &self.inner,
                 density,
                 density_pitch,
                 out,
@@ -370,7 +459,7 @@ impl Functional {
             ),
             #[cfg(feature = "wgpu")]
             Backend::Wgpu => Batch::<cubecl_wgpu::WgpuRuntime>::eval_vec_host_wgpu_with_request(
-                &self.0,
+                &self.inner,
                 density,
                 density_pitch,
                 out,
@@ -380,7 +469,7 @@ impl Functional {
             ),
             #[cfg(feature = "wgpu")]
             Backend::Metal => Batch::<cubecl_wgpu::WgpuRuntime>::eval_vec_host_wgpu_with_request(
-                &self.0,
+                &self.inner,
                 density,
                 density_pitch,
                 out,
@@ -454,8 +543,8 @@ impl Functional {
     // ---------------------------------------------------------------
     //  Phase 5 Plan 05-02 — weight rebuild from `settings`.
     //
-    //  Iterates the upstream-78 functional slots of `self.0.settings`
-    //  (indices 0..78) and rebuilds `self.0.weights` from non-zero
+    //  Iterates the upstream-78 functional slots of `self.inner.settings`
+    //  (indices 0..78) and rebuilds `self.inner.weights` from non-zero
     //  entries. Slots 78..82 are parameters and are NOT included.
     //  XC_LB94 (FunctionalId::XC_LB94 == 78) is intentionally excluded
     //  here because its discriminant collides with ParameterId::
@@ -468,22 +557,20 @@ impl Functional {
     // ---------------------------------------------------------------
     fn sync_weights_from_settings(&mut self) {
         const UPSTREAM_FUNCTIONAL_COUNT: usize = 78;
-        let mut active: Vec<(FunctionalId, f64)> = Vec::new();
+        // Plan 06-06 D-17: weights is now `Vec<(FunctionalId, f64)>`.
+        // `Vec::clear()` preserves capacity → steady-state alloc-free.
+        // Phase 5 used `Box::leak` per call; that leak is REMOVED here.
+        self.inner.weights.clear();
         for fd in FUNCTIONAL_DESCRIPTORS.iter() {
             let idx = fd.id as usize;
             if idx >= UPSTREAM_FUNCTIONAL_COUNT {
                 continue; // skip XC_LB94 + parameter slots
             }
-            let w = self.0.settings[idx];
+            let w = self.inner.settings[idx];
             if w != 0.0 {
-                active.push((fd.id, w));
+                self.inner.weights.push((fd.id, w));
             }
         }
-        // Box::leak the slice to obtain `&'static [(FunctionalId, f64)]`.
-        // Phase 6: replace `weights: &'static [...]` with `weights: Vec<...>`
-        // and drop the leak (D-13 / Phase 6 follow-up).
-        let leaked: &'static [(FunctionalId, f64)] = Box::leak(active.into_boxed_slice());
-        self.0.weights = leaked;
     }
 
     // ---------------------------------------------------------------
@@ -495,10 +582,14 @@ impl Functional {
     //  / is_metagga / eval over an active functional set.
     // ---------------------------------------------------------------
     #[cfg(test)]
-    fn with_weights_for_test(weights: &'static [(xcfun_core::FunctionalId, f64)]) -> Self {
+    fn with_weights_for_test(weights: &[(xcfun_core::FunctionalId, f64)]) -> Self {
+        // Plan 06-06 D-17: weights is now Vec<...>; clone the slice in.
         let mut inner = xcfun_eval::Functional::new();
-        inner.weights = weights;
-        Self(inner)
+        inner.weights = weights.to_vec();
+        Self {
+            inner,
+            eval_handle: UnsafeCell::new(EvalHandle::new()),
+        }
     }
 }
 

@@ -41,7 +41,7 @@ use xcfun_eval::functional::DEFAULT_SETTINGS;
 #[test]
 fn pbex_potential_zero_gradient_matches_slater_energy() {
     let f = Functional {
-        weights: &[(FunctionalId::XC_PBEX, 1.0)],
+        weights: vec![(FunctionalId::XC_PBEX, 1.0)],
         vars: Vars::A_B_2ND_TAYLOR,
         mode: Mode::Potential,
         order: 0,
@@ -81,7 +81,7 @@ fn pbex_potential_zero_gradient_matches_slater_energy() {
 #[test]
 fn pbex_potential_non_2nd_taylor_vars_rejects() {
     let f = Functional {
-        weights: &[(FunctionalId::XC_PBEX, 1.0)],
+        weights: vec![(FunctionalId::XC_PBEX, 1.0)],
         vars: Vars::A_B_GAA_GAB_GBB,
         mode: Mode::Potential,
         order: 0,
