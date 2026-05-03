@@ -14,6 +14,10 @@ testing = []
 [dependencies]
 xcfun-core = { path = "../xcfun-core" }
 xcfun-ad = { path = "../xcfun-ad" }
+# Phase 6 Plan 06-01 (D-08): per-functional #[cube] kernel bodies +
+# DensVarsDev<F> + dispatch_kernel live in xcfun-kernels. xcfun-eval is the
+# per-point cubecl-cpu validation substrate that consumes them.
+xcfun-kernels = { path = "../xcfun-kernels" }
 cubecl = { workspace = true }
 cubecl-cpu = { workspace = true, optional = true }
 thiserror = { workspace = true }

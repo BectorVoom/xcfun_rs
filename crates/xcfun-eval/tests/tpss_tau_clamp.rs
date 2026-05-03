@@ -30,7 +30,8 @@
 use cubecl::prelude::*;
 use cubecl_cpu::CpuRuntime;
 use xcfun_ad::for_tests::cpu_client;
-use xcfun_eval::functionals::mgga::shared::tpss_like::ctaylor_max;
+// Phase 6 Plan 06-01 (D-08): mgga kernel bodies migrated to xcfun-kernels.
+use xcfun_kernels::functionals::mgga::shared::tpss_like::ctaylor_max;
 
 /// `#[cube(launch_unchecked)]` adapter exposing `ctaylor_max` to a host-side
 /// test launcher. We test the max-on-CNST semantics directly (the guard's

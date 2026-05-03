@@ -79,7 +79,8 @@ fn tier1_self_tests_pass() {
         // Phase 2 dispatch only wires 9 LDAs; skip functionals whose kernel isn't wired yet.
         // (Stubs are filtered out by `test_in.is_some()` since the extractor leaves stubs
         // with test_in=None, but other populated entries like XC_PBEC don't yet have a kernel.)
-        use xcfun_eval::dispatch::supports;
+        // Phase 6 Plan 06-01 (D-08): dispatch migrated to xcfun-kernels.
+        use xcfun_kernels::dispatch::supports;
         if !supports(desc.id) {
             continue;
         }

@@ -4697,6 +4697,17 @@ dependencies = [
  "thiserror",
  "xcfun-ad",
  "xcfun-core",
+ "xcfun-kernels",
+]
+
+[[package]]
+name = "xcfun-kernels"
+version = "0.1.0"
+dependencies = [
+ "cubecl",
+ "thiserror",
+ "xcfun-ad",
+ "xcfun-core",
 ]
 
 [[package]]

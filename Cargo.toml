@@ -7,6 +7,10 @@
 members = [
     "crates/xcfun-ad",
     "crates/xcfun-core",
+    # Phase 6 Plan 06-01 (D-08): xcfun-kernels owns the per-functional `#[cube]`
+    # bodies + DensVarsDev + dispatch_kernel; listed before xcfun-eval (its
+    # only library-graph dependent today).
+    "crates/xcfun-kernels",
     "crates/xcfun-eval",
     "crates/xcfun-rs",
     "crates/xcfun-capi",

@@ -12,7 +12,8 @@
 
 use cubecl::prelude::*;
 use cubecl_cpu::CpuRuntime;
-use xcfun_eval::density_vars::regularize::{TINY_DENSITY_F64, regularize};
+// Phase 6 Plan 06-01 (D-08): density_vars migrated to xcfun-kernels.
+use xcfun_kernels::density_vars::regularize::{TINY_DENSITY_F64, regularize};
 use xcfun_eval::for_tests::cpu_client;
 
 /// Thin `#[cube(launch_unchecked)]` wrapper over `regularize` so we can invoke
