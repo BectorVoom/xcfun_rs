@@ -7,13 +7,38 @@ description = "Native Rust public API for xcfun_rs (Functional struct + free fns
 license = "MPL-2.0"
 
 [features]
-default = []
-# RS-08 GPU dispatch lives in Phase 6; Phase 5 ships a Functional::eval_vec stub.
+# Phase 6 Plan 06-05 (RS-08): xcfun-gpu wired with default `cpu` feature for
+# always-available CpuRuntime dispatch. GPU runtimes (HIP/CUDA/Wgpu/Metal) are
+# opt-in via the same-named features below; each forwards to xcfun-gpu's
+# corresponding feature AND pulls the matching cubecl runtime crate directly
+# so per-Backend match-arm dispatch in `Functional::eval_vec` can reference
+# `cubecl_cpu::CpuRuntime` / `cubecl_hip::HipRuntime` / `cubecl_cuda::CudaRuntime`
+# / `cubecl_wgpu::WgpuRuntime` types at compile time (RESEARCH §"Pattern 4"
+# monomorphisation).
+default = ["cpu"]
+cpu   = ["xcfun-gpu/cpu",  "dep:cubecl-cpu"]
+hip   = ["xcfun-gpu/hip",  "dep:cubecl-hip"]
+cuda  = ["xcfun-gpu/cuda", "dep:cubecl-cuda"]
+wgpu  = ["xcfun-gpu/wgpu", "dep:cubecl-wgpu"]
+# `metal` is a transparent alias for `wgpu` (no separate cubecl-metal crate;
+# RESEARCH §R-02 / Pitfall 9). Inherits cubecl-wgpu via the wgpu feature.
+metal = ["wgpu", "xcfun-gpu/metal"]
 
 [dependencies]
 xcfun-core = { path = "../xcfun-core" }
 xcfun-eval = { path = "../xcfun-eval", features = ["testing"] }
+xcfun-gpu  = { path = "../xcfun-gpu", default-features = false }
 thiserror  = { workspace = true }
+
+# Phase 6 Plan 06-05: per-Backend match-arm dispatch in `Functional::eval_vec`
+# monomorphises `Batch::<R>::eval_vec_host_*` for each cubecl runtime. cubecl-cpu
+# is pulled in via the default `cpu` feature; HIP/CUDA/Wgpu are pulled in only
+# when their corresponding feature is enabled (matches xcfun-gpu's gating).
+cubecl-cpu  = { workspace = true, optional = true }
+cubecl-hip  = { workspace = true, optional = true }
+cubecl-cuda = { workspace = true, optional = true }
+cubecl-wgpu = { workspace = true, optional = true }
 
 [dev-dependencies]
 static_assertions = "1.1"
+approx            = { workspace = true }
