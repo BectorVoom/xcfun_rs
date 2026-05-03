@@ -8,6 +8,25 @@
 use crate::enums::{Mode, Vars};
 use crate::traits::Dependency;
 
+/// Subset of `xcfun-gpu::Backend` used by `XcError` typed runtime errors.
+///
+/// Lives in `xcfun-core` to avoid the layering inversion that would arise if
+/// `xcfun-core` (the foundational crate) depended on `xcfun-gpu` (which sits
+/// above it). Phase 6 Plan 06-02a CONTEXT D-13 / D-13-A; W-7 from
+/// revision-1. `xcfun-gpu::Backend` provides `From`/`Into` to convert
+/// between the two enums.
+///
+/// Field ordering MUST mirror `xcfun-gpu::Backend` so the discriminants stay
+/// in agreement when both enums are in scope.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BackendTag {
+    Cpu,
+    Rocm,
+    Cuda,
+    Metal,
+    Wgpu,
+}
+
 /// Errors returned by xcfun library operations.
 #[derive(Debug, Clone, Copy, thiserror::Error)]
 #[non_exhaustive]
@@ -59,6 +78,42 @@ pub enum XcError {
 
     #[error("runtime error during kernel launch")]
     Runtime,
+
+    /// Phase 6 Plan 06-02a (D-13 / D-13-A) — Wgpu device lacks `SHADER_F64`.
+    ///
+    /// `adapter_name` is `&'static str` (NOT `String`) to preserve Phase 2
+    /// D-25 `Copy` + `non_exhaustive`. The runtime wrapper that builds this
+    /// variant is responsible for `Box::leak`-promoting the upstream
+    /// `wgpu::AdapterInfo::name: String` once at construction (justified —
+    /// one-time panic-on-misconfiguration message). `requested_runtime` is
+    /// a `BackendTag` shadow enum (also `Copy`).
+    ///
+    /// Plan 06-04 wires the actual `wgpu::Features::SHADER_F64` runtime
+    /// probe; this plan declares the variant so 06-04 only adds runtime
+    /// probe code, not enum shape.
+    #[error(
+        "Wgpu adapter '{adapter_name}' lacks SHADER_F64; cannot launch {requested_runtime:?} (D-13/D-13-A)"
+    )]
+    WgpuNoF64 {
+        adapter_name: &'static str,
+        requested_runtime: BackendTag,
+    },
+
+    /// Phase 6 Plan 06-02a (W-7 revision-1) — symmetric typed error for the
+    /// CUDA f64 probe. CUDA f64 is reportedly always supported on real
+    /// hardware, but the cubecl-book feature matrix flags CUDA f64 as "?";
+    /// this defensive typed error lets the dispatcher refuse to launch on a
+    /// device that fails the runtime probe rather than silently producing
+    /// f32-precision output.
+    ///
+    /// Plan 06-04 wires the actual probe + payload construction.
+    #[error(
+        "CUDA adapter '{adapter_name}' lacks f64 device support; cannot launch {requested_runtime:?} (W-7)"
+    )]
+    CudaNoF64 {
+        adapter_name: &'static str,
+        requested_runtime: BackendTag,
+    },
 }
 
 impl XcError {
@@ -82,6 +137,12 @@ impl XcError {
             Self::InvalidVars { .. } => 2,          // XC_EVARS
             Self::InvalidMode { .. } => 4,          // XC_EMODE
             Self::InvalidVarsAndMode { .. } => 6,   // XC_EVARS | XC_EMODE
+            // Phase 6 Plan 06-02a — no upstream `XC_E*` mapping for the GPU
+            // device-feature errors; `-1` matches the `UnknownName` /
+            // `Runtime` precedent (returned by `xcfun_set` / `xcfun_get`
+            // for any non-recognised input).
+            Self::WgpuNoF64 { .. } => -1,
+            Self::CudaNoF64 { .. } => -1,
             _ => -1,
         }
     }

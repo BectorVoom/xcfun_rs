@@ -19,7 +19,7 @@ pub mod traits;
 
 pub use constants::*;
 pub use enums::{Mode, ParameterId, Vars};
-pub use error::XcError;
+pub use error::{BackendTag, XcError};
 pub use functional_id::FunctionalId;
 pub use registry::{
     ALIASES, Alias, FUNCTIONAL_DESCRIPTORS, FunctionalDescriptor, PARAMETERS, ParameterEntry,

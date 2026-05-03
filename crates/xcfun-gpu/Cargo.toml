@@ -2,9 +2,40 @@
 name = "xcfun-gpu"
 version.workspace = true
 edition.workspace = true
-description = "GPU batch evaluation for exchange-correlation functionals"
+rust-version.workspace = true
+description = "GPU batch lifecycle + auto_backend dispatch for xcfun_rs (cubecl-hip / cubecl-cuda / cubecl-wgpu opt-in via feature flags)"
+license = "MPL-2.0"
+
+# Phase 6 Plan 06-02a: skeleton only. Plans 06-03 / 06-04 wire the cubecl
+# runtime crates behind their respective feature flags; this plan ships the
+# `cpu` arm as the always-available substrate (cubecl-cpu re-exported from
+# xcfun-eval per D-08).
+[features]
+default = ["cpu"]
+cpu  = ["dep:cubecl-cpu", "xcfun-eval/testing"]
+hip  = ["dep:cubecl-hip"]
+cuda = ["dep:cubecl-cuda"]
+wgpu = ["dep:cubecl-wgpu"]
+# RESEARCH §"Pitfall 9" (R-02): no separate `cubecl-metal` crate exists on
+# crates.io; Metal is reached via cubecl-wgpu's Metal backend. The `metal`
+# feature is a transparent alias for `wgpu`.
+metal = ["wgpu"]
 
 [dependencies]
-xcfun-core = { path = "../xcfun-core" }
-xcfun-ad = { path = "../xcfun-ad" }
-# cubecl dependencies added in Phase 6
+xcfun-core    = { path = "../xcfun-core" }
+xcfun-ad      = { path = "../xcfun-ad" }
+xcfun-kernels = { path = "../xcfun-kernels" }
+# xcfun-eval re-exports cubecl-cpu via its `testing` feature; the `cpu` feature
+# above pulls that re-export in transitively so xcfun-gpu can reach the
+# OnceLock<CpuClient> production substrate (D-08).
+xcfun-eval    = { path = "../xcfun-eval", optional = false }
+cubecl        = { workspace = true }
+cubecl-cpu    = { workspace = true, optional = true }
+cubecl-hip    = { workspace = true, optional = true }
+cubecl-cuda   = { workspace = true, optional = true }
+cubecl-wgpu   = { workspace = true, optional = true }
+thiserror     = { workspace = true }
+
+[dev-dependencies]
+static_assertions = "1.1"
+approx            = { workspace = true }

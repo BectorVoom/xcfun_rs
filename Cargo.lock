@@ -4702,6 +4702,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "xcfun-gpu"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "cubecl",
+ "cubecl-cpu",
+ "cubecl-cuda",
+ "cubecl-hip",
+ "cubecl-wgpu",
+ "static_assertions",
+ "thiserror",
+ "xcfun-ad",
+ "xcfun-core",
+ "xcfun-eval",
+ "xcfun-kernels",
+]
+
+[[package]]
 name = "xcfun-kernels"
 version = "0.1.0"
 dependencies = [

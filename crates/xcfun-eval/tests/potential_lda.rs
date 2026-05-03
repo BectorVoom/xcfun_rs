@@ -28,6 +28,7 @@ fn slaterx_potential_a_b_matches_analytic() {
         mode: Mode::Potential,
         order: 0,
         settings: DEFAULT_SETTINGS,
+        settings_gen: 0,
     };
 
     let a = 0.7_f64;
@@ -59,6 +60,7 @@ fn slaterx_potential_a_b_2nd_taylor_matches_analytic() {
         mode: Mode::Potential,
         order: 0,
         settings: DEFAULT_SETTINGS,
+        settings_gen: 0,
     };
 
     let a = 0.5_f64;

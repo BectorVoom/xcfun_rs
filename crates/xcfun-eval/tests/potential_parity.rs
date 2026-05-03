@@ -74,6 +74,7 @@ fn potential_parity_100() {
             mode: Mode::Potential,
             order: 0,
             settings: DEFAULT_SETTINGS,
+            settings_gen: 0,
         };
         let mut out = vec![0.0_f64; rec.expected_output.len()];
         f.eval(&rec.input, &mut out)
@@ -174,6 +175,7 @@ fn potential_parity_100() {
             mode: Mode::Potential,
             order: 0,
             settings: DEFAULT_SETTINGS,
+            settings_gen: 0,
         };
         let mut out = vec![0.0_f64; rec.expected_output.len()];
         f.eval(&rec.input, &mut out).unwrap();

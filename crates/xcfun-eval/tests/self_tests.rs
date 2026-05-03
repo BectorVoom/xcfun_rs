@@ -156,6 +156,7 @@ fn tier1_self_tests_pass() {
             mode: Mode::PartialDerivatives,
             order: test_order,
             settings: xcfun_eval::functional::DEFAULT_SETTINGS,
+            settings_gen: 0,
         };
 
         let mut output = vec![0.0_f64; test_out.len()];

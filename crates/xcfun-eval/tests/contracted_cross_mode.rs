@@ -87,6 +87,7 @@ fn run_contracted(
         mode: Mode::Contracted,
         order,
         settings: DEFAULT_SETTINGS,
+        settings_gen: 0,
     };
     let coeff_count = 1_usize << order;
     let flat_input = pack_for_contracted(input, order);
@@ -112,6 +113,7 @@ fn run_partial_derivatives(
         mode: Mode::PartialDerivatives,
         order,
         settings: DEFAULT_SETTINGS,
+        settings_gen: 0,
     };
     let inlen = input.len();
     let outlen = xcfun_core::taylorlen(inlen, order as usize);

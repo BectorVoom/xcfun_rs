@@ -46,6 +46,7 @@ fn pbex_potential_zero_gradient_matches_slater_energy() {
         mode: Mode::Potential,
         order: 0,
         settings: DEFAULT_SETTINGS,
+        settings_gen: 0,
     };
 
     let a = 0.4_f64;
@@ -85,6 +86,7 @@ fn pbex_potential_non_2nd_taylor_vars_rejects() {
         mode: Mode::Potential,
         order: 0,
         settings: DEFAULT_SETTINGS,
+        settings_gen: 0,
     };
     let mut out = vec![0.0_f64; 3];
     let err = f.eval(&[0.4, 0.25, 0.0, 0.0, 0.0], &mut out);

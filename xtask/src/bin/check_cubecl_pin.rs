@@ -17,7 +17,20 @@ use std::path::PathBuf;
 use std::process::Command;
 
 const REQUIRED_VERSION: &str = "0.10.0-pre.3";
-const PINNED_CRATES: &[&str] = &["cubecl", "cubecl-cpu"];
+// Phase 6 Plan 06-02a: workspace pins now cover the full cubecl-runtime
+// fan-out; Plans 06-03 / 06-04 pull `cubecl-hip` / `cubecl-cuda` /
+// `cubecl-wgpu` into the dep graph behind feature flags. The gate must
+// catch any of those drifting independently of `cubecl` core (Pitfall 1
+// in 06-RESEARCH.md). Crates not yet in the resolved graph are silently
+// skipped by the loop body below; once they ARE pulled in, this list
+// enforces lockstep.
+const PINNED_CRATES: &[&str] = &[
+    "cubecl",
+    "cubecl-cpu",
+    "cubecl-hip",
+    "cubecl-cuda",
+    "cubecl-wgpu",
+];
 
 fn project_root() -> Result<PathBuf> {
     let manifest = std::env::var("CARGO_MANIFEST_DIR")

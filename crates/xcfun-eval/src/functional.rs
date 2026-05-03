@@ -102,6 +102,17 @@ pub struct Functional {
     /// Indices 78..=81 are parameters (ParameterId discriminants), seeded
     /// with their defaults by `Functional::new()`.
     pub settings: [f64; 82],
+    /// Monotonic generation counter bumped on every successful `set()` call.
+    /// Phase 6 Plan 06-02a (D-15): consumed by `xcfun_gpu::Batch::launch` to
+    /// decide whether the cached `weights_buf` is stale and needs re-upload.
+    /// Hash-based comparison rejected (D-15) — 82 f64 = 656 bytes, simpler to
+    /// track a counter than to hash on every launch.
+    ///
+    /// `wrapping_add(1)` is fine because (a) Plan 06-02a tests only assert
+    /// strict inequality across a small number of `set()` calls, and (b) at
+    /// the rate of 1 bump per `set` call, wrap-around requires ~1.8 × 10¹⁹
+    /// settings updates — irrelevant for any realistic workload.
+    pub settings_gen: u64,
 }
 
 /// Default `settings` array seeded by `Functional::new()` per
@@ -139,6 +150,7 @@ impl Functional {
             mode: Mode::Unset,
             order: 0,
             settings: DEFAULT_SETTINGS,
+            settings_gen: 0,
         }
     }
 
@@ -174,14 +186,24 @@ impl Functional {
         // Case 1 — Functional name (XCFunctional.cpp:372-385).
         if let Some(id) = FunctionalId::from_name(name) {
             self.settings[id as usize] += value;
+            // Phase 6 Plan 06-02a (D-15): bump generation counter so a
+            // subsequent xcfun_gpu::Batch::launch re-uploads weights_buf.
+            self.settings_gen = self.settings_gen.wrapping_add(1);
             return Ok(());
         }
         // Case 2 — Parameter name (XCFunctional.cpp:386-388).
         if let Some(pid) = ParameterId::from_name(name) {
             self.settings[pid as usize] = value;
+            self.settings_gen = self.settings_gen.wrapping_add(1);
             return Ok(());
         }
         // Case 3 — Alias name (XCFunctional.cpp:389-401).
+        //
+        // The recursive `self.set(...)` calls below each bump
+        // `settings_gen` once per resolved term (one bump per `settings[]`
+        // mutation). That matches the contract — every settings mutation
+        // is observable downstream. We do NOT add an extra bump for the
+        // alias call itself.
         if let Some(alias) = ALIASES
             .iter()
             .find(|a| a.name.eq_ignore_ascii_case(name))
@@ -193,6 +215,14 @@ impl Functional {
             return Ok(());
         }
         Err(XcError::UnknownName)
+    }
+
+    /// Phase 6 Plan 06-02a (D-15) — monotonic generation counter accessor.
+    /// `xcfun_gpu::Batch::launch` reads this to decide whether the cached
+    /// `weights_buf` upload is stale.
+    #[inline]
+    pub fn settings_generation(&self) -> u64 {
+        self.settings_gen
     }
 
     /// Read a `settings[]` slot by name. Two-case dispatch mirroring
@@ -1683,6 +1713,7 @@ mod tests {
             mode: Mode::Unset,
             order: 0,
             settings: DEFAULT_SETTINGS,
+            settings_gen: 0,
         };
         let mut out = vec![0.0; 1];
         assert!(matches!(
@@ -1709,6 +1740,7 @@ mod tests {
             mode: Mode::Contracted,
             order: 0,
             settings: DEFAULT_SETTINGS,
+            settings_gen: 0,
         };
         let mut out = vec![0.0; 1];
         assert!(f.eval(&[1.0, 0.5], &mut out).is_ok());
@@ -1723,6 +1755,7 @@ mod tests {
             mode: Mode::Contracted,
             order: 7,
             settings: DEFAULT_SETTINGS,
+            settings_gen: 0,
         };
         // Output length validation runs first (output_length errors with
         // InvalidOrder when order > 6). The buffer size is irrelevant since
@@ -1771,6 +1804,7 @@ mod tests {
             mode: Mode::Contracted,
             order: 0,
             settings: DEFAULT_SETTINGS,
+            settings_gen: 0,
         };
         for order in 0_u32..=6 {
             assert!(
@@ -1790,6 +1824,7 @@ mod tests {
             mode: Mode::Contracted,
             order: 7,
             settings: DEFAULT_SETTINGS,
+            settings_gen: 0,
         };
         assert!(matches!(
             f.eval_setup(Vars::A_B, Mode::Contracted, 7),
@@ -1806,6 +1841,7 @@ mod tests {
             mode: Mode::PartialDerivatives,
             order: 5,
             settings: DEFAULT_SETTINGS,
+            settings_gen: 0,
         };
         let mut out = vec![0.0; 21]; // taylorlen(2, 5) = 21
         assert!(matches!(
@@ -1822,6 +1858,7 @@ mod tests {
             mode: Mode::PartialDerivatives,
             order: 0,
             settings: DEFAULT_SETTINGS,
+            settings_gen: 0,
         };
         let mut out = vec![0.0; 1];
         assert!(matches!(
@@ -1841,6 +1878,7 @@ mod tests {
             mode: Mode::PartialDerivatives,
             order: 1,
             settings: DEFAULT_SETTINGS,
+            settings_gen: 0,
         };
         // Expected outlen = taylorlen(2, 1) = 3
         let mut out = vec![0.0; 5];
@@ -1864,6 +1902,7 @@ mod tests {
             mode: Mode::PartialDerivatives,
             order: 0,
             settings: DEFAULT_SETTINGS,
+            settings_gen: 0,
         };
         let mut out = vec![99.0_f64; 1];
         assert!(f.eval(&[1.0, 0.5], &mut out).is_ok());
@@ -1931,6 +1970,7 @@ mod tests {
             mode: Mode::Potential,
             order: 0,
             settings: DEFAULT_SETTINGS,
+            settings_gen: 0,
         };
         assert!(matches!(
             f.eval_setup(Vars::A_B_2ND_TAYLOR, Mode::Potential, 0),
@@ -1947,6 +1987,7 @@ mod tests {
             mode: Mode::Potential,
             order: 0,
             settings: DEFAULT_SETTINGS,
+            settings_gen: 0,
         };
         assert!(matches!(
             f.eval_setup(Vars::A_B_2ND_TAYLOR, Mode::Potential, 0),
@@ -1966,6 +2007,7 @@ mod tests {
             mode: Mode::Potential,
             order: 0,
             settings: DEFAULT_SETTINGS,
+            settings_gen: 0,
         };
         let err = f
             .eval_setup(Vars::A_B_GAA_GAB_GBB, Mode::Potential, 0)
@@ -1991,6 +2033,7 @@ mod tests {
             mode: Mode::Potential,
             order: 0,
             settings: DEFAULT_SETTINGS,
+            settings_gen: 0,
         };
         let err = f.eval_setup(Vars::A_B, Mode::Potential, 0).unwrap_err();
         match err {
@@ -2012,6 +2055,7 @@ mod tests {
             mode: Mode::Potential,
             order: 0,
             settings: DEFAULT_SETTINGS,
+            settings_gen: 0,
         };
         assert!(f
             .eval_setup(Vars::A_B_2ND_TAYLOR, Mode::Potential, 0)
@@ -2027,6 +2071,7 @@ mod tests {
             mode: Mode::Potential,
             order: 0,
             settings: DEFAULT_SETTINGS,
+            settings_gen: 0,
         };
         assert!(f.eval_setup(Vars::A_B, Mode::Potential, 0).is_ok());
     }
@@ -2039,6 +2084,7 @@ mod tests {
             mode: Mode::Unset,
             order: 0,
             settings: DEFAULT_SETTINGS,
+            settings_gen: 0,
         };
         assert!(matches!(
             f.eval_setup(Vars::A_B, Mode::Unset, 0),
@@ -2058,6 +2104,7 @@ mod tests {
             mode: Mode::PartialDerivatives,
             order: 0,
             settings: DEFAULT_SETTINGS,
+            settings_gen: 0,
         };
         let deps = f.dependencies();
         assert!(deps.contains(Dependency::DENSITY));

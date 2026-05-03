@@ -9,6 +9,18 @@ bitflags::bitflags! {
     /// Bit values match `xcfun-master/src/xcint.hpp:46-50`:
     /// `XC_DENSITY = 1`, `XC_GRADIENT = 2`, `XC_LAPLACIAN = 4`, `XC_KINETIC = 8`,
     /// `XC_JP = 16`.
+    ///
+    /// `ERF` (= 32) is a Rust-side extension introduced in Phase 6 Plan 06-02a
+    /// (Rule 2 deviation). It is NOT a `XC_*` bit in the upstream C++ header
+    /// — upstream xcfun encodes ERF-bearing functionals at the FunctionalId
+    /// level (`ldaerfx`, `ldaerfc`, ...) — but Plans 06-02a and 06-05 need
+    /// a Dependency-level signal so `xcfun-gpu::error_routing::
+    /// must_fall_back_to_cpu` can decide whether a given functional set
+    /// requires the CPU substrate on Wgpu/Metal (where WGSL has no f64
+    /// `erf` support — see RESEARCH §"Pitfall 5"). The bit is only set
+    /// for the range-separated functionals (`ldaerfx`, `ldaerfc`,
+    /// `beckecamx`, `beckesrx`, `ldaerfc_jt`); all other functionals
+    /// continue to report the upstream-aligned 5-bit set.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct Dependency: u32 {
         const DENSITY   = 0b0000_0001;
@@ -16,6 +28,7 @@ bitflags::bitflags! {
         const LAPLACIAN = 0b0000_0100;
         const KINETIC   = 0b0000_1000;
         const JP        = 0b0001_0000;
+        const ERF       = 0b0010_0000;
     }
 }
 

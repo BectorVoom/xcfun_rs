@@ -12,13 +12,18 @@ members = [
     # only library-graph dependent today).
     "crates/xcfun-kernels",
     "crates/xcfun-eval",
+    # Phase 6 Plan 06-02a: xcfun-gpu promoted from exclude. Houses the
+    # Backend enum, Batch<'fun, R: cubecl::Runtime> skeleton, generation-
+    # counter buffer pool, auto_backend() priority chain, and ERF auto-
+    # fallback routing. cubecl-hip / cubecl-cuda / cubecl-wgpu wired in
+    # Plans 06-03 / 06-04.
+    "crates/xcfun-gpu",
     "crates/xcfun-rs",
     "crates/xcfun-capi",
     "xtask",
     "validation",
 ]
 exclude = [
-    "crates/xcfun-gpu",
     "crates/xcfun-python",
 ]
 resolver = "2"
@@ -36,9 +41,14 @@ approx = "=0.5.1"
 tracing = { version = "=0.1.44", default-features = false }
 tracing-subscriber = { version = "=0.3.23", features = ["fmt"] }
 
-# cubecl pivot — all three must move in lockstep (CLAUDE.md risk note).
+# cubecl pivot — all five must move in lockstep (CLAUDE.md risk note).
+# Phase 6 Plan 06-02a adds cubecl-hip / cubecl-cuda / cubecl-wgpu workspace
+# pins; Plans 06-03 / 06-04 pull them in via xcfun-gpu feature flags.
 cubecl = "=0.10.0-pre.3"
 cubecl-cpu = "=0.10.0-pre.3"
+cubecl-hip = "=0.10.0-pre.3"
+cubecl-cuda = "=0.10.0-pre.3"
+cubecl-wgpu = "=0.10.0-pre.3"
 
 # App-boundary deps (xtask / benches / examples / dev-deps only).
 anyhow = "1.0.102"
