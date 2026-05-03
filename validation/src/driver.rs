@@ -1680,31 +1680,33 @@ pub fn run_tier3(
 
     match backend_e {
         Backend::Cpu => {
-            // Phase 6 Plan 06-02b ships the CPU arm SKELETON. The actual
-            // body — iterate `validation::fixtures::generate_grid()`, build
-            // `xcfun_eval::Functional` per `(functional, vars, mode, order)`
-            // tuple, call
+            // Phase 6 Plan 06-05 (revision-1 B-4) — KER-06 sign-off body.
             //
-            //   Batch::<cubecl_cpu::CpuRuntime>::eval_vec_host_cpu(
-            //       &fun, density_flat, density_pitch,
-            //       &mut batch_out, out_pitch, grid.len()
-            //   )?;
+            // Iterates the 17 known-clean Phase-4 functional set (per
+            // `04-VERIFICATION.md`); for each `(functional, vars)` tuple:
+            //   1. Builds an `xcfun_eval::Functional` via direct struct
+            //      construction (validation harness idiom; weights are
+            //      `Box::leak`'d to obtain `&'static`).
+            //   2. Generates the Phase-2 stratified xoshiro 10k grid
+            //      (`fixtures::generate_grid`, seed 0x1234abcd).
+            //   3. Builds a flat density buffer `(grid_len * inlen)` via
+            //      the existing `build_input(gp, vars)` helper.
+            //   4. Calls `Batch::<cubecl_cpu::CpuRuntime>::eval_vec_host_cpu`
+            //      to compute the batch result for orders 0..=`order`.
+            //   5. Computes the scalar baseline by calling `fun.eval` per
+            //      grid point.
+            //   6. Compares element-wise at strict `1e-13` rel-err.
             //
-            // and compare per-record `max_rel_err = |batch - scalar| /
-            // max(|scalar|, 1.0)` against strict 1e-13 — is owned by Plan
-            // 06-05 (revision-1 B-4). The skeleton compiles, parses CLI
-            // flags, and validates Backend dispatch; the body panics so
-            // accidental "tier-3 sweep was run before 06-05 landed" is loud
-            // rather than silently green.
-            //
-            // Acceptance gate per Plan 06-02b: `cargo build -p validation`
-            // succeeds; this `todo!()` is documented as expected behaviour
-            // and acceptable per the plan's `<action>` Step B note.
-            let _ = (order, jobs, filter, exclude_erf);
-            todo!(
-                "Plan 06-02b ships the run_tier3 CPU arm skeleton; \
-                 KER-06 sign-off body lands in Plan 06-05 (revision-1 B-4)"
-            )
+            // Returns `Ok(())` on a clean sweep (0 failures); returns an
+            // anyhow error documenting the failure summary otherwise so the
+            // CLI exits non-zero for CI gating.
+            let _ = (jobs, exclude_erf); // Cpu arm is intrinsically serial
+                                        // for KER-06 (numerical comparison
+                                        // does not benefit from parallelism
+                                        // for this fixture size); exclude_erf
+                                        // does not apply (CPU substrate
+                                        // handles ERF natively at f64).
+            run_tier3_cpu_body(order, filter)
         }
         #[cfg(not(feature = "hip"))]
         Backend::Rocm => anyhow::bail!(
@@ -1897,6 +1899,223 @@ pub fn run_tier3(
                  payloads carry the correct request tag"
             )
         }
+    }
+}
+
+// ===========================================================================
+// Phase 6 Plan 06-05 (revision-1 B-4) — KER-06 tier-3 CPU sign-off body.
+// ===========================================================================
+//
+// `run_tier3_cpu_body(order, filter)` iterates the 17 known-clean Phase-4
+// functional set, runs `Batch::<cubecl_cpu::CpuRuntime>::eval_vec_host_cpu`
+// over the Phase-2 stratified xoshiro 10k grid (seed 0x1234abcd), and
+// compares per-element output against scalar `Functional::eval` baseline at
+// strict 1e-13. Returns `Ok(())` on a clean sweep; returns an `anyhow` error
+// (with a per-functional failure breakdown) otherwise. CLI exits non-zero
+// for CI gating.
+//
+// The 17 known-clean set is the Phase-4 sign-off list per
+// `04-VERIFICATION.md` (echoed in the plan's `<action>` Step B grep filter):
+// `slaterx | tfk | pbex | revpbex | pbeintx | rpbex | pbesolx | beckex |
+//  beckecorrx | pw86x | optxcorr | apbex | pw91x | ktx | btk | m05x2x | m06x2x`.
+// All 17 use `Vars::A_B_GAA_GAB_GBB` except `slaterx` and `tfk` (LDA tier;
+// `Vars::A_B`).
+
+/// 17 known-clean Phase-4 functional targets (per `04-VERIFICATION.md`).
+/// Each tuple: `(FunctionalId, regex-name, Vars)`. Names are lowercase to
+/// match the plan's `^(slaterx|tfk|...)$` regex syntax.
+const TIER3_CPU_KNOWN_CLEAN_17: &[(FunctionalId, &str, Vars)] = &[
+    // LDA-tier (Vars::A_B; inlen=2):
+    (FunctionalId::XC_SLATERX, "slaterx", Vars::A_B),
+    (FunctionalId::XC_TFK, "tfk", Vars::A_B),
+    // GGA-tier (Vars::A_B_GAA_GAB_GBB; inlen=5):
+    (FunctionalId::XC_PBEX, "pbex", Vars::A_B_GAA_GAB_GBB),
+    (FunctionalId::XC_REVPBEX, "revpbex", Vars::A_B_GAA_GAB_GBB),
+    (FunctionalId::XC_PBEINTX, "pbeintx", Vars::A_B_GAA_GAB_GBB),
+    (FunctionalId::XC_RPBEX, "rpbex", Vars::A_B_GAA_GAB_GBB),
+    (FunctionalId::XC_PBESOLX, "pbesolx", Vars::A_B_GAA_GAB_GBB),
+    (FunctionalId::XC_BECKEX, "beckex", Vars::A_B_GAA_GAB_GBB),
+    (FunctionalId::XC_BECKECORRX, "beckecorrx", Vars::A_B_GAA_GAB_GBB),
+    (FunctionalId::XC_PW86X, "pw86x", Vars::A_B_GAA_GAB_GBB),
+    (FunctionalId::XC_OPTXCORR, "optxcorr", Vars::A_B_GAA_GAB_GBB),
+    (FunctionalId::XC_APBEX, "apbex", Vars::A_B_GAA_GAB_GBB),
+    (FunctionalId::XC_PW91X, "pw91x", Vars::A_B_GAA_GAB_GBB),
+    (FunctionalId::XC_KTX, "ktx", Vars::A_B_GAA_GAB_GBB),
+    (FunctionalId::XC_BTK, "btk", Vars::A_B_GAA_GAB_GBB),
+    (FunctionalId::XC_M05X2X, "m05x2x", Vars::A_B_GAA_GAB_GBB),
+    (FunctionalId::XC_M06X2X, "m06x2x", Vars::A_B_GAA_GAB_GBB),
+];
+
+/// Strict KER-06 tolerance (CONTEXT D-02): 1e-13 rel-err vs scalar.
+const TIER3_CPU_THRESHOLD: f64 = 1e-13;
+
+/// CPU arm body for `run_tier3`. Filters `TIER3_CPU_KNOWN_CLEAN_17` by the
+/// caller's regex, runs `Batch::<CpuRuntime>::eval_vec_host_cpu` per
+/// `(functional, vars, mode=PartialDerivatives, order)` tuple over the
+/// stratified xoshiro 10k grid, and compares against scalar baseline.
+fn run_tier3_cpu_body(order: u32, filter: &str) -> Result<()> {
+    use cubecl_cpu::CpuRuntime;
+    use xcfun_gpu::Batch;
+
+    let regex = regex::Regex::new(filter)
+        .map_err(|e| anyhow::anyhow!("--filter regex parse failed: {e}"))?;
+
+    let grid = crate::fixtures::generate_grid();
+    let nr_points = grid.len();
+    tracing::info!(
+        "KER-06 sign-off: {} grid points, {} candidate functionals, threshold = {:e}",
+        nr_points,
+        TIER3_CPU_KNOWN_CLEAN_17.len(),
+        TIER3_CPU_THRESHOLD,
+    );
+
+    let mut total_pass = 0_usize;
+    let mut total_fail = 0_usize;
+    let mut per_functional_failures: Vec<(String, u32, usize, f64)> = Vec::new();
+
+    for (id, name, vars) in TIER3_CPU_KNOWN_CLEAN_17 {
+        if !regex.is_match(name) {
+            continue;
+        }
+        // Sweep orders 0..=order (Mode::PartialDerivatives).
+        for ord in 0..=order {
+            let outlen = match Functional::output_length(*vars, Mode::PartialDerivatives, ord) {
+                Ok(n) => n,
+                Err(e) => {
+                    anyhow::bail!(
+                        "tier-3 CPU: output_length({:?}, PartialDerivatives, {}) failed: {}",
+                        vars,
+                        ord,
+                        e
+                    );
+                }
+            };
+            let inlen = Functional::input_length(*vars);
+
+            // Build Functional via direct struct construction (validation
+            // harness idiom; tier-2 uses the same pattern at line 417).
+            let weights: &'static [(FunctionalId, f64)] =
+                Box::leak(Box::new([(*id, 1.0)]));
+            let fun = Functional {
+                weights,
+                vars: *vars,
+                mode: Mode::PartialDerivatives,
+                order: ord,
+                settings: xcfun_eval::functional::DEFAULT_SETTINGS,
+                settings_gen: 0,
+            };
+
+            // Build flat density vector (nr_points * inlen) using the
+            // existing `build_input` helper for shape consistency with the
+            // tier-2 path.
+            let mut density_flat: Vec<f64> = Vec::with_capacity(nr_points * inlen);
+            for gp in &grid {
+                let row = build_input(gp, *vars);
+                debug_assert_eq!(row.len(), inlen);
+                density_flat.extend_from_slice(&row);
+            }
+
+            // Allocate batch + scalar output buffers.
+            let mut batch_out = vec![0.0_f64; nr_points * outlen];
+            let mut scalar_out = vec![0.0_f64; nr_points * outlen];
+
+            // Batch path — Plan 06-05 RS-08 dispatch. Pitch == inlen / outlen
+            // (no padding); xcfun-master/api/xcfun.h:54 contract preserved.
+            Batch::<CpuRuntime>::eval_vec_host_cpu(
+                &fun,
+                &density_flat,
+                inlen,
+                &mut batch_out,
+                outlen,
+                nr_points,
+            )
+            .map_err(|e| {
+                anyhow::anyhow!(
+                    "tier-3 CPU batch eval failed for {} order {}: {}",
+                    name,
+                    ord,
+                    e
+                )
+            })?;
+
+            // Scalar baseline — per-point loop.
+            for (p, gp) in grid.iter().enumerate() {
+                let row = build_input(gp, *vars);
+                let dout = &mut scalar_out[p * outlen..(p + 1) * outlen];
+                if let Err(e) = fun.eval(&row, dout) {
+                    anyhow::bail!(
+                        "tier-3 CPU scalar eval failed at {} order {} point {}: {}",
+                        name,
+                        ord,
+                        p,
+                        e,
+                    );
+                }
+            }
+
+            // Element-wise comparison at strict 1e-13.
+            let mut tuple_pass = 0_usize;
+            let mut tuple_fail = 0_usize;
+            let mut tuple_max_rel = 0.0_f64;
+            for i in 0..batch_out.len() {
+                let b = batch_out[i];
+                let s = scalar_out[i];
+                let abs_err = (b - s).abs();
+                let rel_err = abs_err / s.abs().max(1.0);
+                if rel_err > TIER3_CPU_THRESHOLD {
+                    tuple_fail += 1;
+                } else {
+                    tuple_pass += 1;
+                }
+                if rel_err > tuple_max_rel {
+                    tuple_max_rel = rel_err;
+                }
+            }
+
+            tracing::info!(
+                "  {} order {}: pass={} fail={} max_rel_err={:.3e}",
+                name,
+                ord,
+                tuple_pass,
+                tuple_fail,
+                tuple_max_rel
+            );
+            total_pass += tuple_pass;
+            total_fail += tuple_fail;
+            if tuple_fail > 0 {
+                per_functional_failures.push((
+                    name.to_string(),
+                    ord,
+                    tuple_fail,
+                    tuple_max_rel,
+                ));
+            }
+        }
+    }
+
+    println!(
+        "tier-3 CPU sign-off: {} elements compared, {} pass, {} fail (threshold {:e})",
+        total_pass + total_fail,
+        total_pass,
+        total_fail,
+        TIER3_CPU_THRESHOLD,
+    );
+    if total_fail == 0 {
+        println!("KER-06: 0 failures across the 17 known-clean Phase-4 functional set.");
+        Ok(())
+    } else {
+        eprintln!("KER-06: {} failure(s) detected:", per_functional_failures.len());
+        for (name, ord, count, max_rel) in &per_functional_failures {
+            eprintln!(
+                "  {} order {}: {} record(s) above threshold; max rel-err {:.3e}",
+                name, ord, count, max_rel
+            );
+        }
+        anyhow::bail!(
+            "tier-3 CPU sign-off FAILED: {} per-tuple failure entries (total {} elements)",
+            per_functional_failures.len(),
+            total_fail,
+        );
     }
 }
 
