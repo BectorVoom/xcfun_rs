@@ -14,7 +14,7 @@
 mod functional;
 mod free_fns;
 
-pub use functional::Functional;
+pub use functional::{Functional, XCFUN_MIN_BATCH_SIZE, min_batch_size};
 pub use free_fns::{
     authors, describe_long, describe_short, enumerate_aliases,
     enumerate_parameters, is_compatible_library, self_test, splash,

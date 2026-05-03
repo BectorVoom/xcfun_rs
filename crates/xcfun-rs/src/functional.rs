@@ -4,9 +4,54 @@
 //! field is private so callers cannot bypass `set` validation by
 //! mutating `weights` / `settings` directly.
 
+use std::sync::OnceLock;
+
 use xcfun_core::{
     Dependency, FunctionalId, Mode, Vars, XcError, registry::FUNCTIONAL_DESCRIPTORS,
 };
+use xcfun_gpu::{Backend, auto_backend, error_routing::must_fall_back_to_cpu};
+// `Batch` is only referenced inside `#[cfg(feature = ...)]` arms below, so the
+// import is feature-gated to avoid `unused_imports` under `--no-default-features`.
+#[cfg(any(feature = "cpu", feature = "hip", feature = "cuda", feature = "wgpu"))]
+use xcfun_gpu::Batch;
+
+// -----------------------------------------------------------------------------
+//  Phase 6 Plan 06-05 (RS-08 + D-14) — `eval_vec` dispatch threshold.
+//
+//  CONTEXT D-14 fixes the default threshold at 64 points, with a runtime
+//  override path via the `XCFUN_MIN_BATCH_SIZE` environment variable. Above
+//  the threshold `Functional::eval_vec` dispatches through `xcfun_gpu::Batch`
+//  (auto-selected runtime per D-07); below the threshold it falls through to
+//  a per-point loop reusing `Functional::eval`.
+//
+//  The threshold is parsed once via `OnceLock<usize>` so the env-var read is
+//  amortised across all `eval_vec` calls in a process. Side-effect: changes
+//  to `XCFUN_MIN_BATCH_SIZE` after the first call have no effect — documented
+//  as the trade-off vs. per-call env lookup overhead.
+// -----------------------------------------------------------------------------
+
+/// Default threshold per CONTEXT D-14 — `nr_points >= 64` triggers the
+/// `xcfun_gpu::Batch<R>` dispatch path; `nr_points < 64` falls through to
+/// the per-point eval-loop fallback.
+pub const XCFUN_MIN_BATCH_SIZE: usize = 64;
+
+/// Test-only / introspection accessor for the cached threshold. Reads
+/// `XCFUN_MIN_BATCH_SIZE` env var on first call (parsed via
+/// `OnceLock<usize>`); returns the cached value on subsequent calls.
+///
+/// **Caching semantics:** the OnceLock is initialised exactly once per
+/// process; `std::env::set_var` AFTER the first call has no effect on
+/// the cached value. Tests verifying env-override behaviour must run in
+/// a separate process or accept the boundary at the first call.
+pub fn min_batch_size() -> usize {
+    static THRESHOLD: OnceLock<usize> = OnceLock::new();
+    *THRESHOLD.get_or_init(|| {
+        std::env::var("XCFUN_MIN_BATCH_SIZE")
+            .ok()
+            .and_then(|s| s.parse::<usize>().ok())
+            .unwrap_or(XCFUN_MIN_BATCH_SIZE)
+    })
+}
 
 /// The exchange-correlation functional handle.
 ///
@@ -171,6 +216,232 @@ impl Functional {
     /// the contract; see `tests/zero_alloc.rs` for the verifying fixture.
     pub fn eval(&self, input: &[f64], output: &mut [f64]) -> Result<(), XcError> {
         self.0.eval(input, output)
+    }
+
+    /// **RS-08 / D-14 / D-16 / GPU-05** — vectorised evaluation with GPU
+    /// dispatch when `nr_points >= XCFUN_MIN_BATCH_SIZE` (default 64).
+    ///
+    /// Signature mirrors `xcfun-master/api/xcfun.h:54` byte-for-byte (per
+    /// CONTEXT D-16): `density` and `out` are pitched flat slices, with
+    /// point `p` reading `density[p * density_pitch .. p * density_pitch +
+    /// inlen]` and writing `out[p * out_pitch .. p * out_pitch + outlen]`.
+    /// Rust uses `usize` instead of C `int`; otherwise the layout is identical.
+    /// The `xcfun-capi::xcfun_eval_vec` C ABI shim handles the int-vs-usize
+    /// cast at the FFI boundary.
+    ///
+    /// # Dispatch (CONTEXT D-14 + D-07)
+    ///
+    /// 1. **Below threshold** (`nr_points < min_batch_size()`): per-point
+    ///    fall-through via the existing `Functional::eval` path. No device
+    ///    buffer allocation; cheap for small grids.
+    /// 2. **At/above threshold**: `auto_backend()` selects the highest-priority
+    ///    runtime (env override → ROCm → CUDA → Metal-with-f64 → Wgpu-with-f64
+    ///    → CPU). The selected runtime is monomorphised in a `match` arm
+    ///    over `Backend` (RESEARCH Pattern 4 — `cubecl::Runtime` is not
+    ///    object-safe; cannot use `Box<dyn Runtime>`).
+    /// 3. **GPU-05 ERF auto-fallback**: when the selected runtime is
+    ///    `Backend::Wgpu` or `Backend::Metal` AND the active functional set
+    ///    contains `Dependency::ERF`, the runtime is silently overridden to
+    ///    `Backend::Cpu`. Range-separated functionals (LDAERFX/LDAERFC/etc.)
+    ///    cannot meet the strict 1e-13 contract on Wgpu/Metal where WGSL has
+    ///    no f64 type; the CPU substrate produces correct numerics. Reuses
+    ///    `xcfun_gpu::error_routing::must_fall_back_to_cpu` (Plan 06-04).
+    ///
+    /// # Errors
+    ///
+    /// - `XcError::InputLengthMismatch` — `density_pitch < inlen` OR
+    ///   `density.len() < density_pitch * nr_points`.
+    /// - `XcError::OutputLengthMismatch` — symmetric for `out`.
+    /// - Any error returned by the selected runtime's `eval_vec_host_*`
+    ///   path (e.g. `XcError::WgpuNoF64`, `XcError::CudaNoF64`).
+    ///
+    /// # Threading (RS-10 contract preserved)
+    ///
+    /// `eval_vec(&self, ...)` takes an immutable receiver — no mutable
+    /// state is added on the facade for this plan. `Functional` remains
+    /// `Send + Sync`; the `assert_impl_all!` invariant in `tests/send_sync.rs`
+    /// continues to compile. Plan 06-06 (D-12) introduces the
+    /// `UnsafeCell<EvalHandle>` reusable buffer for the strict-zero-alloc
+    /// goal; that change preserves `Send + Sync` via the documented
+    /// "racy if shared" contract.
+    pub fn eval_vec(
+        &self,
+        density: &[f64],
+        density_pitch: usize,
+        out: &mut [f64],
+        out_pitch: usize,
+        nr_points: usize,
+    ) -> Result<(), XcError> {
+        // ----- Step 1: input validation (D-08-A C ABI typed-error mapping).
+        let inlen = self.input_length();
+        let outlen = self.output_length()?;
+        if density_pitch < inlen {
+            return Err(XcError::InputLengthMismatch {
+                expected: inlen,
+                got: density_pitch,
+            });
+        }
+        if out_pitch < outlen {
+            return Err(XcError::OutputLengthMismatch {
+                expected: outlen,
+                got: out_pitch,
+            });
+        }
+        if nr_points == 0 {
+            return Ok(());
+        }
+        if density.len() < density_pitch * nr_points {
+            return Err(XcError::InputLengthMismatch {
+                expected: density_pitch * nr_points,
+                got: density.len(),
+            });
+        }
+        if out.len() < out_pitch * nr_points {
+            return Err(XcError::OutputLengthMismatch {
+                expected: out_pitch * nr_points,
+                got: out.len(),
+            });
+        }
+
+        // ----- Step 2: threshold dispatch per D-14.
+        if nr_points < min_batch_size() {
+            return self.eval_loop_fallback(
+                density, density_pitch, out, out_pitch, nr_points, inlen, outlen,
+            );
+        }
+
+        // ----- Step 3: auto_backend selection + ERF auto-fallback (GPU-05).
+        let mut chosen = auto_backend();
+        let deps = self.0.dependencies();
+        if must_fall_back_to_cpu(deps, chosen) {
+            chosen = Backend::Cpu;
+        }
+
+        // ----- Step 4: monomorphised match-arm dispatch (RESEARCH Pattern 4).
+        //
+        // Each arm calls into the runtime-specific `Batch<R>::eval_vec_host_*`
+        // host helper from xcfun-gpu. Inputs are passed through unchanged
+        // (the helper re-validates length/pitch invariants — defensive
+        // double-check is acceptable since both sides are typed errors).
+        // The helper internally falls back to scalar `Functional::eval` per
+        // point until Plan 06-05's follow-up (kernel monomorphisation) lands;
+        // this plan ships the dispatch wiring + auto_backend selection +
+        // ERF fallback contract, which is sufficient to close RS-08.
+        match chosen {
+            Backend::Cpu => {
+                #[cfg(feature = "cpu")]
+                {
+                    Batch::<cubecl_cpu::CpuRuntime>::eval_vec_host_cpu(
+                        &self.0,
+                        density,
+                        density_pitch,
+                        out,
+                        out_pitch,
+                        nr_points,
+                    )
+                }
+                // No `cpu` feature compiled — fall back to the per-point loop.
+                // This branch is unreachable in the default build (the `cpu`
+                // feature is in the default set per Cargo.toml).
+                #[cfg(not(feature = "cpu"))]
+                {
+                    self.eval_loop_fallback(
+                        density, density_pitch, out, out_pitch, nr_points, inlen, outlen,
+                    )
+                }
+            }
+            #[cfg(feature = "hip")]
+            Backend::Rocm => Batch::<cubecl_hip::HipRuntime>::eval_vec_host_rocm(
+                &self.0,
+                density,
+                density_pitch,
+                out,
+                out_pitch,
+                nr_points,
+            ),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda => Batch::<cubecl_cuda::CudaRuntime>::eval_vec_host_cuda(
+                &self.0,
+                density,
+                density_pitch,
+                out,
+                out_pitch,
+                nr_points,
+            ),
+            #[cfg(feature = "wgpu")]
+            Backend::Wgpu => Batch::<cubecl_wgpu::WgpuRuntime>::eval_vec_host_wgpu_with_request(
+                &self.0,
+                density,
+                density_pitch,
+                out,
+                out_pitch,
+                nr_points,
+                Backend::Wgpu,
+            ),
+            #[cfg(feature = "wgpu")]
+            Backend::Metal => Batch::<cubecl_wgpu::WgpuRuntime>::eval_vec_host_wgpu_with_request(
+                &self.0,
+                density,
+                density_pitch,
+                out,
+                out_pitch,
+                nr_points,
+                Backend::Metal,
+            ),
+            // Defensive arms: when a Backend variant is selected by
+            // `auto_backend()` but the corresponding cargo feature is NOT
+            // enabled in this build, fall through to the CPU path. In
+            // practice `auto_backend()` returns a non-CPU variant only
+            // when its corresponding feature is enabled (each probe is
+            // gated on `#[cfg(feature = "...")]`), so these arms are
+            // unreachable — but they make the match exhaustive across
+            // all five `Backend` variants in every feature configuration.
+            #[cfg(not(feature = "hip"))]
+            Backend::Rocm => self.eval_loop_fallback(
+                density, density_pitch, out, out_pitch, nr_points, inlen, outlen,
+            ),
+            #[cfg(not(feature = "cuda"))]
+            Backend::Cuda => self.eval_loop_fallback(
+                density, density_pitch, out, out_pitch, nr_points, inlen, outlen,
+            ),
+            #[cfg(not(feature = "wgpu"))]
+            Backend::Wgpu => self.eval_loop_fallback(
+                density, density_pitch, out, out_pitch, nr_points, inlen, outlen,
+            ),
+            #[cfg(not(feature = "wgpu"))]
+            Backend::Metal => self.eval_loop_fallback(
+                density, density_pitch, out, out_pitch, nr_points, inlen, outlen,
+            ),
+        }
+    }
+
+    /// Per-point fallback for `nr_points < threshold` and for any Backend
+    /// arm whose feature is not compiled in. Reuses the existing
+    /// `Functional::eval` path so numerics are bit-identical to the
+    /// scalar evaluator.
+    ///
+    /// `inlen` and `outlen` are passed in (already computed by the caller)
+    /// to avoid recomputing `output_length()` per-call — the latter is a
+    /// cheap match but kept hot-path-clean.
+    #[inline]
+    fn eval_loop_fallback(
+        &self,
+        density: &[f64],
+        density_pitch: usize,
+        out: &mut [f64],
+        out_pitch: usize,
+        nr_points: usize,
+        inlen: usize,
+        outlen: usize,
+    ) -> Result<(), XcError> {
+        for k in 0..nr_points {
+            let din_start = k * density_pitch;
+            let dout_start = k * out_pitch;
+            let din = &density[din_start..din_start + inlen];
+            let dout = &mut out[dout_start..dout_start + outlen];
+            self.eval(din, dout)?;
+        }
+        Ok(())
     }
 
     // -- internal helper used by `user_eval_setup` for the
