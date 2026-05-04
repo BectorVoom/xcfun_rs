@@ -23,14 +23,17 @@ xcfun-ad   = { path = "../xcfun-ad" }
 cubecl     = { workspace = true }
 thiserror  = { workspace = true }
 
-# Phase 6 Plan 06-N1 (B-6 revision-1): per-functional D-19 unit tests under
-# `tests/d19_*.rs` need a cubecl-cpu launcher to drive the per-functional
-# `<name>_kernel` directly (no `xcfun-eval` round-trip — that would create a
-# dev-dep cycle). The dev-deps stay test-only; the lib graph remains
-# runtime-agnostic per D-08.
+# Phase 6 Plans 06-N1 + 06-N3: per-functional D-19 unit tests under
+# `tests/d19_*.rs`. N1 (B-6 revision-1) drives `<name>_kernel` directly via
+# cubecl-cpu (no xcfun-eval round-trip — avoids dev-dep cycle). N3
+# (W-9 / I-3 Option B) loads fixtures and asserts strict 1e-13 vs committed
+# snapshots through `xcfun_eval::Functional::eval` → `dispatch_kernel`.
+# Dev-deps are crate-graph local; library deps above are unchanged. Lib
+# graph remains runtime-agnostic per D-08.
 [dev-dependencies]
 xcfun-ad = { path = "../xcfun-ad", features = ["testing"] }
 cubecl-cpu = { workspace = true }
+xcfun-eval = { path = "../xcfun-eval", features = ["testing"] }
 approx     = { workspace = true }
 serde      = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

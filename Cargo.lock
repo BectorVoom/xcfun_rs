@@ -4733,6 +4733,7 @@ dependencies = [
  "thiserror",
  "xcfun-ad",
  "xcfun-core",
+ "xcfun-eval",
 ]
 
 [[package]]
