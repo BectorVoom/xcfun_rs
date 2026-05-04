@@ -18,8 +18,11 @@ from . import brx, brc, brxc
 # Plan 06-N2 Task 1c — Kinetic-GGA family (tw, vwk):
 from . import tw, vwk
 
-# Tasks 1b + 1d will append: scanx, scanc, ..., r4scanc, csc, blocx,
-# pbelocc, zvpbesolc, zvpbeintc.
+# Plan 06-N2 Task 1d — PBE-correlation variants + miscellaneous:
+from . import csc, blocx, pbelocc, zvpbesolc, zvpbeintc
+
+# Task 1b will append: scanx, scanc, rscanx, rscanc, rppscanx, rppscanc,
+# r2scanx, r2scanc, r4scanx, r4scanc.
 
 LOOKUP = {
     "ldaerfx": ldaerfx.eval_ldaerfx,
@@ -35,5 +38,11 @@ LOOKUP = {
     # Plan 06-N2 Task 1c — Kinetic-GGA family:
     "tw": tw.eval_tw,
     "vwk": vwk.eval_vwk,
-    # Plan 06-N2 Tasks 1b + 1d will append the remaining 15 entries here.
+    # Plan 06-N2 Task 1d — PBE-correlation variants + miscellaneous:
+    "csc": csc.eval_csc,
+    "blocx": blocx.eval_blocx,
+    "pbelocc": pbelocc.eval_pbelocc,
+    "zvpbesolc": zvpbesolc.eval_zvpbesolc,
+    "zvpbeintc": zvpbeintc.eval_zvpbeintc,
+    # Plan 06-N2 Task 1b will append the SCAN family (10 entries).
 }
