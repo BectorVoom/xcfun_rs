@@ -85,17 +85,8 @@ fn main() -> Result<()> {
     // and the 5 ERF range-separated functionals where C++ is documentably
     // unstable in the cancellation regime).
     let reference = parse_arg(&args, "--reference").unwrap_or("cpp");
-    if reference != "cpp" && reference != "mpmath" {
-        anyhow::bail!(
-            "--reference must be 'cpp' or 'mpmath'; got {}",
-            reference
-        );
-    }
-    if reference == "mpmath" {
-        anyhow::bail!(
-            "--reference mpmath not yet wired (Plan 06-N2 owns the mpmath fixture loader)"
-        );
-    }
+    let reference_e = validation::driver::Reference::from_str(reference)
+        .with_context(|| format!("--reference must be 'cpp' or 'mpmath'; got {}", reference))?;
     // Phase 6 Plan 06-02b — `--exclude-erf` filter; consumed by Plan 06-04 for
     // the Wgpu tier-3 1e-9 sweep per GPU-08 (range-separated functionals
     // carrying Dependency::ERF route to CPU on Wgpu/Metal backends).
@@ -265,8 +256,24 @@ fn main() -> Result<()> {
         // _prewarm is dropped at end-of-scope — xcfun_delete is called.
     }
 
-    let mut report =
-        validation::driver::run_with_mode_cfg(&grid, order, &regex, mode, &mut cfg)?;
+    // Phase 6 Plan 06-N2 — when --reference mpmath is specified, dispatch
+    // to the mpmath-truth driver (`run_tier2_mpmath`) instead of the C++-paired
+    // driver. The mpmath path consumes JSONL fixtures from
+    // `validation/fixtures/mpmath/<functional>.jsonl` (committed source-of-truth
+    // produced by the offline ~6h `cargo run -p xtask --bin regen-mpmath-fixtures`
+    // run; see 06-N2-SUMMARY.md for the exact command).
+    let mut report = match reference_e {
+        validation::driver::Reference::Mpmath => {
+            tracing::info!(
+                "Tier-2 (--reference mpmath): consuming mpmath fixtures \
+                 at validation/fixtures/mpmath/<functional>.jsonl"
+            );
+            validation::driver::run_tier2_mpmath(&regex, &mut cfg)?
+        }
+        validation::driver::Reference::Cpp => {
+            validation::driver::run_with_mode_cfg(&grid, order, &regex, mode, &mut cfg)?
+        }
+    };
 
     // Drop the sink to ensure all buffered bytes hit the OS before we
     // hand the report off to the HTML writer (per-line flush already
