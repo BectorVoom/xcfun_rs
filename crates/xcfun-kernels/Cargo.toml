@@ -22,3 +22,15 @@ xcfun-core = { path = "../xcfun-core" }
 xcfun-ad   = { path = "../xcfun-ad" }
 cubecl     = { workspace = true }
 thiserror  = { workspace = true }
+
+# Phase 6 Plan 06-N1 (B-6 revision-1): per-functional D-19 unit tests under
+# `tests/d19_*.rs` need a cubecl-cpu launcher to drive the per-functional
+# `<name>_kernel` directly (no `xcfun-eval` round-trip — that would create a
+# dev-dep cycle). The dev-deps stay test-only; the lib graph remains
+# runtime-agnostic per D-08.
+[dev-dependencies]
+xcfun-ad = { path = "../xcfun-ad", features = ["testing"] }
+cubecl-cpu = { workspace = true }
+approx     = { workspace = true }
+serde      = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
