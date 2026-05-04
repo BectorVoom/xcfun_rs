@@ -12,8 +12,11 @@ taking mp.mpf inputs and returning a list of mp.mpf outputs.
 """
 from . import ldaerfx, ldaerfc, ldaerfc_jt, tpssc, tpsslocc, revtpssc
 
-# Plan 06-N2 imports brx, brc, brxc, csc, blocx, scan, tw, vwk, pbelocc,
-# zvpbesolc, zvpbeintc into this same package.
+# Plan 06-N2 Task 1a — BR family (excluded_by_upstream_spec set, part 1):
+from . import brx, brc, brxc
+
+# Task 1b–1d will append: scanx, scanc, ..., r4scanc, tw, vwk, csc, blocx,
+# pbelocc, zvpbesolc, zvpbeintc.
 
 LOOKUP = {
     "ldaerfx": ldaerfx.eval_ldaerfx,
@@ -22,5 +25,9 @@ LOOKUP = {
     "tpssc": tpssc.eval_tpssc,
     "tpsslocc": tpsslocc.eval_tpsslocc,
     "revtpssc": revtpssc.eval_revtpssc,
-    # Plan 06-N2 extends with the 20 excluded_by_upstream_spec entries.
+    # Plan 06-N2 Task 1a — BR family:
+    "brx": brx.eval_brx,
+    "brc": brc.eval_brc,
+    "brxc": brxc.eval_brxc,
+    # Plan 06-N2 Tasks 1b–1d will append the remaining 17 entries here.
 }
