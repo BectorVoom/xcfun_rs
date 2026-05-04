@@ -12,8 +12,21 @@ taking mp.mpf inputs and returning a list of mp.mpf outputs.
 """
 from . import ldaerfx, ldaerfc, ldaerfc_jt, tpssc, tpsslocc, revtpssc
 
-# Plan 06-N2 imports brx, brc, brxc, csc, blocx, scan, tw, vwk, pbelocc,
-# zvpbesolc, zvpbeintc into this same package.
+# Plan 06-N2 Task 1a — BR family (excluded_by_upstream_spec set, part 1):
+from . import brx, brc, brxc
+
+# Plan 06-N2 Task 1c — Kinetic-GGA family (tw, vwk):
+from . import tw, vwk
+
+# Plan 06-N2 Task 1d — PBE-correlation variants + miscellaneous:
+from . import csc, blocx, pbelocc, zvpbesolc, zvpbeintc
+
+# Plan 06-N2 Task 1b — SCAN family (10 functionals; one .py per functional
+# per W-6 revision-2 invariant):
+from . import (
+    scanx, scanc, rscanx, rscanc, rppscanx, rppscanc,
+    r2scanx, r2scanc, r4scanx, r4scanc,
+)
 
 LOOKUP = {
     "ldaerfx": ldaerfx.eval_ldaerfx,
@@ -22,5 +35,28 @@ LOOKUP = {
     "tpssc": tpssc.eval_tpssc,
     "tpsslocc": tpsslocc.eval_tpsslocc,
     "revtpssc": revtpssc.eval_revtpssc,
-    # Plan 06-N2 extends with the 20 excluded_by_upstream_spec entries.
+    # Plan 06-N2 Task 1a — BR family:
+    "brx": brx.eval_brx,
+    "brc": brc.eval_brc,
+    "brxc": brxc.eval_brxc,
+    # Plan 06-N2 Task 1c — Kinetic-GGA family:
+    "tw": tw.eval_tw,
+    "vwk": vwk.eval_vwk,
+    # Plan 06-N2 Task 1d — PBE-correlation variants + miscellaneous:
+    "csc": csc.eval_csc,
+    "blocx": blocx.eval_blocx,
+    "pbelocc": pbelocc.eval_pbelocc,
+    "zvpbesolc": zvpbesolc.eval_zvpbesolc,
+    "zvpbeintc": zvpbeintc.eval_zvpbeintc,
+    # Plan 06-N2 Task 1b — SCAN family (10 functionals):
+    "scanx": scanx.eval_scanx,
+    "scanc": scanc.eval_scanc,
+    "rscanx": rscanx.eval_rscanx,
+    "rscanc": rscanc.eval_rscanc,
+    "rppscanx": rppscanx.eval_rppscanx,
+    "rppscanc": rppscanc.eval_rppscanc,
+    "r2scanx": r2scanx.eval_r2scanx,
+    "r2scanc": r2scanc.eval_r2scanc,
+    "r4scanx": r4scanx.eval_r4scanx,
+    "r4scanc": r4scanc.eval_r4scanc,
 }

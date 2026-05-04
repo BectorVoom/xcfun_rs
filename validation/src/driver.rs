@@ -36,7 +36,7 @@
 //!   `RunConfig::default()`-equivalent config (empty skip-set, sink in
 //!   create/truncate mode), preserving byte-for-byte JSONL output.
 
-use anyhow::Result;
+use anyhow::{Context as _, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex};
@@ -1945,6 +1945,276 @@ const TIER3_CPU_KNOWN_CLEAN_17: &[(FunctionalId, &str, Vars)] = &[
 
 /// Strict KER-06 tolerance (CONTEXT D-02): 1e-13 rel-err vs scalar.
 const TIER3_CPU_THRESHOLD: f64 = 1e-13;
+
+// ---------------------------------------------------------------------------
+// Phase 6 Plan 06-N2 — `--reference mpmath` wiring
+// ---------------------------------------------------------------------------
+
+/// Phase 6 Plan 06-N2 — selects the ground-truth source for tier-2 parity.
+///
+/// `Cpp` (default): existing Phase 2-5 cc-vs-Rust path. C++ harness is the
+///   reference; threshold per `threshold_for(name)`.
+/// `Mpmath`: reads `validation/fixtures/mpmath/<functional>.jsonl`
+///   ground-truth records emitted by `xtask/src/bin/regen_mpmath_fixtures.rs`
+///   (mpmath at prec=200 per D-03 ACC-04 amendment) and compares Rust
+///   `Functional::eval` output element-wise at strict 1e-13.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Reference {
+    Cpp,
+    Mpmath,
+}
+
+impl Reference {
+    /// Parse `--reference {cpp|mpmath}` CLI argument.
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "cpp" => Some(Reference::Cpp),
+            "mpmath" => Some(Reference::Mpmath),
+            _ => None,
+        }
+    }
+}
+
+/// Phase 6 Plan 06-N2 — the 20 `excluded_by_upstream_spec` functionals.
+///
+/// Per CONTEXT.md D-03 ACC-04 amendment + REQUIREMENTS.md GGA-01/MGGA-02
+/// caveats, these functionals' tier-2 parity records ABORT in C++ via
+/// `tmath::sqrt_expand`/`log_expand`/`pow_expand` (and BR/CSC also lack a
+/// deterministic upstream `test_in` for the JP-bearing input layouts).
+/// Plan 06-N2 closes them via mpmath at prec=200 as the sole ground truth.
+///
+/// Names are lowercase (xcfun-eval naming convention without the `XC_`
+/// prefix) — matches the per-functional JSONL fixture file path
+/// `validation/fixtures/mpmath/<lowercase>.jsonl` and the
+/// `xtask/mpmath_eval/functionals/<lowercase>.py` module.
+pub const MPMATH_ONLY_FUNCTIONALS: &[&str] = &[
+    "brx", "brc", "brxc", "csc", "blocx",
+    "scanx", "scanc", "rscanx", "rscanc", "rppscanx", "rppscanc",
+    "r2scanx", "r2scanc", "r4scanx", "r4scanc",
+    "tw", "vwk", "pbelocc", "zvpbesolc", "zvpbeintc",
+];
+
+/// Strict mpmath-truth tolerance (D-03 ACC-04 amendment): 1e-13 rel-err
+/// vs mpmath at prec=200. Stricter than the global 1e-12 contract because
+/// the mpmath reference itself is good to ~200 digits — the only float
+/// rounding in the comparison is on the Rust side.
+pub const MPMATH_TIER2_THRESHOLD: f64 = 1e-13;
+
+/// One mpmath fixture record. Mirrors the JSONL emitted by
+/// `xtask.mpmath_eval.evaluator.eval_record` (Plan 06-00).
+#[derive(Deserialize, Debug, Clone)]
+pub struct MpmathRecord {
+    pub functional: String,
+    pub vars: String,
+    pub mode: String,
+    pub order: u32,
+    pub input: Vec<f64>,
+    pub output: Vec<f64>,
+    #[serde(default)]
+    pub mpmath_prec: u32,
+    #[serde(default)]
+    pub source: String,
+}
+
+/// Tier-2 driver running against mpmath-truth fixtures.
+///
+/// For each functional in `MPMATH_ONLY_FUNCTIONALS` (intersected with
+/// `filter`), reads its `validation/fixtures/mpmath/<functional>.jsonl`
+/// fixture file, builds a Rust `Functional` matching the recorded
+/// `(vars, mode, order)`, calls `Functional::eval`, and compares
+/// element-wise at `MPMATH_TIER2_THRESHOLD` (1e-13).
+///
+/// Returns the populated `Report`; the caller decides whether to exit
+/// non-zero based on `Report::failed_count()`.
+///
+/// # Fixture absence
+///
+/// If a fixture file is missing, this function emits a `tracing::warn`
+/// message and skips that functional (records 0 cells). This is the
+/// intended pre-MANUAL-regen behaviour: the smoke run produces fixtures
+/// under `target/mpmath_smoke/` (not committed); only after the offline
+/// ~6h MANUAL regen runs are fixtures committed under
+/// `validation/fixtures/mpmath/`.
+pub fn run_tier2_mpmath(
+    filter: &regex::Regex,
+    cfg: &mut RunConfig<'_>,
+) -> Result<Report> {
+    let mut report = Report::default();
+    let workspace_root = std::env::var("CARGO_MANIFEST_DIR")
+        .map(std::path::PathBuf::from)
+        .ok()
+        .and_then(|p| p.parent().map(std::path::PathBuf::from))
+        .unwrap_or_else(|| std::path::PathBuf::from("."));
+
+    let _ = cfg.skip_keys; // mpmath fixtures don't need the resume skip-set
+                            // (the harness is fast enough to never hit
+                            // SIGKILL mid-run; revisit if proven wrong).
+
+    for fn_name in MPMATH_ONLY_FUNCTIONALS {
+        if !filter.is_match(fn_name) {
+            continue;
+        }
+        let fixture_path = workspace_root
+            .join("validation/fixtures/mpmath")
+            .join(format!("{}.jsonl", fn_name));
+        if !fixture_path.exists() {
+            tracing::warn!(
+                "Tier-2 SKIP {} (--reference mpmath): fixture {:?} missing — \
+                 run `cargo run -p xtask --bin regen-mpmath-fixtures` (~6h offline) \
+                 to populate. See 06-N2-SUMMARY.md for the manual command.",
+                fn_name,
+                fixture_path
+            );
+            continue;
+        }
+        let body = std::fs::read_to_string(&fixture_path).with_context(|| {
+            format!("read mpmath fixture at {:?}", fixture_path)
+        })?;
+        let records: Vec<MpmathRecord> = body
+            .lines()
+            .filter(|l| !l.trim().is_empty())
+            .map(|l| {
+                serde_json::from_str::<MpmathRecord>(l).with_context(|| {
+                    format!("parse mpmath JSONL line in {:?}", fixture_path)
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        // FunctionalId::from_name expects the upper-case `XC_<NAME>` form
+        // (xcfun-core/src/functional_id.rs:120). The mpmath fixture uses the
+        // lowercase short name; transform here.
+        let upper_name = format!("XC_{}", fn_name.to_uppercase());
+        let func_id = match FunctionalId::from_name(&upper_name) {
+            Some(id) => id,
+            None => {
+                tracing::warn!(
+                    "Tier-2 SKIP {} (--reference mpmath): no FunctionalId mapping for '{}'",
+                    fn_name,
+                    upper_name
+                );
+                continue;
+            }
+        };
+
+        for (point_idx, rec) in records.iter().enumerate() {
+            // Map vars-string -> Vars enum.
+            let vars = match parse_vars(&rec.vars) {
+                Some(v) => v,
+                None => {
+                    anyhow::bail!(
+                        "mpmath fixture {} has unknown vars '{}'",
+                        fn_name,
+                        rec.vars
+                    );
+                }
+            };
+            // Construct the Rust Functional with this single-id weight=1
+            // mapping; matches the Phase 2 tier-2 driver pattern (run_one_tuple_pd
+            // builds a Functional with `weights: vec![(id, 1.0)]`).
+            let mut func = Functional::new();
+            func.weights = vec![(func_id, 1.0_f64)];
+            func.vars = vars;
+            func.mode = Mode::PartialDerivatives;
+            func.order = rec.order;
+            let outlen = match Functional::output_length(
+                vars,
+                Mode::PartialDerivatives,
+                rec.order,
+            ) {
+                Ok(n) => n,
+                Err(e) => anyhow::bail!(
+                    "output_length failed for {} (vars={:?}, order={}): {}",
+                    fn_name,
+                    vars,
+                    rec.order,
+                    e
+                ),
+            };
+            if rec.output.len() != outlen {
+                anyhow::bail!(
+                    "mpmath fixture {} record {}: output length mismatch — \
+                     expected {}, got {}",
+                    fn_name,
+                    point_idx,
+                    outlen,
+                    rec.output.len()
+                );
+            }
+            let mut rust_out = vec![0.0_f64; outlen];
+            // Rust eval may legitimately fail for some (vars, order) tuples
+            // not yet wired; surface the gap as a rust_unavailable record.
+            let eval_res = func.eval(&rec.input, &mut rust_out);
+            for (element_idx, (rust_val, mpmath_val)) in
+                rust_out.iter().zip(rec.output.iter()).enumerate()
+            {
+                let abs_err = (rust_val - mpmath_val).abs();
+                let rel_err = abs_err / mpmath_val.abs().max(1.0);
+                let rust_unavailable = eval_res.is_err();
+                let pass = !rust_unavailable && rel_err <= MPMATH_TIER2_THRESHOLD;
+                let r = ReportRecord {
+                    functional: fn_name.to_string(),
+                    vars: format!("{:?}", vars),
+                    mode: 1,
+                    order: rec.order,
+                    point_idx,
+                    element_idx,
+                    input: rec.input.clone(),
+                    rust: if rust_unavailable { f64::NAN } else { *rust_val },
+                    cpp: *mpmath_val,
+                    abs_err,
+                    rel_err,
+                    threshold: MPMATH_TIER2_THRESHOLD,
+                    pass,
+                    rust_unavailable,
+                    excluded_by_upstream_spec: false,
+                    excluded_by_regularize_clamp_design: false,
+                };
+                report.push_with_sink(r, cfg.sink.as_deref_mut())?;
+            }
+        }
+    }
+    tracing::info!(
+        "Tier-2 (--reference mpmath) done: {} records, {} failed",
+        report.total_records(),
+        report.failed_count()
+    );
+    Ok(report)
+}
+
+/// Parse a Vars enum from its canonical xcfun-master string name. Returns
+/// `None` for unrecognised names. Supports both the bare-name form
+/// (`A_B_GAA_GAB_GBB`) and the `XC_`-prefixed form.
+fn parse_vars(s: &str) -> Option<Vars> {
+    let s = s.strip_prefix("XC_").unwrap_or(s);
+    Some(match s {
+        "A" => Vars::A,
+        "N" => Vars::N,
+        "A_B" => Vars::A_B,
+        "N_S" => Vars::N_S,
+        "A_GAA" => Vars::A_GAA,
+        "N_GNN" => Vars::N_GNN,
+        "A_B_GAA_GAB_GBB" => Vars::A_B_GAA_GAB_GBB,
+        "N_S_GNN_GNS_GSS" => Vars::N_S_GNN_GNS_GSS,
+        "A_GAA_LAPA" => Vars::A_GAA_LAPA,
+        "A_GAA_TAUA" => Vars::A_GAA_TAUA,
+        "N_GNN_LAPN" => Vars::N_GNN_LAPN,
+        "N_GNN_TAUN" => Vars::N_GNN_TAUN,
+        "A_B_GAA_GAB_GBB_LAPA_LAPB" => Vars::A_B_GAA_GAB_GBB_LAPA_LAPB,
+        "A_B_GAA_GAB_GBB_TAUA_TAUB" => Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        "N_S_GNN_GNS_GSS_LAPN_LAPS" => Vars::N_S_GNN_GNS_GSS_LAPN_LAPS,
+        "N_S_GNN_GNS_GSS_TAUN_TAUS" => Vars::N_S_GNN_GNS_GSS_TAUN_TAUS,
+        "A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB" => {
+            Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB
+        }
+        "A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB" => {
+            Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB
+        }
+        "N_S_GNN_GNS_GSS_LAPN_LAPS_TAUN_TAUS" => {
+            Vars::N_S_GNN_GNS_GSS_LAPN_LAPS_TAUN_TAUS
+        }
+        _ => return None,
+    })
+}
 
 /// CPU arm body for `run_tier3`. Filters `TIER3_CPU_KNOWN_CLEAN_17` by the
 /// caller's regex, runs `Batch::<CpuRuntime>::eval_vec_host_cpu` per
