@@ -3,18 +3,20 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-03T02:27:30.374Z"
+last_updated: "2026-05-04T00:00:00Z"
 progress:
   total_phases: 8
-  completed_phases: 4
-  total_plans: 48
-  completed_plans: 37
-  percent: 77
+  completed_phases: 6
+  total_plans: 59
+  completed_plans: 59
+  percent: 86
 ---
 
 # Project State: xcfun_rs
 
-**Last updated:** 2026-04-30 (Phase 6 context gathered via `/gsd:discuss-phase 6` interactive; 18 decisions captured (D-01..D-18 + D-13-A) across 4 gray areas in `06-CONTEXT.md`. Wide Phase 6 with ~10–15 plans (decimal numbering = plan org); strict 1e-13 across all 78 functionals at sign-off via ACC-04 mpmath ground-truth amendment; ROCm/HIP primary GPU + CUDA/Metal opt-in; full xcfun-kernels + xcfun-gpu split per docs/design/05; 30+ Phase-3/4 D-19 forwards land as Plan 06-N1/N2/N3 cleanup. Commit `e9834b3`.)
+**Last updated:** 2026-05-04 (Phase 6 sign-off — 11/11 plans landed; verifier returned `human_needed` with 14/16 must-haves verified + 2 hardware-gated overrides + 6 HUMAN-UAT follow-ups. Substrate (Plan 06-00) + crate split (06-01) + xcfun-gpu skeleton (06-02a/b) + ROCm primary (06-03) + CUDA/Wgpu opt-in (06-04) + RS-08 eval-vec dispatch (06-05) + zero-alloc cleanup (06-06) + D-19 scaffolding (06-N1/N3) + mpmath-only-spec ground truth for 20 excluded-spec functionals (06-N2) all merged to master. xcfun-master restored at HEAD `a89b783` (registry-drift OK). Sign-off [^p6caveats] in ROADMAP.md.)
+
+**2026-04-30 entry (superseded):** Phase 6 context gathered via `/gsd:discuss-phase 6` interactive; 18 decisions captured (D-01..D-18 + D-13-A) across 4 gray areas in `06-CONTEXT.md`. Wide Phase 6 with ~10–15 plans (decimal numbering = plan org); strict 1e-13 across all 78 functionals at sign-off via ACC-04 mpmath ground-truth amendment; ROCm/HIP primary GPU + CUDA/Metal opt-in; full xcfun-kernels + xcfun-gpu split per docs/design/05; 30+ Phase-3/4 D-19 forwards land as Plan 06-N1/N2/N3 cleanup. Commit `e9834b3`.
 
 **2026-04-30 (earlier) entry (superseded):** Phase 5 sign-off — 5/5 plans landed; 16 requirements RS-01..07/09/10 + CAPI-01..07 marked Complete; 10-fixture C-ABI golden test ALL FIXTURES PASS at 1e-12.
 
@@ -26,20 +28,19 @@ progress:
 
 **Core Value:** Every functional must produce numerical output matching C++ xcfun within relative error <= 1.0e-12, across all evaluation modes and derivative orders.
 
-**Current focus:** Phase 06 — Kernels + CPU Batch + GPU Backends (NEXT, not yet started)
+**Current focus:** Phase 06 complete (2026-05-04, with caveats per [^p6caveats]); next is Phase 07 (Python Bindings + Release).
 
 ## Current Position
 
-Phase: 06 (kernels-cpu-batch-cuda-wgpu-backends) — NEXT (not yet started)
-Plan: -- (Phase 6 planning pending)
-Plans (Phase 5): 5 (05-00 ✓, 05-01 ✓, 05-02 ✓, 05-03 ✓, 05-04 ✓)
-Scope (Phase 5): xcfun-rs facade with Functional newtype + 11 free fns; xcfun-capi C ABI drop-in (23 #[unsafe(no_mangle)] exports); cbindgen-generated xcfun.h with headers_match drift gate; 10-fixture C-ABI golden test at 1e-12.
+Phase: 06 (gpu-backends-batch-lifecycle-xcfun-kernels-xcfun-gpu) — **COMPLETE (2026-05-04)** with caveats
+Plans (Phase 6): 11 (06-00 ✓, 06-01 ✓, 06-02a ✓, 06-02b ✓, 06-03 ✓, 06-04 ✓, 06-05 ✓, 06-06 ✓, 06-N1 ✓, 06-N2 ✓, 06-N3 ✓)
+Scope (Phase 6): GPU runtimes (ROCm primary; CUDA/Metal opt-in; Wgpu portable fallback) + Batch lifecycle + RS-08 eval-vec dispatch matrix + AD N≥4 substrate + libm-hybrid erf_precise_taylor + tau≥tau_w guard + mpmath sidecar (26 functional ports) + zero-alloc EvalHandle (D-12) + Vec weights (D-17) + DensVars-driven dispatch (D-18) + 11+18 D-19 fixture+test scaffolds.
 
 - **Milestone:** Initial v1 build-out
-- **Phase:** 05 (rust-facade-xcfun-rs-c-abi-xcfun-capi) — **COMPLETE (2026-04-30)** — signed_off
-- **Plan:** 05-04 complete. All 5 Phase-5 plans shipped.
-- **Status:** Ready to execute
-- **Progress:** [██████░░] 62% (5/8 phases; 37/37 known plans)
+- **Phase:** 06 (gpu-backends-batch-lifecycle-xcfun-kernels-xcfun-gpu) — **COMPLETE (2026-05-04)** with caveats; 6 HUMAN-UAT items pending in `06-HUMAN-UAT.md`
+- **Plan:** 06-N3 complete. All 11 Phase-6 plans shipped.
+- **Status:** Ready for Phase 7 (Python bindings + release) — but the user may want to clear HUMAN-UAT items first via `/gsd:verify-work 6` once hardware is available.
+- **Progress:** [███████░] 86% (6/8 phases; 59/59 known plans)
 
 ### Phase 4 sign-off summary (2026-04-30)
 

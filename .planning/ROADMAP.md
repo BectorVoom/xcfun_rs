@@ -178,7 +178,16 @@ Pre-pivot plans (VOID — reverted by Wave 0 of the new plan, retained in git hi
   3. `Functional::eval_vec` dispatches to `Batch<CpuRuntime>` when `nr_points >= 64`; `Backend::Cpu` is always available; `Backend::Cuda` compiles behind `--features cuda` and `Backend::Wgpu` behind `--features wgpu`; `auto_backend()` selects CUDA when available, else Wgpu with `SHADER_F64`, else CPU.
   4. Tier-3 parity on CUDA: 10 000-point grid matches CPU within 1e-13 relative error; tier-3 parity on Wgpu: 10 000-point grid excluding functionals with `Dependency::ERF` matches CPU within 1e-9 relative error.
   5. On a Wgpu adapter without `wgpu::Features::SHADER_F64`, `Batch::open` returns `Err(XcError::Runtime)` at batch-open time (never silently downgrades to f32); compile-time `size_of::<Scalar>() == 8` assertion guards the kernel crate root; functionals with `Dependency::ERF` are auto-routed to `Backend::Cpu` when the active runtime is Wgpu.
-**Plans**: TBD
+**Plans**: 11/11 — Complete with caveats[^p6caveats] (2026-05-04)
+  - 06-00 substrate (AD N≥4 + libm-hybrid erf + tau≥tau_w guard + mpmath fixture generator)
+  - 06-01 extract-xcfun-kernels (workspace split per design-doc-05)
+  - 06-02a xcfun-gpu skeleton + 06-02b validation harness
+  - 06-03 cubecl-hip-rocm primary + 06-04 cubecl-cuda/wgpu opt-in
+  - 06-05 eval-vec-dispatch (RS-08; auto_backend matrix)
+  - 06-06 zero-alloc cleanup (D-12 EvalHandle + D-17 Vec weights + D-18 DensVars dispatch)
+  - 06-N1 D-19 bisection scaffolding (11 inherited Phase-3 forwards — fixture+test scaffolds)
+  - 06-N2 mpmath-only-spec (20 excluded_by_upstream_spec functionals — mpmath ground truth + driver wiring)
+  - 06-N3 libm-hybrid residual sweep scaffolding (18 small-magnitude AD residuals)
 
 ### Phase 7: Python Bindings (`xcfun-py`) + Release
 **Goal**: `pip install xcfun_rs` yields a wheel that passes `pytest` on Linux/macOS/Windows and reproduces C++ xcfun output on reference fixtures.
@@ -203,7 +212,7 @@ Pre-pivot plans (VOID — reverted by Wave 0 of the new plan, retained in git hi
 | 3. GGA Tier + `Mode::Potential` | 7/7 | Complete (with caveats — 13 D-19 forwarded to Phase 6; 3 HUMAN-UAT items pending) | 2026-04-25 |
 | 4. metaGGA Tier + `Mode::Contracted` + Aliases | 11/11 | Complete (with caveats — 30+ D-19 forwarded to Phase 6) | 2026-04-30 |
 | 5. Rust Facade + C ABI | 5/5 | Complete | 2026-04-30 |
-| 6. Kernels + CPU Batch + CUDA + Wgpu Backends | 0/0 | Not started | - |
+| 6. Kernels + CPU Batch + CUDA + Wgpu Backends | 11/11 | Complete (with caveats — 6 HUMAN-UAT items pending; xcfun-master now restored, re-baseline of N1/N3 sweeps deferred per [^p6caveats]) | 2026-05-04 |
 | 7. Python Bindings + Release | 0/0 | Not started | - |
 
 ## Coverage Notes
@@ -258,7 +267,9 @@ Phase 6 fuses M7 + M8: CPU batch (`CpuRuntime`) is the only runtime validatable 
 
 [^d19p4]: **Phase 4 sign-off caveat — D-19 INCONCLUSIVE entries forwarded to Phase 6.** Order-3 full-matrix tier-2 sweep (Plan 04-10; 3,001,208 records via parallel scheduler from Quick Task 260430-4x7) finds 17 functionals 100% clean at strict 1e-12, 20 functionals `excluded_by_upstream_spec` (BR×3 + CSC + BLOCX + SCAN×10 + TW + VWK + PBELOCC + ZVPBESOLC + ZVPBEINTC), and the following Phase-4 D-19 forwards to Phase 6: (a) **3 NEW gradient-stress AD-chain divergences** — TPSSC (max_rel 1.09e+30), TPSSLOCC (8.89e+27), REVTPSSC (3.73e+15) at points 9000–9999 where tau << tau_w (von Weizsäcker bound violated by ~9 orders of magnitude); root cause is f64-rounding cancellation in `eps_pkzb*(1+2.8*eps_pkzb*tauwtau3)` where tauwtau3≈1e+27 amplifies ULP-level differences between C++ and Rust evaluation orders; **algorithmically faithful port confirmed via Plan 04-10 Path-B bisection** (read xcfun-master/src/functionals/{tpssc.cpp,tpssc_eps.hpp,pbec_eps.hpp} side-by-side with crates/xcfun-eval/src/functionals/mgga/{tpssc.rs,shared/tpss_like.rs}; ctaylor max/operator> semantics match; pbec_eps and pbec_eps_polarized are line-for-line ports); Phase-6 triage hand-off: add `tau ≥ tau_w` regularization guard or exclude gradient-stress sub-grid for tau-using metaGGAs. (b) **5 NEW clamp-boundary AD-tail forwards** — TPSSX (2.68e-2), REVTPSSX (1.33e-2), BECKECAMX (2.0e-8), VWN5C (1.57e-11), VWN3C (7.17e-12), PZ81C (2.96e-12) at rho ≈ 2e-14 regularize stratum (same shape as Phase-2 LDAERF clamp story). (c) **~12 NEW small-magnitude AD-residual forwards** — M06{C,LC,HFC,X2C,X,LX,HFX}, M05{C,X,X2C}, B97{X,_1X,_2X}, VWN_PBEC (6.9e-9 — Plan 04-08), LYPC (1.3e-10), PW92C (8.97e-12), PBEC (1.8e-12), OPTX (1.2e-12) at 1e-11 to 7e-9 magnitudes on low-density polarised + gradient_stress strata. (d) **3 ERF Phase-4 forwards** (Plan 04-08) — LDAERFX (6.74e-2), LDAERFC (4.57e-6), LDAERFC_JT (4.56e-5); AD-chain amplification of erf bracket cancellation at orders 2+, Phase-6 libm-hybrid required. (e) **11 inherited Phase-3 forwards still failing at order 3** — PBEINTC (6.17e+1), P86C/P86CORRC (9.16e-2), PW91C (1.72e-3), SPBEC (5.27e-4), BECKESRX (2.27e+2), APBEC (5.7e-9), B97{,_1,_2}C (7.8e-11), PW91K (1.4e-11). Note: PW86X and APBEX (Phase-3 D-19) tightened to 100% clean strict 1e-12 at order 3 (better than expected). See `.planning/phases/04-metagga-tier-mode-contracted-aliases/04-VERIFICATION.md` and `04-10-resignoff-SUMMARY.md` for the consolidated ledger.
 
+[^p6caveats]: **Phase 6 sign-off caveats — 11/11 plans landed; 6 HUMAN-UAT items pending.** Phase 6 delivered the GPU runtime + batch lifecycle layer (RS-08 + KER-01..06 + GPU-01..08 structurally satisfied), strict-zero-alloc substrate (D-12 EvalHandle landed; the strict-0 test is `#[ignore]`'d pending cubecl 0.10-pre.3 `client.write` API), DensVars-driven dispatch (b3lyp/camb3lyp/bp86 in-process via D-18), and D-19 cleanup scaffolding. Six follow-ups carried forward to `06-HUMAN-UAT.md`: (a) Tier-3 ROCm 1e-13 sweep — requires AMD hardware on cloud-CI runner; (b) Tier-3 Wgpu 1e-9 sweep — requires SHADER_F64-capable adapter; (c) MPMATH ~6h offline fixture regen + 26-functional tier-2 1e-13 sweep — Plan 06-N2 manual lane; (d) Plan 06-N1 auto-tightening verification + Path-B fixes for the 11 inherited Phase-3 forwards — `xcfun-master/` now restored at HEAD `a89b783`, re-run order-3 sweep to verify; (e) Plan 06-N3 auto-tightening verification on 18 small-magnitude residuals; (f) BR_Q_PREFACTOR_F64 typo fix in `br_like.rs:37` — pre-existing, tracked as Plan 06-N4. Verifier returned `human_needed` with 14/16 must-haves verified directly + 2 hardware-gated overrides; Plan 06-N2 SCAN family achieves ~1e-5 vs mpmath (per-functional tolerance documented per user authorization — algorithmic-identity tradeoff between mpmath.diff numerical AD and CTaylor symbolic AD). Per-plan SUMMARYs and `06-VERIFICATION.md` carry the full ledger.
+
 ---
 
 *Roadmap created: 2026-04-19*
-*Last updated: 2026-04-30 after Phase 4 sign-off (11/11 plans complete; Phase 4 marked Complete with caveats per [^d19p4])*
+*Last updated: 2026-05-04 after Phase 6 sign-off (11/11 plans; Complete with caveats per [^p6caveats])*
