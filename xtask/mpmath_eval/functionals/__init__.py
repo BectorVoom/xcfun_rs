@@ -21,8 +21,12 @@ from . import tw, vwk
 # Plan 06-N2 Task 1d — PBE-correlation variants + miscellaneous:
 from . import csc, blocx, pbelocc, zvpbesolc, zvpbeintc
 
-# Task 1b will append: scanx, scanc, rscanx, rscanc, rppscanx, rppscanc,
-# r2scanx, r2scanc, r4scanx, r4scanc.
+# Plan 06-N2 Task 1b — SCAN family (10 functionals; one .py per functional
+# per W-6 revision-2 invariant):
+from . import (
+    scanx, scanc, rscanx, rscanc, rppscanx, rppscanc,
+    r2scanx, r2scanc, r4scanx, r4scanc,
+)
 
 LOOKUP = {
     "ldaerfx": ldaerfx.eval_ldaerfx,
@@ -44,5 +48,15 @@ LOOKUP = {
     "pbelocc": pbelocc.eval_pbelocc,
     "zvpbesolc": zvpbesolc.eval_zvpbesolc,
     "zvpbeintc": zvpbeintc.eval_zvpbeintc,
-    # Plan 06-N2 Task 1b will append the SCAN family (10 entries).
+    # Plan 06-N2 Task 1b — SCAN family (10 functionals):
+    "scanx": scanx.eval_scanx,
+    "scanc": scanc.eval_scanc,
+    "rscanx": rscanx.eval_rscanx,
+    "rscanc": rscanc.eval_rscanc,
+    "rppscanx": rppscanx.eval_rppscanx,
+    "rppscanc": rppscanc.eval_rppscanc,
+    "r2scanx": r2scanx.eval_r2scanx,
+    "r2scanc": r2scanc.eval_r2scanc,
+    "r4scanx": r4scanx.eval_r4scanx,
+    "r4scanc": r4scanc.eval_r4scanc,
 }
