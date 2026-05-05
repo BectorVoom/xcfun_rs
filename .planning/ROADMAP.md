@@ -41,7 +41,19 @@ The dependency DAG (per `ARCHITECTURE.md` section 7 and `SUMMARY.md` "Phase Orde
   3. CI fails a PR that edits `xcfun-master/src/functionals/` without re-running `cargo xtask regen-registry --check` (registry content-hash gate).
   4. A lint rule rejects `mul_add` inside `xcfun-core/src/functionals/*.rs` and the release profile contains `-Cllvm-args=-fp-contract=off`.
   5. `config.hpp` has been read; the `pw92c-legacy-constants` Cargo feature is defined with the documented default matching the vendored `xcfun-master/`.
-**Plans**: TBD
+**Plans**: 11 plans across 11 sequential waves (granularity standard; parallelization disabled — every plan touches xcfun-py source files that the next plan extends, forcing a strict topological chain 07-00 → 07-01 → ... → 07-10).
+
+- [ ] 07-00-PLAN.md — Wave 0: clear 4 blocking HUMAN-UAT items (3,4,5,6) + BR_Q_PREFACTOR_F64 typo fix per D-14
+- [ ] 07-01-PLAN.md — Wave 1: rename xcfun-python → xcfun-py + workspace member promotion + dep wiring (D-01, D-03)
+- [ ] 07-02-PLAN.md — Wave 2: pyproject.toml + #[pymodule] _native skeleton + 11 free fns (PY-01, PY-04)
+- [ ] 07-03-PLAN.md — Wave 3: XcfunError + abi3 §5 PyException workaround (PY-05; D-09, D-10)
+- [ ] 07-04-PLAN.md — Wave 4: Functional #[pyclass] + Mode/Vars IntEnum + 9 method delegates (PY-02; D-05, D-06, D-12)
+- [ ] 07-05-PLAN.md — Wave 5: NumPy strict zero-copy eval_vec + cross-language parity (PY-03; D-07, D-08)
+- [ ] 07-06-PLAN.md — Wave 6: crates/xcfun-py/README.md (D-03, D-04, D-13)
+- [ ] 07-07-PLAN.md — Wave 7: release.yml sdist + 3 wheel matrix + pytest-from-wheel (PY-06)
+- [ ] 07-08-PLAN.md — Wave 8: xtask release-publish topological cargo publish driver (D-15)
+- [ ] 07-09-PLAN.md — Wave 9: release.yml publish-pypi (OIDC) + release-artifacts + github-release (D-15, D-16)
+- [ ] 07-10-PLAN.md — Wave 10: CHANGELOG.md + tag v0.1.0 (D-13; CHECKPOINT — pre-tag dry-run + tag push + xtask release-publish --execute)
 
 ### Phase 1: Taylor Algebra & AD Primitives (`xcfun-ad`, cubecl-native)
 **Goal**: A cubecl-native AD engine: `CTaylor<F, N>` as a pure `#[cube]` type backed by cubecl `Array<F>` storage, every arithmetic operation and every `*_expand` scalar series function written as `#[cube] fn` generic over `F: Float`, validated on `cubecl-cpu` (`CpuRuntime`) against the C++ xcfun reference at **1e-12 strict relative error**. Single source of truth — no parallel hand-Rust scalar implementation.

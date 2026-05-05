@@ -2,19 +2,21 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-05-04T00:00:00Z"
+status: planning
+last_updated: "2026-05-06T00:00:00Z"
 progress:
   total_phases: 8
   completed_phases: 6
-  total_plans: 59
+  total_plans: 70
   completed_plans: 59
-  percent: 86
+  percent: 84
 ---
 
 # Project State: xcfun_rs
 
-**Last updated:** 2026-05-04 (Phase 6 sign-off — 11/11 plans landed; verifier returned `human_needed` with 14/16 must-haves verified + 2 hardware-gated overrides + 6 HUMAN-UAT follow-ups. Substrate (Plan 06-00) + crate split (06-01) + xcfun-gpu skeleton (06-02a/b) + ROCm primary (06-03) + CUDA/Wgpu opt-in (06-04) + RS-08 eval-vec dispatch (06-05) + zero-alloc cleanup (06-06) + D-19 scaffolding (06-N1/N3) + mpmath-only-spec ground truth for 20 excluded-spec functionals (06-N2) all merged to master. xcfun-master restored at HEAD `a89b783` (registry-drift OK). Sign-off [^p6caveats] in ROADMAP.md.)
+**Last updated:** 2026-05-06 (Phase 7 plans landed — 11 plans across 11 sequential waves via `/gsd:plan-phase 7`. Research first (07-RESEARCH.md, 1790 lines) surfaced abi3-py310 + PyException collision on Python 3.10/3.11 as the critical implementation finding. PATTERNS.md mapped 23 Wave-0 file gaps. VALIDATION.md per-task verification map for PY-01..06. Plan-checker returned VERIFICATION PASSED (with 6 housekeeping warnings, 5 applied inline). Decision coverage 16/16 (after D-02 tag added to 07-02). Wave 0 = clear 4 blocking Phase-6 HUMAN-UAT items {3,4,5,6} + BR_Q_PREFACTOR_F64 typo fix + crate rename `xcfun-python → xcfun-py`; Waves 1–10 = PyO3 module + Functional + eval_vec strict zero-copy + abi3 §5 PyException workaround + CI wheel matrix + xtask release-publish + GH Release artifacts + CHANGELOG + tag v0.1.0. Status: ready to execute.)
+
+**2026-05-04 entry (superseded):** Phase 6 sign-off — 11/11 plans landed; verifier returned `human_needed` with 14/16 must-haves verified + 2 hardware-gated overrides + 6 HUMAN-UAT follow-ups. Substrate (Plan 06-00) + crate split (06-01) + xcfun-gpu skeleton (06-02a/b) + ROCm primary (06-03) + CUDA/Wgpu opt-in (06-04) + RS-08 eval-vec dispatch (06-05) + zero-alloc cleanup (06-06) + D-19 scaffolding (06-N1/N3) + mpmath-only-spec ground truth for 20 excluded-spec functionals (06-N2) all merged to master. xcfun-master restored at HEAD `a89b783` (registry-drift OK). Sign-off [^p6caveats] in ROADMAP.md.
 
 **2026-04-30 entry (superseded):** Phase 6 context gathered via `/gsd:discuss-phase 6` interactive; 18 decisions captured (D-01..D-18 + D-13-A) across 4 gray areas in `06-CONTEXT.md`. Wide Phase 6 with ~10–15 plans (decimal numbering = plan org); strict 1e-13 across all 78 functionals at sign-off via ACC-04 mpmath ground-truth amendment; ROCm/HIP primary GPU + CUDA/Metal opt-in; full xcfun-kernels + xcfun-gpu split per docs/design/05; 30+ Phase-3/4 D-19 forwards land as Plan 06-N1/N2/N3 cleanup. Commit `e9834b3`.
 
@@ -28,19 +30,19 @@ progress:
 
 **Core Value:** Every functional must produce numerical output matching C++ xcfun within relative error <= 1.0e-12, across all evaluation modes and derivative orders.
 
-**Current focus:** Phase 06 complete (2026-05-04, with caveats per [^p6caveats]); next is Phase 07 (Python Bindings + Release).
+**Current focus:** Phase 07 PLANNED (2026-05-06); 11 plans across 11 sequential waves; ready to execute via `/gsd:execute-phase 7`.
 
 ## Current Position
 
-Phase: 06 (gpu-backends-batch-lifecycle-xcfun-kernels-xcfun-gpu) — **COMPLETE (2026-05-04)** with caveats
-Plans (Phase 6): 11 (06-00 ✓, 06-01 ✓, 06-02a ✓, 06-02b ✓, 06-03 ✓, 06-04 ✓, 06-05 ✓, 06-06 ✓, 06-N1 ✓, 06-N2 ✓, 06-N3 ✓)
-Scope (Phase 6): GPU runtimes (ROCm primary; CUDA/Metal opt-in; Wgpu portable fallback) + Batch lifecycle + RS-08 eval-vec dispatch matrix + AD N≥4 substrate + libm-hybrid erf_precise_taylor + tau≥tau_w guard + mpmath sidecar (26 functional ports) + zero-alloc EvalHandle (D-12) + Vec weights (D-17) + DensVars-driven dispatch (D-18) + 11+18 D-19 fixture+test scaffolds.
+Phase: 07 (python-bindings-release) — **PLANNED (2026-05-06)** — ready to execute
+Plans (Phase 7): 11 (07-00 ⬜, 07-01 ⬜, 07-02 ⬜, 07-03 ⬜, 07-04 ⬜, 07-05 ⬜, 07-06 ⬜, 07-07 ⬜, 07-08 ⬜, 07-09 ⬜, 07-10 ⬜)
+Scope (Phase 7): Wave 0 = clear 4 blocking Phase-6 HUMAN-UAT items {3,4,5,6} + BR_Q_PREFACTOR_F64 typo fix + crate rename `xcfun-python → xcfun-py` + workspace member promotion + dep wiring; Waves 1-10 = pyproject.toml + #[pymodule] _native skeleton + 11 free fns + abi3 §5 PyException workaround + Functional #[pyclass] + Mode/Vars IntEnum + NumPy strict zero-copy eval_vec + cross-language parity + CI wheel matrix on {Linux x86_64, macOS arm64, Windows x86_64} + xtask release-publish topological cargo publish + GH Release artifacts (xcfun.h + 3× libxcfun_capi) + CHANGELOG.md (Keep-a-Changelog) + tag v0.1.0 (CHECKPOINT — irreversible PyPI yank).
 
 - **Milestone:** Initial v1 build-out
-- **Phase:** 06 (gpu-backends-batch-lifecycle-xcfun-kernels-xcfun-gpu) — **COMPLETE (2026-05-04)** with caveats; 6 HUMAN-UAT items pending in `06-HUMAN-UAT.md`
-- **Plan:** 06-N3 complete. All 11 Phase-6 plans shipped.
-- **Status:** Ready for Phase 7 (Python bindings + release) — but the user may want to clear HUMAN-UAT items first via `/gsd:verify-work 6` once hardware is available.
-- **Progress:** [███████░] 86% (6/8 phases; 59/59 known plans)
+- **Phase:** 07 (python-bindings-release) — **PLANNED (2026-05-06)** — 11 plans landed via `/gsd:plan-phase 7`; plan-checker VERIFICATION PASSED with 6 housekeeping warnings (5 applied inline). 16/16 decisions covered after D-02 tag added to 07-02. 6/6 PY-XX requirements covered.
+- **Plan:** 07-00 next (clear 4 blocking Phase-6 HUMAN-UAT items + BR_Q_PREFACTOR_F64 typo fix).
+- **Status:** Ready to execute. Phase 6 sign-off (with caveats) carries forward — the 4 blocking HUMAN-UAT items are Wave 0 of Phase 7 per D-14.
+- **Progress:** [███████░] 84% (6/8 phases; 59/70 known plans)
 
 ### Phase 4 sign-off summary (2026-04-30)
 
