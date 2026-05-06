@@ -2,21 +2,23 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: paused-blocked-on-phase-6-gap
-last_updated: "2026-05-06T13:00:00Z"
+status: phase-7-ready-to-resume
+last_updated: "2026-05-07T08:00:00Z"
 progress:
   total_phases: 8
   completed_phases: 6
-  total_plans: 70
-  completed_plans: 59
-  percent: 84
+  total_plans: 71
+  completed_plans: 60
+  percent: 85
 ---
 
 # Project State: xcfun_rs
 
-**2026-05-06 (latest):** Phase 7 Wave 0 paused at Plan 07-00 Task 0.2. Task 0.1 GREEN (BR_Q_PREFACTOR_F64 corrected to mpmath@200 truth + regression-locked; merged at `0413b73`). Task 0.2 (~6h offline mpmath fixture regen) blocked: operator attempted `cargo run --release -p xtask --bin regen-mpmath-fixtures` and the run aborted on functional #1 (`ldaerfx`) with `NotImplementedError("Plan 06-N2 populates this body")`. Audit found **6 of 26 mpmath sidecar functional bodies are unimplemented stubs** — exactly the ACC-04-amended set (LDAERF×3 + TPSS-C×3). The regen driver's own comment says Plan 06-N1 was supposed to fill these, but `git log` shows the only commit ever touching the 6 stub files is `ec3174b` (Plan 06-00 substrate); Plan 06-N1's actual deliverable was fixture-test scaffolding only. The Phase 7 plan-checker missed this when authoring D-14 #3. Operator chose Option A: file Phase 6 gap-closure plan (`06-N5`) to fill the 6 mpmath bodies, then resume Phase 7 Wave 0. Full diagnostic in `07-00-SUMMARY.md` "2026-05-06 Update" section. Next action: `/gsd:plan-phase 6 --gaps` (or `/gsd:phase` to add Plan 06-N5 manually).
+**2026-05-07 (latest):** Phase 6 gap-closure Plan 06-N5 (mpmath ACC-04 bodies) GREEN. Filled 6 mpmath sidecar functional bodies (LDAERF×3 + TPSS-C×3) at prec=200 + 2 new private substrates (`_ldaerf_eps.py`, `_tpss_eps.py` with D-10 `tau_clamp` guard) + driver fix replacing hardcoded `python3.12` with `XCFUN_MPMATH_PYTHON` env-var-overridable `python3` default. 4 atomic commits on master (`677e775`, `06d4fb5`, `d32e267`, `2eb6012`). Numerical validation: LDAERFX matches C++ at order=2 to 16 digits; LDAERFC to 14 digits (documented `ldaerfc.cpp:117-119` pw92c-precision drift); TPSSC matches C++ at order=1 within the 1e-6 threshold. Smoke regen exits 0 (5/5 functionals × 5 records into `target/mpmath_smoke/`). All 6 ACC-04 functionals respond to single-record invocation with finite floats — no NotImplementedError. **Plan 07-00 Task 0.2 unblocked**: operator can now resume Phase 7 Wave 0 with `XCFUN_MPMATH_PYTHON=python3.12 cargo run --release -p xtask --bin regen-mpmath-fixtures` for the full ~6h offline regen. Phase 6 plans now 12/12 complete (counting 06-N5 as the 12th gap-closure plan). Three minor deviations auto-fixed by executor: `mp.fmax` doesn't exist (replaced with built-in `max()`), `pw92eps_polarized` was missing from `_pw92eps.py` (added per `pw92eps.hpp:63-67`), doc-comment example interpreter changed from `python3.12` to `/path/to/venv/bin/python` to satisfy literal-grep gate. Next action: `/gsd:execute-phase 7`.
 
-**Last updated:** 2026-05-06 (Phase 7 plans landed — 11 plans across 11 sequential waves via `/gsd:plan-phase 7`. Research first (07-RESEARCH.md, 1790 lines) surfaced abi3-py310 + PyException collision on Python 3.10/3.11 as the critical implementation finding. PATTERNS.md mapped 23 Wave-0 file gaps. VALIDATION.md per-task verification map for PY-01..06. Plan-checker returned VERIFICATION PASSED (with 6 housekeeping warnings, 5 applied inline). Decision coverage 16/16 (after D-02 tag added to 07-02). Wave 0 = clear 4 blocking Phase-6 HUMAN-UAT items {3,4,5,6} + BR_Q_PREFACTOR_F64 typo fix + crate rename `xcfun-python → xcfun-py`; Waves 1–10 = PyO3 module + Functional + eval_vec strict zero-copy + abi3 §5 PyException workaround + CI wheel matrix + xtask release-publish + GH Release artifacts + CHANGELOG + tag v0.1.0. Status: ready to execute.)
+**2026-05-06 entry (superseded):** Phase 7 Wave 0 paused at Plan 07-00 Task 0.2. Task 0.1 GREEN (BR_Q_PREFACTOR_F64 corrected to mpmath@200 truth + regression-locked; merged at `0413b73`). Task 0.2 (~6h offline mpmath fixture regen) blocked: operator attempted `cargo run --release -p xtask --bin regen-mpmath-fixtures` and the run aborted on functional #1 (`ldaerfx`) with `NotImplementedError("Plan 06-N2 populates this body")`. Audit found **6 of 26 mpmath sidecar functional bodies are unimplemented stubs** — exactly the ACC-04-amended set (LDAERF×3 + TPSS-C×3). The regen driver's own comment says Plan 06-N1 was supposed to fill these, but `git log` shows the only commit ever touching the 6 stub files is `ec3174b` (Plan 06-00 substrate); Plan 06-N1's actual deliverable was fixture-test scaffolding only. The Phase 7 plan-checker missed this when authoring D-14 #3. Operator chose Option A: file Phase 6 gap-closure plan (`06-N5`) to fill the 6 mpmath bodies, then resume Phase 7 Wave 0. Full diagnostic in `07-00-SUMMARY.md` "2026-05-06 Update" section. Next action: `/gsd:plan-phase 6 --gaps` (or `/gsd:phase` to add Plan 06-N5 manually).
+
+**2026-05-06 entry (superseded):** Phase 7 plans landed — 11 plans across 11 sequential waves via `/gsd:plan-phase 7`. Research first (07-RESEARCH.md, 1790 lines) surfaced abi3-py310 + PyException collision on Python 3.10/3.11 as the critical implementation finding. PATTERNS.md mapped 23 Wave-0 file gaps. VALIDATION.md per-task verification map for PY-01..06. Plan-checker returned VERIFICATION PASSED (with 6 housekeeping warnings, 5 applied inline). Decision coverage 16/16 (after D-02 tag added to 07-02). Wave 0 = clear 4 blocking Phase-6 HUMAN-UAT items {3,4,5,6} + BR_Q_PREFACTOR_F64 typo fix + crate rename `xcfun-python → xcfun-py`; Waves 1–10 = PyO3 module + Functional + eval_vec strict zero-copy + abi3 §5 PyException workaround + CI wheel matrix + xtask release-publish + GH Release artifacts + CHANGELOG + tag v0.1.0. Status: ready to execute.)
 
 **2026-05-04 entry (superseded):** Phase 6 sign-off — 11/11 plans landed; verifier returned `human_needed` with 14/16 must-haves verified + 2 hardware-gated overrides + 6 HUMAN-UAT follow-ups. Substrate (Plan 06-00) + crate split (06-01) + xcfun-gpu skeleton (06-02a/b) + ROCm primary (06-03) + CUDA/Wgpu opt-in (06-04) + RS-08 eval-vec dispatch (06-05) + zero-alloc cleanup (06-06) + D-19 scaffolding (06-N1/N3) + mpmath-only-spec ground truth for 20 excluded-spec functionals (06-N2) all merged to master. xcfun-master restored at HEAD `a89b783` (registry-drift OK). Sign-off [^p6caveats] in ROADMAP.md.
 
@@ -32,19 +34,19 @@ progress:
 
 **Core Value:** Every functional must produce numerical output matching C++ xcfun within relative error <= 1.0e-12, across all evaluation modes and derivative orders.
 
-**Current focus:** Phase 07 PLANNED (2026-05-06); 11 plans across 11 sequential waves; ready to execute via `/gsd:execute-phase 7`.
+**Current focus:** Phase 07 ready to **resume** (2026-05-07); Plan 07-00 Task 0.1 GREEN, Task 0.2 unblocked by Phase 6 gap-closure 06-N5.
 
 ## Current Position
 
-Phase: 07 (python-bindings-release) — **PLANNED (2026-05-06)** — ready to execute
-Plans (Phase 7): 11 (07-00 ⬜, 07-01 ⬜, 07-02 ⬜, 07-03 ⬜, 07-04 ⬜, 07-05 ⬜, 07-06 ⬜, 07-07 ⬜, 07-08 ⬜, 07-09 ⬜, 07-10 ⬜)
+Phase: 07 (python-bindings-release) — **READY TO RESUME (2026-05-07)** — Plan 07-00 Task 0.2 unblocked by Phase 6 06-N5 gap-closure
+Plans (Phase 7): 11 (07-00 ◆ at Task 0.2, 07-01 ⬜, 07-02 ⬜, 07-03 ⬜, 07-04 ⬜, 07-05 ⬜, 07-06 ⬜, 07-07 ⬜, 07-08 ⬜, 07-09 ⬜, 07-10 ⬜)
 Scope (Phase 7): Wave 0 = clear 4 blocking Phase-6 HUMAN-UAT items {3,4,5,6} + BR_Q_PREFACTOR_F64 typo fix + crate rename `xcfun-python → xcfun-py` + workspace member promotion + dep wiring; Waves 1-10 = pyproject.toml + #[pymodule] _native skeleton + 11 free fns + abi3 §5 PyException workaround + Functional #[pyclass] + Mode/Vars IntEnum + NumPy strict zero-copy eval_vec + cross-language parity + CI wheel matrix on {Linux x86_64, macOS arm64, Windows x86_64} + xtask release-publish topological cargo publish + GH Release artifacts (xcfun.h + 3× libxcfun_capi) + CHANGELOG.md (Keep-a-Changelog) + tag v0.1.0 (CHECKPOINT — irreversible PyPI yank).
 
 - **Milestone:** Initial v1 build-out
 - **Phase:** 07 (python-bindings-release) — **PLANNED (2026-05-06)** — 11 plans landed via `/gsd:plan-phase 7`; plan-checker VERIFICATION PASSED with 6 housekeeping warnings (5 applied inline). 16/16 decisions covered after D-02 tag added to 07-02. 6/6 PY-XX requirements covered.
-- **Plan:** 07-00 next (clear 4 blocking Phase-6 HUMAN-UAT items + BR_Q_PREFACTOR_F64 typo fix).
-- **Status:** Ready to execute. Phase 6 sign-off (with caveats) carries forward — the 4 blocking HUMAN-UAT items are Wave 0 of Phase 7 per D-14.
-- **Progress:** [███████░] 84% (6/8 phases; 59/70 known plans)
+- **Plan:** 07-00 Task 0.2 next (offline ~6h `cargo run --release -p xtask --bin regen-mpmath-fixtures` with `XCFUN_MPMATH_PYTHON=python3.12`; substrate now complete via 06-N5).
+- **Status:** Ready to resume. Phase 6 sign-off carries forward (12/12 plans complete after 06-N5 gap-closure); HUMAN-UAT item #3 cleared by 06-N5.
+- **Progress:** [███████░] 85% (6/8 phases; 60/71 known plans)
 
 ### Phase 4 sign-off summary (2026-04-30)
 
