@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-last_updated: "2026-05-06T00:00:00Z"
+status: paused-blocked-on-phase-6-gap
+last_updated: "2026-05-06T13:00:00Z"
 progress:
   total_phases: 8
   completed_phases: 6
@@ -13,6 +13,8 @@ progress:
 ---
 
 # Project State: xcfun_rs
+
+**2026-05-06 (latest):** Phase 7 Wave 0 paused at Plan 07-00 Task 0.2. Task 0.1 GREEN (BR_Q_PREFACTOR_F64 corrected to mpmath@200 truth + regression-locked; merged at `0413b73`). Task 0.2 (~6h offline mpmath fixture regen) blocked: operator attempted `cargo run --release -p xtask --bin regen-mpmath-fixtures` and the run aborted on functional #1 (`ldaerfx`) with `NotImplementedError("Plan 06-N2 populates this body")`. Audit found **6 of 26 mpmath sidecar functional bodies are unimplemented stubs** — exactly the ACC-04-amended set (LDAERF×3 + TPSS-C×3). The regen driver's own comment says Plan 06-N1 was supposed to fill these, but `git log` shows the only commit ever touching the 6 stub files is `ec3174b` (Plan 06-00 substrate); Plan 06-N1's actual deliverable was fixture-test scaffolding only. The Phase 7 plan-checker missed this when authoring D-14 #3. Operator chose Option A: file Phase 6 gap-closure plan (`06-N5`) to fill the 6 mpmath bodies, then resume Phase 7 Wave 0. Full diagnostic in `07-00-SUMMARY.md` "2026-05-06 Update" section. Next action: `/gsd:plan-phase 6 --gaps` (or `/gsd:phase` to add Plan 06-N5 manually).
 
 **Last updated:** 2026-05-06 (Phase 7 plans landed — 11 plans across 11 sequential waves via `/gsd:plan-phase 7`. Research first (07-RESEARCH.md, 1790 lines) surfaced abi3-py310 + PyException collision on Python 3.10/3.11 as the critical implementation finding. PATTERNS.md mapped 23 Wave-0 file gaps. VALIDATION.md per-task verification map for PY-01..06. Plan-checker returned VERIFICATION PASSED (with 6 housekeeping warnings, 5 applied inline). Decision coverage 16/16 (after D-02 tag added to 07-02). Wave 0 = clear 4 blocking Phase-6 HUMAN-UAT items {3,4,5,6} + BR_Q_PREFACTOR_F64 typo fix + crate rename `xcfun-python → xcfun-py`; Waves 1–10 = PyO3 module + Functional + eval_vec strict zero-copy + abi3 §5 PyException workaround + CI wheel matrix + xtask release-publish + GH Release artifacts + CHANGELOG + tag v0.1.0. Status: ready to execute.)
 

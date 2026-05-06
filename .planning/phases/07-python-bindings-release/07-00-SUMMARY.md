@@ -1,9 +1,9 @@
 ---
 phase: 07-python-bindings-release
 plan: 00
-status: partial-checkpoint-human-action
+status: paused-blocked-on-phase-6-substrate-gap
 subsystem: validation-substrate
-tags: [HUMAN-UAT-clearance, br-prefactor-typo, mpmath-fixture-regen, blocking-v0.1.0]
+tags: [HUMAN-UAT-clearance, br-prefactor-typo, mpmath-fixture-regen, blocking-v0.1.0, phase-6-gap-discovered]
 dependency_graph:
   requires:
     - "Phase 6 sign-off (xcfun-master HEAD a89b783 restored)"
@@ -126,3 +126,49 @@ None — Task 0.1 is a single-constant correctness fix; no new trust boundary, n
 - `0e399a8` — `git log --oneline | grep 0e399a8` returns the GREEN commit. FOUND.
 
 ## Self-Check: PASSED (for Task 0.1; remaining tasks pending checkpoint return)
+
+---
+
+## 2026-05-06 Update — Task 0.2 Diagnostic: Phase 6 Substrate Gap Discovered
+
+The operator attempted Task 0.2 (`cargo run --release -p xtask --bin regen-mpmath-fixtures`) and the regen aborted on functional #1 (`ldaerfx`) with `NotImplementedError("Plan 06-N2 populates this body")`.
+
+### Diagnosis
+
+Audit of `xtask/mpmath_eval/functionals/*.py` (28 files): **6 of the 26 functional bodies are unimplemented stubs** — exactly the ACC-04-amended set.
+
+| Family | Stubs | Phase 4 context |
+|---|---|---|
+| LDAERF | `ldaerfx`, `ldaerfc`, `ldaerfc_jt` | erf-bracket-cancellation forwards (D-19 inheritance from Phase 4 Plan 04-08) |
+| TPSS-correlation | `tpssc`, `tpsslocc`, `revtpssc` | AD-chain divergence at `τ << τ_w` (Plan 04-10 Path-B bisection) |
+
+The other 20 (BR×3, CSC, BLOCX, SCAN×10, TW, VWK, PBELOCC, ZVPBESOLC, ZVPBEINTC) are filled. Per `git log` against each stub file, the only commit ever touching them is `ec3174b` (Plan 06-00 substrate). **Plan 06-N1 never delivered the bodies it was supposed to fill** despite the regen driver's own comment (lines 154-161) saying it would:
+
+> "Plan 06-N2 does NOT own those bodies — Plan 06-N1 (sibling worktree) fills them. Including them here would couple this lane to N1's completion order. The full-regen path (no flag) DOES include them because it runs after both N1 and N2 have merged."
+
+Plan 06-N1's actual deliverable was fixture-test scaffolding (commit `7d462ed test(06-N1): per-functional D-19 fixture + regression scaffolding`) and substrate audit notes. The mpmath bodies were never written. The Phase 6 verifier returned `human_needed`, sign-off proceeded "with caveats" per `^p6caveats`, and the Phase 7 plan-checker authoring D-14 #3 missed that the regen target was 26 but only 20 were implementable.
+
+### Operator decision (Option A)
+
+> File a Phase 6 gap-closure plan (Plan 06-N5) to fill the 6 ACC-04 mpmath bodies, then resume Phase 7 Wave 0 Task 0.2 once `cargo run --release -p xtask --bin regen-mpmath-fixtures` runs cleanly end-to-end.
+
+Rejected alternatives:
+- **Option B** (defer to v0.2 + driver-skip patch) — would document a known mpmath gap shipping in v0.1.0 and weaken the strict-1e-13 sweep coverage on TPSSC/TPSSLOCC/REVTPSSC.
+- **Option C** (implement stubs inline as Plan 07-00 task expansion) — anti-pattern: Phase 7 should not edit Phase 6 substrate.
+
+### Side issue documented for the gap-closure plan
+
+- Driver invokes `python3.12` literally (`xtask/src/bin/regen_mpmath_fixtures.rs:203`), not `python3`. The operator's primary `python3` is 3.14 (user-local at `/home/user/.local/bin/python3`); they had to install `mpmath` separately into `python3.12` to get past the import gate. Plan 06-N5 should either lift `python3.12` into a docs requirement, switch the driver to `python3` (and thus track whatever `python3 --version` ships in CI), or expose the interpreter via a `XCFUN_MPMATH_PYTHON` env var.
+
+### Status
+
+Plan 07-00 is **paused** at Task 0.2 pending Phase 6 gap-closure. Tasks 0.3 and 0.4 cannot start. The wave merge `0413b73` already landed on master; the worktree `agent-a9b0fa8ce9c70f5bf` was merged back successfully (RED + GREEN + this updating SUMMARY commit).
+
+### Next action for the operator
+
+Either (in roughly increasing GSD-correctness):
+1. `/gsd:phase` — manually add Plan 06-N5 to Phase 6 with scope = "fill 6 ACC-04 mpmath sidecar bodies"
+2. `/gsd:plan-phase 6 --gaps` — let the gap-closure flow read `06-VERIFICATION.md` + `06-HUMAN-UAT.md` and propose a structured Plan 06-N5
+3. `/gsd:audit-uat` — wider audit of all outstanding UAT items first; may surface other Phase-6 gaps before planning
+
+Once Plan 06-N5 lands and master can run `cargo run --release -p xtask --bin regen-mpmath-fixtures` to completion, resume Phase 7 with `/gsd:execute-phase 7 --wave 0` — that re-discovers Plan 07-00, sees the SUMMARY exists but `status: paused-blocked-on-phase-6-substrate-gap`, and the orchestrator will spawn a continuation agent for Tasks 0.2 / 0.3 / 0.4.
