@@ -69,3 +69,16 @@ def pw92eps(a, b):
     e1 = eopt(sqrtr, PW92C_PARAMS[1])
     e2 = eopt(sqrtr, PW92C_PARAMS[2])
     return e0 - e2 * omegaval * (1 - zeta4) / c + (e1 - e0) * omegaval * zeta4
+
+
+def pw92eps_polarized(a):
+    """pw92eps_polarized(a) per pw92eps.hpp:63-67.
+
+    Spin-fully-polarized arm: only the ferro PW92C parameter row
+    (`PW92C_PARAMS[1]`) is used, with sqrt_r_s = (3/(4*pi*a))^(1/6).
+    Used by the PBE-correlation polarized branches
+    (pbec_eps_polarized, pbeloc_eps_pola, revtpss_pbec_eps_polarized).
+    """
+    a = mp.mpf(a)
+    sqrt_r_s = mp.power(3 / (4 * mp.pi * a), mp.mpf(1) / mp.mpf(6))
+    return eopt(sqrt_r_s, PW92C_PARAMS[1])
