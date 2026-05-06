@@ -325,3 +325,16 @@ pub fn polarized<F: Float>(
 
     ctaylor_mul::<F>(&neg_numer, &inv_b, out, n);
 }
+
+#[cfg(test)]
+mod tests {
+    /// Regression lock for D-14 #6 / 06-N4 / 07-00 Task 0.1.
+    ///
+    /// `BR_Q_PREFACTOR_F64` is the f64-nearest of `1 / ((2/3) * π^(2/3))`,
+    /// verified against mpmath@200. Locked here so the prior typo
+    /// `0.699_390_040_064_282_6_f64` cannot regress silently.
+    #[test]
+    fn br_q_prefactor_locked() {
+        assert_eq!(super::BR_Q_PREFACTOR_F64, 0.699_291_115_553_117_4_f64);
+    }
+}
