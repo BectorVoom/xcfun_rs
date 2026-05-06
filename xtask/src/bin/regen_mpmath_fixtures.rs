@@ -24,6 +24,22 @@
 //! Default invocation (no flag): MANUAL ~6h offline regeneration of the
 //! full ~600-record corpus. Documented in `06-N2-SUMMARY.md`. Should
 //! NOT run in CI — uses `--check` instead.
+//!
+//! ## Python interpreter selection (Plan 06-N5 D-09)
+//!
+//! The driver invokes `python3 -m xtask.mpmath_eval` by default. To
+//! point at a non-default interpreter (e.g., a venv or a version-pinned
+//! python install with `mpmath` available), set the
+//! `XCFUN_MPMATH_PYTHON` environment variable:
+//!
+//! ```text
+//! XCFUN_MPMATH_PYTHON=/path/to/venv/bin/python \
+//!   cargo run --release -p xtask --bin regen-mpmath-fixtures -- --smoke
+//! ```
+//!
+//! The default `python3` matches `python3 --version` on the host shell.
+//! The chosen interpreter MUST have `mpmath >= 1.4` installed — install
+//! via `pip install mpmath` or distro-equivalent.
 
 use anyhow::{Context, Result, bail};
 use rand_xoshiro::Xoshiro256PlusPlus;
@@ -195,12 +211,20 @@ fn main() -> Result<()> {
     };
     let workspace_root = project_root()?;
 
+    // Plan 06-N5 D-09: resolve Python interpreter once. Default `python3`
+    // tracks the host's primary interpreter (zero-config OOTB on systems
+    // where `python3 -m xtask.mpmath_eval` works directly). Override via
+    // `XCFUN_MPMATH_PYTHON` env var to point at a venv or a version-pinned
+    // install (e.g., a specific minor-version binary) with `mpmath` installed.
+    let mpmath_python = std::env::var("XCFUN_MPMATH_PYTHON")
+        .unwrap_or_else(|_| "python3".to_string());
+
     for fn_name in functionals {
         let grid = stratified_grid(fn_name, smoke_mode);
         let mut buf = String::new();
         for input_record in &grid {
             // python3 -m xtask.mpmath_eval --functional <name> --vars <V> ...
-            let output = Command::new("python3")
+            let output = Command::new(&mpmath_python)
                 .arg("-m")
                 .arg("xtask.mpmath_eval")
                 .args(["--functional", fn_name])
