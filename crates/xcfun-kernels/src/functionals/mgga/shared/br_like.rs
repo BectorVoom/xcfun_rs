@@ -34,7 +34,7 @@ use xcfun_ad::math::{ctaylor_exp, ctaylor_log, ctaylor_pow, ctaylor_reciprocal};
 //   2/3 * PI^(2/3) = 1.430019228...
 //   reciprocal = 0.699390...
 // Computed: 1.0 / (2.0/3.0 * 3.14159265358979f64.powf(2.0/3.0))
-const BR_Q_PREFACTOR_F64: f64 = 0.699_390_040_064_282_6_f64;
+const BR_Q_PREFACTOR_F64: f64 = 0.699_291_115_553_117_4_f64;
 // 8 * PI for denominator of b = cbrt(x^3 * exp(-x) / (8*PI*na)):
 const BR_8PI_F64: f64 = 25.132_741_228_718_346_f64; // 8.0 * PI
 
@@ -324,4 +324,19 @@ pub fn polarized<F: Float>(
     ctaylor_reciprocal::<F>(&b, &mut inv_b, n);
 
     ctaylor_mul::<F>(&neg_numer, &inv_b, out, n);
+}
+
+#[cfg(test)]
+mod tests {
+    /// Regression lock for D-14 #6 / 06-N4 / 07-00 Task 0.1.
+    ///
+    /// `BR_Q_PREFACTOR_F64` is the f64-nearest of `1 / ((2/3) * π^(2/3))`,
+    /// verified against mpmath@200. Locked here so the prior typo (a
+    /// nearby-but-incorrect literal that was the original commit's value)
+    /// cannot regress silently. See `.planning/phases/06-...` HUMAN-UAT
+    /// item #6 / D-14 #6 for context.
+    #[test]
+    fn br_q_prefactor_locked() {
+        assert_eq!(super::BR_Q_PREFACTOR_F64, 0.699_291_115_553_117_4_f64);
+    }
 }
