@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: ""           # CLAUDE.md: empty in CI — no fast-math / reassociation
+  RUST_BACKTRACE: 1
+
+jobs:
+  fmt:
+    name: cargo fmt --check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.85"
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  clippy:
+    # Strict clippy: -D warnings.
+    # NOTE: known pre-existing unused-import / dead-code warnings in
+    # crates/xcfun-kernels/src/functionals/{lda,mgga,gga}/ exist at the time
+    # this workflow was authored — first run will fail until those are
+    # addressed in a follow-up cleanup phase. Surfacing them is the point.
+    name: cargo clippy -D warnings
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.85"
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+  build:
+    name: cargo build --workspace --release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.85"
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --workspace --release --locked
+
+  test:
+    name: cargo nextest run --workspace
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.85"
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - run: cargo nextest run --workspace --release --locked --no-fail-fast
+
+  mpmath-smoke:
+    # Validates Plan 06-N5: mpmath sidecar regen for the smoke set
+    # (5 functionals × 5 records → target/mpmath_smoke/) at python3.12
+    # via the XCFUN_MPMATH_PYTHON env-var override.
+    name: mpmath fixture smoke regen
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.85"
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install mpmath
+        run: python3.12 -m pip install --upgrade "mpmath>=1.4"
+      - name: Smoke regen
+        env:
+          XCFUN_MPMATH_PYTHON: python3.12
+        run: cargo run --release -p xtask --bin regen-mpmath-fixtures --locked -- --smoke
+      - name: Verify smoke output
+        run: |
+          set -euo pipefail
+          for f in brx tw pbelocc blocx scanx; do
+            test -s "target/mpmath_smoke/${f}.jsonl" \
+              || { echo "missing or empty: target/mpmath_smoke/${f}.jsonl"; exit 1; }
+            lines=$(wc -l < "target/mpmath_smoke/${f}.jsonl")
+            test "$lines" -eq 5 \
+              || { echo "${f}: expected 5 records, got $lines"; exit 1; }
+          done
+      - name: Single-record invocation for ACC-04 functionals
+        run: |
+          set -euo pipefail
+          for fn in ldaerfx ldaerfc ldaerfc_jt; do
+            python3.12 -m xtask.mpmath_eval \
+              --functional "$fn" --vars A_B \
+              --mode partial_derivatives --order 0 \
+              --input "0.5,0.5" --prec 200 \
+              | python3.12 -c "import sys, json; d=json.loads(sys.stdin.read()); assert len(d['output']) == 1, d; print('OK', d['output'][0])"
+          done
+          for fn in tpssc tpsslocc revtpssc; do
+            python3.12 -m xtask.mpmath_eval \
+              --functional "$fn" \
+              --vars A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB \
+              --mode partial_derivatives --order 0 \
+              --input "0.5,0.5,0.1,0.05,0.1,0.0,0.0,0.3,0.3" --prec 200 \
+              | python3.12 -c "import sys, json; d=json.loads(sys.stdin.read()); assert len(d['output']) == 1, d; print('OK', d['output'][0])"
+          done
