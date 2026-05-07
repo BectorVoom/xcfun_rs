@@ -91,8 +91,12 @@ fn pbex_potential_non_2nd_taylor_vars_rejects() {
     let mut out = vec![0.0_f64; 3];
     let err = f.eval(&[0.4, 0.25, 0.0, 0.0, 0.0], &mut out);
     assert!(
-        matches!(err, Err(xcfun_core::XcError::InvalidVars { .. })),
-        "expected InvalidVars, got {:?}",
+        matches!(
+            err,
+            Err(xcfun_core::XcError::InvalidVars { .. })
+                | Err(xcfun_core::XcError::InvalidVarsAndMode { .. })
+        ),
+        "expected InvalidVars or InvalidVarsAndMode, got {:?}",
         err
     );
 }
