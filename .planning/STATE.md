@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: phase-7-wave-1-ready
-last_updated: "2026-05-08T05:55:00Z"
+status: executing
+last_updated: "2026-05-08T05:59:43.502Z"
 progress:
   total_phases: 8
-  completed_phases: 6
-  total_plans: 72
-  completed_plans: 61
-  percent: 85
+  completed_phases: 4
+  total_plans: 61
+  completed_plans: 50
+  percent: 82
 ---
 
 # Project State: xcfun_rs
@@ -38,18 +38,19 @@ progress:
 
 **Core Value:** Every functional must produce numerical output matching C++ xcfun within relative error <= 1.0e-12, across all evaluation modes and derivative orders.
 
-**Current focus:** Phase 07 Wave 1 ready (2026-05-08); Plan 07-00 COMPLETE; substrate audit (Plan 06-N7) closed 9 GGA-tier bugs.
+**Current focus:** Phase 07 — python-bindings-release
 
 ## Current Position
 
-Phase: 07 (python-bindings-release) — **WAVE 1 READY (2026-05-08)** — Plan 07-00 complete; all 4 blocking HUMAN-UAT items resolved.
+Phase: 07 (python-bindings-release) — EXECUTING
+Plan: 1 of 11
 Plans (Phase 7): 11 (07-00 ✓, 07-01 ⬜, 07-02 ⬜, 07-03 ⬜, 07-04 ⬜, 07-05 ⬜, 07-06 ⬜, 07-07 ⬜, 07-08 ⬜, 07-09 ⬜, 07-10 ⬜)
 Scope (Phase 7): Wave 0 = ✓ done (HUMAN-UAT items 3+6 passed; items 4+5 partially-passed via Plan 06-N7 substrate audit; BR_Q_PREFACTOR_F64 corrected; mpmath fixtures regenerated and committed). Waves 1-10 = pyproject.toml + #[pymodule] _native skeleton + 11 free fns + abi3 §5 PyException workaround + Functional #[pyclass] + Mode/Vars IntEnum + NumPy strict zero-copy eval_vec + cross-language parity + CI wheel matrix on {Linux x86_64, macOS arm64, Windows x86_64} + xtask release-publish topological cargo publish + GH Release artifacts (xcfun.h + 3× libxcfun_capi) + CHANGELOG.md (Keep-a-Changelog) + tag v0.1.0 (CHECKPOINT — irreversible PyPI yank).
 
 - **Milestone:** Initial v1 build-out
 - **Phase:** 07 (python-bindings-release) — Plan 07-00 COMPLETE (2026-05-08); Waves 1-10 unblocked.
 - **Plan:** 07-01 next (workspace member promotion + crate rename `xcfun-python → xcfun-py` + dep wiring; `autonomous: true`).
-- **Status:** Plan 07-00 COMPLETE. ~3.35M failing records eliminated; substrate clean of constant typos and op-order systematic biases; AD-residual tail (max ~8e-9 at order 3) forwarded to v0.2 per amended D-14.
+- **Status:** Executing Phase 07
 - **Progress:** [████████░] 85% (6/8 phases; 61/71 known plans)
 
 ### Phase 4 sign-off summary (2026-04-30)
