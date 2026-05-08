@@ -194,12 +194,20 @@ fn host_sqrt(x0: f64, n: usize) -> Vec<f64> {
 
 fn host_cbrt(x0: f64, n: usize) -> Vec<f64> {
     let mut t = vec![0.0_f64; n + 1];
-    // Match kernel: cbrt-via-powf(1/3) (deliberately NOT libm cbrt).
-    // Kernel passes `F::new(1.0_f32 / 3.0_f32)` which is `(0.33333334_f32) as f64`
-    // = 0.3333333432674408 — an f32-precision approximation of 1/3, NOT
-    // 0.3333333333333333 (the f64 value of 1/3). Match that exactly.
-    let one_third_f32: f32 = 1.0_f32 / 3.0_f32;
-    t[0] = x0.powf(one_third_f32 as f64);
+    // Match kernel exactly (Plan 07-00 Task 0.3, commits 92b1a4f + 1edb1b0):
+    // seed `t[0]` from `powf(f64 1/3)` then refine with two Newton iterations
+    //     y_{k+1} = (2·y_k + x0 / y_k²) / 3
+    // which converges from the 1–2 ULP `powf` seed to ≤ 1 ULP correctly-
+    // rounded cbrt — i.e. matches libm `cbrt` to within the f64 contract
+    // while staying inside the cubecl `Float` trait surface (no `.cbrt()`).
+    // Operation order is line-for-line identical to `cbrt_expand` in
+    // `crates/xcfun-ad/src/expand/cbrt.rs:63-69` so kernel-vs-host drift
+    // stays ≤ 1 ULP, well within the 1e-13 relative gate.
+    let y0 = x0.powf(1.0_f64 / 3.0_f64);
+    let y0_sq = y0 * y0;
+    let y1 = (2.0 * y0 + x0 / y0_sq) / 3.0;
+    let y1_sq = y1 * y1;
+    t[0] = (2.0 * y1 + x0 / y1_sq) / 3.0;
     let x0inv = 1.0 / x0;
     for i in 1..=n {
         let i_f = i as f64;
