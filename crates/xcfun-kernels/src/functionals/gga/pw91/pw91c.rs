@@ -75,9 +75,11 @@ const PW91C_NU: f64 = 15.755_920_349_483_143_f64;
 /// `beta = nu · Cc0`.
 const PW91C_BETA: f64 = PW91C_NU * PW91C_CC0;
 
-/// `2 · 2^(1/3) - 2 = 2^(4/3) - 2 ≈ 0.5198420997897...`. Used as the `fz`
-/// denominator.
-const PW91C_FZ_DENOM: f64 = 0.519_842_099_789_746_3_f64;
+/// `2 · 2^(1/3) - 2 = 2^(4/3) - 2`. Used as the `fz` denominator.
+/// f64-nearest of the algebraic truth. Previous literal
+/// `0.519_842_099_789_746_3` was off by 1 ULP; locked by
+/// `tests::pw91c_fz_denom_locked` (06-N7/07-00).
+const PW91C_FZ_DENOM: f64 = 0.519_842_099_789_746_4_f64;
 
 // uf(d, p) = (a^p + b^p) · (2/n)^p.
 #[cube]
@@ -530,6 +532,14 @@ mod tests {
     fn pw91c_nu_locked() {
         let truth: f64 = 15.755_920_349_483_143_f64;
         assert_eq!(super::PW91C_NU, truth);
+    }
+
+    /// 1-ULP correction to `PW91C_FZ_DENOM = 2·2^(1/3) - 2`. f64-nearest
+    /// is `0.519_842_099_789_746_4`, not `..._3`.
+    #[test]
+    fn pw91c_fz_denom_locked() {
+        let truth: f64 = 0.519_842_099_789_746_4_f64;
+        assert_eq!(super::PW91C_FZ_DENOM, truth);
     }
 }
 

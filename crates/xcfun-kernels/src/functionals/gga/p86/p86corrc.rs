@@ -24,7 +24,12 @@ const P86_CX: f64 = 0.001_667_f64;
 const P86_BG: f64 = 7.389e-6_f64;
 const P86_FG: f64 = 0.11_f64;
 const P86_CINF: f64 = 0.004_235_f64;
-const P86_PI_EXPR: f64 = 1.745_050_359_752_853_5_f64;
+/// `(9π)^(1/6)` — must match `gga::p86::p86c::P86_PI_EXPR`. Locked by
+/// `tests::p86corrc_pi_expr_locked` (06-N7/07-00). Previous value
+/// `1.745_050_359_752_853_5` was the same wrong literal as p86c.rs's;
+/// fixing only one and not the other would silently leave half the
+/// failures in place (P86CORRC's 496,355 fails vs P86C's 21).
+const P86_PI_EXPR: f64 = 1.745_415_106_125_124_f64;
 const P86_DBL_EPS: f64 = 2.220_446_049_250_313e-16_f64;
 const P86_CBRT2: f64 = 1.259_921_049_894_873_2_f64;
 
@@ -164,4 +169,18 @@ pub fn p86corrc_kernel<F: Float>(
     let mut cg_g = Array::<F>::new(size);
     ctaylor_mul::<F>(&cg_rs, &g_over_d, &mut cg_g, n);
     ctaylor_mul::<F>(&e_neg_pg, &cg_g, out, n);
+}
+
+#[cfg(test)]
+mod tests {
+    /// Regression lock for the P86CORRC copy of `(9π)^(1/6)`. Must
+    /// match the value locked in `gga::p86::p86c::tests::p86_pi_expr_locked`.
+    /// Run 25534837958 demonstrated that fixing only the p86c.rs copy
+    /// reduced P86C's failures from 496,353 → 21 while leaving P86CORRC
+    /// unchanged at 496,355 — both copies need to move together.
+    #[test]
+    fn p86corrc_pi_expr_locked() {
+        let truth: f64 = 1.745_415_106_125_124_f64;
+        assert_eq!(super::P86_PI_EXPR, truth);
+    }
 }
