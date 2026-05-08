@@ -51,7 +51,7 @@ The dependency DAG (per `ARCHITECTURE.md` section 7 and `SUMMARY.md` "Phase Orde
 - [x] 07-05-PLAN.md — Wave 5: NumPy strict zero-copy eval_vec + cross-language parity (PY-03; D-07, D-08)
 - [x] 07-06-PLAN.md — Wave 6: crates/xcfun-py/README.md (D-03, D-04, D-13)
 - [x] 07-07-PLAN.md — Wave 7: release.yml sdist + 3 wheel matrix + pytest-from-wheel (PY-06)
-- [ ] 07-08-PLAN.md — Wave 8: xtask release-publish topological cargo publish driver (D-15)
+- [x] 07-08-PLAN.md — Wave 8: xtask release-publish topological cargo publish driver (D-15)
 - [ ] 07-09-PLAN.md — Wave 9: release.yml publish-pypi (OIDC) + release-artifacts + github-release (D-15, D-16)
 - [ ] 07-10-PLAN.md — Wave 10: CHANGELOG.md + tag v0.1.0 (D-13; CHECKPOINT — pre-tag dry-run + tag push + xtask release-publish --execute)
 
