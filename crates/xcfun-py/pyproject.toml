@@ -1,0 +1,51 @@
+[build-system]
+requires      = ["maturin>=1.12,<2.0"]
+build-backend = "maturin"
+
+[project]
+name            = "xcfun_rs"
+version         = "0.1.0"
+description     = "Rust reimplementation of xcfun XC functional library; memory-safe, GPU-capable, bit-level parity with C++ xcfun"
+readme          = "README.md"
+license         = { text = "MPL-2.0" }
+requires-python = ">=3.10"
+authors = [
+    { name = "xcfun_rs contributors" },
+]
+keywords = ["dft", "density-functional-theory", "computational-chemistry",
+            "xc-functional", "rust", "gpu"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+dependencies = [
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7.0", "numpy>=1.26"]
+
+[project.urls]
+Homepage      = "https://github.com/<owner>/xcfun_rs"
+Repository    = "https://github.com/<owner>/xcfun_rs"
+Documentation = "https://github.com/<owner>/xcfun_rs#readme"
+Changelog     = "https://github.com/<owner>/xcfun_rs/blob/master/CHANGELOG.md"
+Issues        = "https://github.com/<owner>/xcfun_rs/issues"
+
+[tool.maturin]
+python-source = "python"
+module-name   = "xcfun_rs._native"
+features      = ["pyo3/extension-module", "cpu"]
+strip         = true
