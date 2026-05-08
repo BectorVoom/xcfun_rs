@@ -1,0 +1,240 @@
+name: Regen mpmath fixtures (full corpus)
+
+# Plan 07-00 Task 0.2 — full mpmath ground-truth fixture regeneration for the
+# 26 mpmath-spec functionals (6 ACC-04 + 20 excluded_by_upstream_spec).
+# Fanned across 26 parallel matrix jobs (~10–15min wall-clock each) instead
+# of the ~6h serial run the plan originally specified for offline operator
+# action. CPU-only — runs on GitHub Actions per project execution split
+# (CPU = GH Actions, GPU = local PC).
+#
+# Trigger: workflow_dispatch (manual). Result: a new branch
+# `regen/mpmath-fixtures-<run-id>` with 52 committed files
+# (26 .jsonl + 26 .jsonl.sha256) and an open PR ready for review.
+
+on:
+  workflow_dispatch:
+    inputs:
+      open_pr:
+        description: "Open a PR with the regenerated fixtures (false = push branch only)"
+        type: boolean
+        default: true
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: ""           # CLAUDE.md: empty in CI — no fast-math / reassociation
+  RUST_BACKTRACE: 1
+
+jobs:
+  regen:
+    name: regen ${{ matrix.functional }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 26
+      matrix:
+        # MUST match `full_functionals()` in
+        # xtask/src/bin/regen_mpmath_fixtures.rs (6 ACC-04 + 20 excluded-spec).
+        functional:
+          - ldaerfx
+          - ldaerfc
+          - ldaerfc_jt
+          - tpssc
+          - tpsslocc
+          - revtpssc
+          - brx
+          - brc
+          - brxc
+          - csc
+          - blocx
+          - scanx
+          - scanc
+          - rscanx
+          - rscanc
+          - rppscanx
+          - rppscanc
+          - r2scanx
+          - r2scanc
+          - r4scanx
+          - r4scanc
+          - tw
+          - vwk
+          - pbelocc
+          - zvpbesolc
+          - zvpbeintc
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: regen-mpmath-full
+          save-if: ${{ matrix.functional == 'ldaerfx' }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install mpmath
+        run: python3.12 -m pip install --upgrade "mpmath>=1.4"
+
+      - name: Regenerate ${{ matrix.functional }}
+        env:
+          XCFUN_MPMATH_PYTHON: python3.12
+        run: |
+          cargo run --release -p xtask --bin regen-mpmath-fixtures -- \
+            --only "${{ matrix.functional }}"
+
+      - name: Verify outputs
+        run: |
+          set -euo pipefail
+          jsonl="validation/fixtures/mpmath/${{ matrix.functional }}.jsonl"
+          stamp="validation/fixtures/mpmath/${{ matrix.functional }}.jsonl.sha256"
+          test -s "$jsonl"  || { echo "missing or empty: $jsonl"; exit 1; }
+          test -s "$stamp"  || { echo "missing or empty: $stamp"; exit 1; }
+          lines=$(wc -l < "$jsonl")
+          test "$lines" -eq 30 || { echo "${{ matrix.functional }}: expected 30 records, got $lines"; exit 1; }
+          # Check stamp matches content
+          actual=$(sha256sum "$jsonl" | cut -d' ' -f1)
+          expected=$(cat "$stamp")
+          test "$actual" = "$expected" || { echo "stamp mismatch for ${{ matrix.functional }}"; exit 1; }
+
+      - name: Upload fixture
+        uses: actions/upload-artifact@v4
+        with:
+          name: mpmath-fixture-${{ matrix.functional }}
+          path: |
+            validation/fixtures/mpmath/${{ matrix.functional }}.jsonl
+            validation/fixtures/mpmath/${{ matrix.functional }}.jsonl.sha256
+          if-no-files-found: error
+          retention-days: 7
+
+  gather:
+    name: Gather, verify, and open PR
+    needs: regen
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need full history so we can branch off master cleanly.
+          fetch-depth: 0
+          # Default GITHUB_TOKEN is sufficient with `permissions: contents: write`
+          # at the workflow level (already declared above).
+
+      - name: Download all fixture artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+          pattern: mpmath-fixture-*
+
+      - name: Consolidate into validation/fixtures/mpmath/
+        run: |
+          set -euo pipefail
+          mkdir -p validation/fixtures/mpmath/
+          # Each artifact unpacks to artifacts/mpmath-fixture-<name>/<name>.jsonl
+          # (and .sha256). Move them all into the canonical directory.
+          for d in artifacts/mpmath-fixture-*; do
+            cp -v "$d"/*.jsonl       validation/fixtures/mpmath/
+            cp -v "$d"/*.jsonl.sha256 validation/fixtures/mpmath/
+          done
+
+      - name: Verify 26 functionals + matching sha256 stamps
+        run: |
+          set -euo pipefail
+          jsonl_count=$(ls validation/fixtures/mpmath/*.jsonl 2>/dev/null | wc -l)
+          stamp_count=$(ls validation/fixtures/mpmath/*.jsonl.sha256 2>/dev/null | wc -l)
+          test "$jsonl_count" -eq 26 || { echo "expected 26 .jsonl, got $jsonl_count"; exit 1; }
+          test "$stamp_count" -eq 26 || { echo "expected 26 .jsonl.sha256, got $stamp_count"; exit 1; }
+          # Re-verify each stamp matches its companion jsonl
+          for jsonl in validation/fixtures/mpmath/*.jsonl; do
+            stamp="${jsonl}.sha256"
+            actual=$(sha256sum "$jsonl" | cut -d' ' -f1)
+            expected=$(cat "$stamp")
+            if [ "$actual" != "$expected" ]; then
+              echo "stamp mismatch: $jsonl"
+              echo "  expected: $expected"
+              echo "  actual:   $actual"
+              exit 1
+            fi
+          done
+          echo "✓ 26 functionals × 30 records, all sha256 stamps match"
+
+      - name: Configure git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create branch and commit
+        id: commit
+        run: |
+          set -euo pipefail
+          BRANCH="regen/mpmath-fixtures-${{ github.run_id }}"
+          git checkout -b "$BRANCH"
+          git add validation/fixtures/mpmath/
+          git status --short
+          git commit -m "$(cat <<'EOF'
+          docs(06-N2/07-00): regenerate mpmath ground-truth fixtures (full corpus)
+
+          Plan 07-00 Task 0.2 — 26 functionals × 30 records each at mp.dps=200.
+          Fanned across 26 parallel GH Actions matrix jobs (workflow run
+          ${{ github.run_id }}). Generated on ubuntu-latest with python3.12 +
+          mpmath>=1.4. Each .jsonl committed alongside its sha256 stamp so
+          the existing `--check` drift gate (regen_mpmath_fixtures --check)
+          can verify on every push.
+
+          Functional set (matches full_functionals() in
+          xtask/src/bin/regen_mpmath_fixtures.rs):
+            ACC-04 (6):                ldaerfx ldaerfc ldaerfc_jt
+                                       tpssc tpsslocc revtpssc
+            BR family (3):             brx brc brxc
+            misc (2):                  csc blocx
+            SCAN family (10):          scanx scanc rscanx rscanc rppscanx
+                                       rppscanc r2scanx r2scanc r4scanx r4scanc
+            kinetic-GGA + PBE-loc (5): tw vwk pbelocc zvpbesolc zvpbeintc
+          EOF
+          )"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Push branch
+        run: git push -u origin "${{ steps.commit.outputs.branch }}"
+
+      - name: Open PR
+        if: ${{ inputs.open_pr }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --base "${{ github.ref_name }}" \
+            --head "${{ steps.commit.outputs.branch }}" \
+            --title "docs(06-N2/07-00): regenerate mpmath ground-truth fixtures (full corpus)" \
+            --body "$(cat <<'EOF'
+          ## Summary
+          - Plan 07-00 Task 0.2 — full mpmath fixture regeneration (26 functionals × 30 records at `mp.dps=200`).
+          - Generated by GH Actions matrix run [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+          - 52 files: 26 `*.jsonl` + 26 `*.jsonl.sha256` under `validation/fixtures/mpmath/`.
+
+          ## Test plan
+          - [ ] Verify CI's nextest job stays green (drift gate `regen_mpmath_fixtures --check` remains accurate).
+          - [ ] Run the order-3 strict-1e-13 mpmath sweep locally (Task 0.3): `cargo run -p validation --release -- --reference mpmath --order 3 --filter '^(TW|VWK|PBELOCC|BLOCX|TPSSC|TPSSLOCC|REVTPSSC|TPSSX|REVTPSSX|VWN3C|VWN5C|PW92C|PZ81C)$'`
+          - [ ] After merge, flip 06-HUMAN-UAT.md item #3 to `passed` with the merge commit hash.
+
+          ## Deviation from plan
+          Plan 07-00 Task 0.2 (`<task type="checkpoint:human-action">`) originally specified an
+          offline ~6h operator-run regen on the user's workstation. This PR fulfills the same
+          contract via parallel CI matrix execution (~15min wall-clock) per the project's
+          execution split: CPU work runs on GH Actions, GPU work runs locally. The output bytes
+          are identical (deterministic xoshiro256++ seed `0x1234abcd` + mpmath `dps=200`); the
+          `.sha256` stamps lock that determinism.
+
+          🤖 Generated with [Claude Code](https://claude.com/claude-code)
+          EOF
+          )"
