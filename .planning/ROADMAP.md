@@ -45,7 +45,7 @@ The dependency DAG (per `ARCHITECTURE.md` section 7 and `SUMMARY.md` "Phase Orde
 
 - [x] 07-00-PLAN.md — Wave 0 COMPLETE (2026-05-08): all 4 blocking HUMAN-UAT items resolved (items 3+6 passed; items 4+5 partially-passed via Plan 06-N7 substrate audit which closed 9 GGA-tier bugs). Eliminated ~3.35M failing records across PBEINTC + SPBEC + P86C + P86CORRC + BECKESRX + PW91C; 8 regression tests added; CI workflows for matrix-split mpmath regen + tier-2 sweep added. AD-residual tail forwarded to v0.2 per amended D-14. See 07-00-SUMMARY.md.
 - [x] 07-01-PLAN.md — Wave 1: rename xcfun-python → xcfun-py + workspace member promotion + dep wiring (D-01, D-03)
-- [ ] 07-02-PLAN.md — Wave 2: pyproject.toml + #[pymodule] _native skeleton + 11 free fns (PY-01, PY-04)
+- [x] 07-02-PLAN.md — Wave 2: pyproject.toml + #[pymodule] _native skeleton + 11 free fns (PY-01, PY-04)
 - [ ] 07-03-PLAN.md — Wave 3: XcfunError + abi3 §5 PyException workaround (PY-05; D-09, D-10)
 - [ ] 07-04-PLAN.md — Wave 4: Functional #[pyclass] + Mode/Vars IntEnum + 9 method delegates (PY-02; D-05, D-06, D-12)
 - [ ] 07-05-PLAN.md — Wave 5: NumPy strict zero-copy eval_vec + cross-language parity (PY-03; D-07, D-08)
