@@ -221,3 +221,18 @@ pub fn p86c_kernel<F: Float>(
     // out = term1 + term2.
     ctaylor_add::<F>(&term1, &term2, out, n);
 }
+
+#[cfg(test)]
+mod tests {
+    /// Regression lock for `P86_PI_EXPR = (9π)^(1/6)`. The previous value
+    /// `1.745_050_359_752_853_5_f64` was incorrect by ~2e-4 relative —
+    /// the f64-nearest of `(9π)^(1/6)` is `1.745_415_106_125_124`. This
+    /// constant feeds the exp(-Pg) term in both XC_P86C and XC_P86CORRC
+    /// (they share `pg`) and produced 59% record-level FAIL for both
+    /// in Phase 7 Plan 07-00 Task 0.3.
+    #[test]
+    fn p86_pi_expr_locked() {
+        let truth: f64 = 1.745_415_106_125_124_f64;
+        assert_eq!(super::P86_PI_EXPR, truth);
+    }
+}

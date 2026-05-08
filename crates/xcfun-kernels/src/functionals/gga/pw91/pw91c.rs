@@ -518,3 +518,17 @@ pub fn pw91c_kernel<F: Float>(
     ctaylor_mul::<F>(&d.n, &sum_eh, out, n);
 }
 
+#[cfg(test)]
+mod tests {
+    /// Regression lock for `PW91C_NU = 16 · cbrt(3π²) / π`. The previous
+    /// value `15.755_926_546_290_507_f64` was incorrect — the f64-nearest
+    /// of the truth is `15.755_920_349_483_143`. The constant was
+    /// hand-derived at insufficient precision; the bug contributed to
+    /// 69% record-level FAIL of PW91C in Phase 7 Plan 07-00 Task 0.3.
+    #[test]
+    fn pw91c_nu_locked() {
+        let truth: f64 = 15.755_920_349_483_143_f64;
+        assert_eq!(super::PW91C_NU, truth);
+    }
+}
+

@@ -120,6 +120,23 @@ fn h_spbe<F: Float>(
     ctaylor_mul::<F>(&gam_phi3, &lg, out, n);
 }
 
+#[cfg(test)]
+mod tests {
+    /// Regression lock for SPBEC β/γ ratio. The previous value
+    /// `0.466_006_366_055_452_4_f64` was actually `γ_standard_PBE / β_paper`
+    /// (= 0.0310906908696549 / 0.066725), with β and γ swapped — a natural
+    /// confusion since SPBEC's convention is opposite of standard PBE.
+    /// The mathematically correct value is the f64 quotient of the literal
+    /// SPBEC paper values: 0.031091 / 0.066725 = 0.46595728737354813,
+    /// matching what C++ computes at runtime via `beta / gamm`. This bug
+    /// produced 73% record-level FAIL in Phase 7 Plan 07-00 Task 0.3.
+    #[test]
+    fn spbec_beta_gamma_locked() {
+        let truth: f64 = 0.031091_f64 / 0.066725_f64;
+        assert_eq!(super::SPBEC_BETA_GAMMA_F64, truth);
+    }
+}
+
 #[cube]
 pub fn spbec_kernel<F: Float>(
     d: &DensVarsDev<F>,
