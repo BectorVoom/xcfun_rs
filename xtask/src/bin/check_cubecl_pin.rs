@@ -1,22 +1,20 @@
 //! `check-cubecl-pin` — QG-06 gate.
 //!
-//! Runs `cargo metadata --format-version 1`, finds the `cubecl` and
-//! `cubecl-cpu` packages in the resolved dependency graph, and asserts that
-//! both are at EXACTLY `0.10.0-pre.3`. The pin exists because cubecl is a
-//! pre-release; breaking changes can land between `-pre.N` and `-pre.N+1`
-//! without semver bumps (see CLAUDE.md risk note).
+//! Runs `cargo metadata --format-version 1`, finds the cubecl-family packages
+//! in the resolved dependency graph, and asserts that all are at EXACTLY
+//! `0.10.0`. All five crates must move in lockstep (see CLAUDE.md risk note).
 //!
 //! Exit codes:
 //!   0 — PASS
 //!   1 — cargo metadata invocation / parse error
-//!   2 — FAIL: cubecl or cubecl-cpu at a version other than 0.10.0-pre.3
+//!   2 — FAIL: any cubecl-family crate at a version other than 0.10.0
 
 use anyhow::{Context, Result, bail};
 use serde_json::Value;
 use std::path::PathBuf;
 use std::process::Command;
 
-const REQUIRED_VERSION: &str = "0.10.0-pre.3";
+const REQUIRED_VERSION: &str = "0.10.0";
 // Phase 6 Plan 06-02a: workspace pins now cover the full cubecl-runtime
 // fan-out; Plans 06-03 / 06-04 pull `cubecl-hip` / `cubecl-cuda` /
 // `cubecl-wgpu` into the dep graph behind feature flags. The gate must
@@ -92,9 +90,8 @@ fn main() -> Result<()> {
             eprintln!("  {}", v);
         }
         eprintln!(
-            "\nQG-06: cubecl + cubecl-cpu must move in lockstep at\n\
-             `{}`. Pre-release crates do not respect semver;\n\
-             tip crates must share the exact `=` pin.",
+            "\nQG-06: all cubecl-family crates must move in lockstep at\n\
+             `{}`. Update all five pins together in Cargo.toml.",
             REQUIRED_VERSION
         );
         std::process::exit(2);

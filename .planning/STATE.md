@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-08T07:30:00.000Z"
+last_updated: "2026-05-08T12:00:00.000Z"
 progress:
   total_phases: 8
   completed_phases: 4
@@ -281,6 +281,7 @@ None.
 | # | Description | Date | Commits | Directory |
 |---|-------------|------|---------|-----------|
 | 260430-4x7 | Parallelize validation harness — speed up the order=3 full sweep | 2026-04-30 | e79c3ef, 8c59675 | [260430-4x7-parallelize-validation-harness-speed-up-](./quick/260430-4x7-parallelize-validation-harness-speed-up-/) |
+| 260508-epcry7 | Update cubecl from =0.10.0-pre.3 to =0.10.0 stable across all workspace crates | 2026-05-08 | — | [260508-epcry7-cubecl-010-stable-pin](./quick/260508-epcry7-cubecl-010-stable-pin/) |
 
 ### Recent activity
 

@@ -47,11 +47,11 @@ tracing-subscriber = { version = "=0.3.23", features = ["fmt"] }
 # cubecl pivot — all five must move in lockstep (CLAUDE.md risk note).
 # Phase 6 Plan 06-02a adds cubecl-hip / cubecl-cuda / cubecl-wgpu workspace
 # pins; Plans 06-03 / 06-04 pull them in via xcfun-gpu feature flags.
-cubecl = "=0.10.0-pre.3"
-cubecl-cpu = "=0.10.0-pre.3"
-cubecl-hip = "=0.10.0-pre.3"
-cubecl-cuda = "=0.10.0-pre.3"
-cubecl-wgpu = "=0.10.0-pre.3"
+cubecl = "=0.10.0"
+cubecl-cpu = "=0.10.0"
+cubecl-hip = "=0.10.0"
+cubecl-cuda = "=0.10.0"
+cubecl-wgpu = "=0.10.0"
 
 # App-boundary deps (xtask / benches / examples / dev-deps only).
 anyhow = "1.0.102"

@@ -13,7 +13,7 @@ A Rust-from-scratch reimplementation of the xcfun exchange–correlation functio
 - **Compatibility**: C FFI must be a drop-in replacement for `xcfun-master/api/xcfun.h` — every declared symbol present with matching signature
 - **Rust Edition**: 2024, MSRV 1.85 — required for current const-generic features
 - **Compiler flags**: no `-Cfast-math`, no reassociation flags; `RUSTFLAGS` empty in CI — fast-math would break the accuracy contract
-- **Tech stack**: `thiserror` 2.0.18 (library errors), `anyhow` 1.0 (app boundaries only — no library depends on it), `bitflags` 2.10.0, `cubecl` pinned at `=0.10.0-pre.3`, `pyo3` 0.28.3 + `numpy` 0.28.0, `cbindgen` 0.29.2, `criterion` 0.8.2, `approx` 0.5 — pinned in CLAUDE.md
+- **Tech stack**: `thiserror` 2.0.18 (library errors), `anyhow` 1.0 (app boundaries only — no library depends on it), `bitflags` 2.10.0, `cubecl` pinned at `=0.10.0`, `pyo3` 0.28.3 + `numpy` 0.28.0, `cbindgen` 0.29.2, `criterion` 0.8.2, `approx` 0.5 — pinned in CLAUDE.md
 - **GPU**: `cubecl` for CPU / CUDA / Wgpu backends; f32 never on the numerical path; Wgpu validated at relaxed 1e-9 tolerance (device `erf` variance), CUDA and CPU at 1e-12
 - **Memory**: zero heap allocation on the per-point hot path; batch lifecycle allocates device buffers with powers-of-two growth
 - **Licensing**: MPL-2.0 (inherited from xcfun reference)
@@ -31,7 +31,7 @@ A Rust-from-scratch reimplementation of the xcfun exchange–correlation functio
 | `bitflags 2.10.0` | **CHALLENGE — bump to `2.11.1`** | 2.11.1 (2026-04-14) is the current release; 2.11 brought improved `Flags` trait derive. Move pin. |
 | `tracing 0.1.44` | CONFIRM | Current (2025-12-18). Keep `default-features = false` — correct already. |
 | `tracing-subscriber 0.3` (validation only) | CONFIRM — bump pin floor to `0.3.23` | 0.3.21 was yanked; lock `>=0.3.22`. |
-| `cubecl =0.10.0-pre.3` | CONFIRM as the best available; FLAG as the single largest project risk | Crates.io confirms `0.10.0-pre.3` is the newest release of `cubecl`, `cubecl-cpu`, `cubecl-cuda`, `cubecl-wgpu` (all 2026-04-08). No stable 0.10 exists; `max_stable_version = 0.9.0`. The `f64` cell in the official CubeCL feature matrix is marked **"?" (support may vary)** for CUDA and WGPU-SPIR-V, and **"Not supported"** for WGPU-WGSL. This needs explicit runtime probing and CI gating (see §Risk Assessment). |
+| `cubecl =0.10.0` | CONFIRM — stable 0.10.0 shipped 2026-05-07 | All five crates (`cubecl`, `cubecl-cpu`, `cubecl-hip`, `cubecl-cuda`, `cubecl-wgpu`) published 0.10.0 on 2026-05-07 (not yanked). The `f64` cell in the official CubeCL feature matrix is marked **"?" (support may vary)** for CUDA and WGPU-SPIR-V, and **"Not supported"** for WGPU-WGSL. Runtime probing and CI gating remain required (see §Risk Assessment). |
 | `pyo3 0.28.3` + `numpy 0.28.0` | CONFIRM | 0.28.3 (2026-04-02) is current PyO3; `numpy 0.28.0` (2026-02-08) tracks PyO3 0.28.x. Yanked versions on both sides (pyo3 0.28.0/0.28.1 yanked) — the `=0.28.3` / `=0.28.0` pins already avoid them. |
 | `cbindgen 0.29.2` | CONFIRM | 0.29.2 (2025-10-21) is current. Keep. |
 | `criterion 0.8.2` | CONFIRM | 0.8.2 (2026-02-04) is current. Keep. |
@@ -66,10 +66,10 @@ A Rust-from-scratch reimplementation of the xcfun exchange–correlation functio
 ### GPU / unified kernel layer
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| `cubecl` | **`=0.10.0-pre.3`** (hard pin) | Kernel DSL + `Runtime` abstraction | The only Rust-native kernel DSL that (a) compiles one source to CPU, CUDA, ROCm, Metal, Vulkan, WebGPU; (b) is generic over a `Float` trait so the same `#[cube]` body works on f32 and f64; (c) is actively released on the target cadence (monthly 0.10 pre-releases since 2026-02). Published by `tracel-ai` (Burn ML maintainers). |
-| `cubecl-cpu` | `=0.10.0-pre.3` | `CpuRuntime` backend | Executes the same kernel on the host for CI, development, and the always-on fallback. Critical: this is what lets us say "one kernel source, tested on CPU first, then re-run on GPU." |
-| `cubecl-cuda` | `=0.10.0-pre.3` (feature `cuda`) | `CudaRuntime` — primary HPC target | NVIDIA is the dominant HPC GPU in computational chemistry. PTX math.h intrinsics align with libm in the last 1–4 ULPs, tight enough for 1e-12 with the budget in `07-accuracy-strategy.md §6`. |
-| `cubecl-wgpu` | `=0.10.0-pre.3` (feature `wgpu`) | `WgpuRuntime` — portability fallback | Provides Vulkan/Metal/WebGPU coverage. **f64 is explicitly "?" (conditional) on SPIR-V backends and "Not supported" on WGSL** (from the official CubeCL feature matrix). Design already reflects this: `erf`-bearing functionals are CPU-only on Wgpu, Wgpu parity relaxed to 1e-9. |
+| `cubecl` | **`=0.10.0`** (hard pin) | Kernel DSL + `Runtime` abstraction | The only Rust-native kernel DSL that (a) compiles one source to CPU, CUDA, ROCm, Metal, Vulkan, WebGPU; (b) is generic over a `Float` trait so the same `#[cube]` body works on f32 and f64; (c) reached stable 0.10.0 on 2026-05-07. Published by `tracel-ai` (Burn ML maintainers). |
+| `cubecl-cpu` | `=0.10.0` | `CpuRuntime` backend | Executes the same kernel on the host for CI, development, and the always-on fallback. Critical: this is what lets us say "one kernel source, tested on CPU first, then re-run on GPU." |
+| `cubecl-cuda` | `=0.10.0` (feature `cuda`) | `CudaRuntime` — primary HPC target | NVIDIA is the dominant HPC GPU in computational chemistry. PTX math.h intrinsics align with libm in the last 1–4 ULPs, tight enough for 1e-12 with the budget in `07-accuracy-strategy.md §6`. |
+| `cubecl-wgpu` | `=0.10.0` (feature `wgpu`) | `WgpuRuntime` — portability fallback | Provides Vulkan/Metal/WebGPU coverage. **f64 is explicitly "?" (conditional) on SPIR-V backends and "Not supported" on WGSL** (from the official CubeCL feature matrix). Design already reflects this: `erf`-bearing functionals are CPU-only on Wgpu, Wgpu parity relaxed to 1e-9. |
 | Alternative | Current ver | Why rejected for this project |
 |-------------|-------------|-------------------------------|
 | `wgpu` (raw) + WGSL | 23.x | Need to hand-author WGSL shaders in addition to Rust; two languages, two sources, no guarantee of algorithmic parity between them. Defeats "single source" goal (G3). |
@@ -148,7 +148,7 @@ A Rust-from-scratch reimplementation of the xcfun exchange–correlation functio
 | `lazy_static` | Same as above | `std::sync::LazyLock` |
 | `anyhow` in any `xcfun-*` crate | Violates the library/app error model; CI must block | `thiserror::Error` + `XcError`; use `anyhow` only in `validation/`, `xtask/`, `benches/`, `examples/` |
 | `bincode` for compilation caches | Less stable across versions than CBOR; CubeCL itself switched away | `ciborium` (already pulled in via `cubecl`) if we ever need a cache format |
-| `cubecl` 0.9.0 (stable but older API) | Missing the 0.10 pre-release features around arena allocation, staging buffers, scalar/metadata refactor, and the `Validate` execution mode — all of which we rely on in `06-cubecl-strategy.md` | `=0.10.0-pre.3` with the hard pin (accept the pre-release risk explicitly) |
+| `cubecl` 0.9.0 (older API) | Missing the 0.10 features around arena allocation, staging buffers, scalar/metadata refactor, and the `Validate` execution mode — all of which we rely on in `06-cubecl-strategy.md` | `=0.10.0` |
 | `approx 0.6.0-rc2` | Release candidate; one yanked predecessor (0.6.0-rc1, yanked 2026-02-06). Do not gate an accuracy contract on an RC. | Stay on `approx 0.5.1` until `0.6.0` ships stable. |
 ## Stack Patterns by Variant
 - Feature flags: default (`cpu` on `xcfun-gpu`), no `cuda`, no `wgpu`.
@@ -174,10 +174,10 @@ A Rust-from-scratch reimplementation of the xcfun exchange–correlation functio
 | `pyo3 =0.28.3` | `numpy =0.28.0` | rust-numpy's `Cargo.toml` depends on `pyo3 = "0.28"`; caret-compatible with 0.28.3. Mismatched majors (e.g. pyo3 0.27 + numpy 0.28) fail to compile. **Treat as a single-atomic version bump.** |
 | `pyo3 =0.28.3` | `maturin >=1.12, <2.0` | Maturin 1.12+ ships the abi3-py310 wheel layout compatible with PyO3 0.28. Older maturin (< 1.10) has known abi3 issues with PyO3 0.28. |
 | `pyo3 0.28.x` | CPython ≥ 3.10 | `abi3-py310` feature: one wheel covers 3.10, 3.11, 3.12, 3.13. |
-| `cubecl =0.10.0-pre.3` | `cubecl-cpu =0.10.0-pre.3`, `cubecl-cuda =0.10.0-pre.3`, `cubecl-wgpu =0.10.0-pre.3` | Pre-release crates; **all four must move in lockstep** or compile fails. `=` equality pins are mandatory, not merely recommended. |
-| `cubecl =0.10.0-pre.3` | Rust 1.85+ | Uses Edition 2024 types. |
-| `cubecl-cuda =0.10.0-pre.3` | CUDA toolkit ≥ 12.0 (recommended 12.4) | Driver requirement: driver ≥ 535 for CUDA 12.4. |
-| `cubecl-wgpu =0.10.0-pre.3` | Vulkan 1.2+ / Metal 2+ / WebGPU (Chrome 113+, Firefox 121+) | **f64 only where device reports `Features::SHADER_F64`**. On machines without that feature, the backend is unsafe for the numerical path. |
+| `cubecl =0.10.0` | `cubecl-cpu =0.10.0`, `cubecl-cuda =0.10.0`, `cubecl-wgpu =0.10.0`, `cubecl-hip =0.10.0` | **All five must move in lockstep** or compile fails. `=` equality pins are mandatory, not merely recommended. |
+| `cubecl =0.10.0` | Rust 1.85+ | Uses Edition 2024 types. |
+| `cubecl-cuda =0.10.0` | CUDA toolkit ≥ 12.0 (recommended 12.4) | Driver requirement: driver ≥ 535 for CUDA 12.4. |
+| `cubecl-wgpu =0.10.0` | Vulkan 1.2+ / Metal 2+ / WebGPU (Chrome 113+, Firefox 121+) | **f64 only where device reports `Features::SHADER_F64`**. On machines without that feature, the backend is unsafe for the numerical path. |
 | `thiserror =2.0.18` | Rust ≥ 1.68 | MSRV bump from 2.0.17's 1.61 → 2.0.18's 1.68. Fine for us (MSRV 1.85). |
 | `bitflags =2.11.1` | Rust ≥ 1.56 | Comfortable margin. |
 | `cbindgen =0.29.2` | Rust ≥ 1.74 | Comfortable margin. |
@@ -188,8 +188,8 @@ A Rust-from-scratch reimplementation of the xcfun exchange–correlation functio
 ## Key Version Constraints (why each `=` pin exists)
 | Constraint | Why it's exact (`=x.y.z`) rather than caret (`^x.y.z`) |
 |------------|------------------------------------------------------|
-| `cubecl =0.10.0-pre.3` | Pre-release API. Semver is not respected between pre-releases. Cargo will otherwise "helpfully" pick `0.10.0-pre.4` the next time someone adds a 0.10 dep, silently breaking kernels. |
-| `cubecl-{cpu,cuda,wgpu} =0.10.0-pre.3` | All four cubecl crates cross-reference internal types; any mismatch is a hard compile error. |
+| `cubecl =0.10.0` | Exact pin ensures `cargo update` never silently bumps to 0.10.1 or 0.11.x before we validate the accuracy contract across the new version. |
+| `cubecl-{cpu,hip,cuda,wgpu} =0.10.0` | All five cubecl crates cross-reference internal types; any mismatch is a hard compile error. |
 | `pyo3 =0.28.3` | pyo3 0.28.0 and 0.28.1 are yanked. Without `=`, Cargo could regenerate `Cargo.lock` onto a yanked version (yanked versions remain resolvable for existing lockfiles). |
 | `numpy =0.28.0` | Must match PyO3 0.28.x; a future numpy 0.29.x would demand pyo3 0.29.x, and we want the bump to be explicit. |
 | `thiserror =2.0.18` | MSRV bumped at this version; later 2.0.x patches may bump again. Lock for reproducibility. |
@@ -202,7 +202,7 @@ A Rust-from-scratch reimplementation of the xcfun exchange–correlation functio
 ## Risk Assessment
 | Risk | Probability | Severity | Mitigation |
 |------|-------------|----------|------------|
-| **cubecl 0.10 never ships stable; breaks at 0.10.0-pre.4 or 0.11.0-pre.1** | MEDIUM | HIGH | 1. `=0.10.0-pre.3` hard pin. 2. The entire cubecl surface is contained in `xcfun-kernels` and `xcfun-gpu` (two crates, ~1 kLoC). 3. Validation harness is CPU-first: a cubecl regression breaks GPU CI but not CPU CI, so the numerical contract is still enforced while we fix. 4. Budget a "cubecl bump" sub-phase for every new 0.10-pre.X release; re-run Tier 2 + Tier 3 harnesses; block merge if rel-error > 1e-12 anywhere. |
+| **cubecl 0.10.1 or 0.11.x breaks the accuracy contract** | LOW | HIGH | 1. `=0.10.0` hard pin prevents silent bumps. 2. The entire cubecl surface is contained in `xcfun-kernels` and `xcfun-gpu` (two crates, ~1 kLoC). 3. Validation harness is CPU-first: a cubecl regression breaks GPU CI but not CPU CI, so the numerical contract is still enforced while we investigate. 4. Budget a "cubecl bump" sub-phase for any future version bump; re-run Tier 2 + Tier 3 harnesses; block merge if rel-error > 1e-12 anywhere. |
 | **cubecl f64 on CUDA degrades on a future hardware/driver combination** | LOW | HIGH | The CubeCL feature matrix flags CUDA f64 as "?". Mitigate by: (a) probe `client.properties().feature_enabled(Feature::Type(f64))` at runtime before launching; (b) refuse to launch (and emit a `tracing::error!`) if unavailable; (c) the validation harness is the final gate — a silent accuracy drop cannot reach production. |
 | **cubecl-wgpu on WGSL lacks f64 entirely** | CERTAINTY | HIGH only if someone tries to use it on the numerical path | Documented already; Wgpu path is explicitly 1e-9-tolerance and CPU-forced for range-separated functionals. Design accounts for this. |
 | **pyo3 0.28.4+ yanked like 0.28.0/0.28.1 were** | LOW | MEDIUM | Pin `=0.28.3`; monitor yanks via `cargo audit` on every PR. |
@@ -216,10 +216,10 @@ A Rust-from-scratch reimplementation of the xcfun exchange–correlation functio
 - [crates.io — pyo3](https://crates.io/crates/pyo3) — v0.28.3 confirmed (2026-04-02); 0.28.0/0.28.1 yanked, 0.28.2 (2026-02-18) superseded.
 - [crates.io — numpy (rust-numpy)](https://crates.io/crates/numpy) — v0.28.0 confirmed (2026-02-08).
 - [rust-numpy Cargo.toml on main](https://github.com/PyO3/rust-numpy/blob/main/Cargo.toml) — verifies `pyo3 = "0.28.0"` dependency declaration; caret-compatible with our `=0.28.3`.
-- [crates.io — cubecl](https://crates.io/crates/cubecl) — v0.10.0-pre.3 confirmed newest (2026-04-08); stable 0.9.0 flagged as `max_stable_version`.
-- [crates.io — cubecl-cuda](https://crates.io/crates/cubecl-cuda), [cubecl-cpu](https://crates.io/crates/cubecl-cpu), [cubecl-wgpu](https://crates.io/crates/cubecl-wgpu) — all 0.10.0-pre.3 confirmed 2026-04-08.
+- [crates.io — cubecl](https://crates.io/crates/cubecl) — v0.10.0 stable confirmed (2026-05-07); all five crates (cubecl, cubecl-cpu, cubecl-hip, cubecl-cuda, cubecl-wgpu) published in lockstep, not yanked.
+- [crates.io — cubecl-cuda](https://crates.io/crates/cubecl-cuda), [cubecl-cpu](https://crates.io/crates/cubecl-cpu), [cubecl-wgpu](https://crates.io/crates/cubecl-wgpu), [cubecl-hip](https://crates.io/crates/cubecl-hip) — all 0.10.0 confirmed 2026-05-07.
 - [CubeCL feature matrix (cubecl-book/core-features/features.md)](https://github.com/tracel-ai/cubecl/blob/main/cubecl-book/src/core-features/features.md) via Context7 `/tracel-ai/cubecl` — authoritative source for the f64 "?" / "Not supported" flags per backend.
-- [CubeCL release notes](https://github.com/tracel-ai/cubecl/releases) — 0.10 pre-release series (Validate mode, arena memory, staging buffers, scalar/metadata refactor, ciborium cache).
+- [CubeCL release notes](https://github.com/tracel-ai/cubecl/releases) — 0.10.0 stable (Validate mode, arena memory, staging buffers, scalar/metadata refactor, ciborium cache).
 - [crates.io — thiserror](https://crates.io/crates/thiserror) — v2.0.18 confirmed (2026-01-18); MSRV 1.68.
 - [crates.io — bitflags](https://crates.io/crates/bitflags) — v2.11.1 current (2026-04-14); 2.10.0 is one minor stale.
 - [crates.io — cbindgen](https://crates.io/crates/cbindgen) — v0.29.2 confirmed (2025-10-21).
@@ -240,7 +240,7 @@ A Rust-from-scratch reimplementation of the xcfun exchange–correlation functio
 |------|------------|--------|
 | Core error/language (`thiserror`, `anyhow`, `bitflags`, Rust 2024) | HIGH | Verified on crates.io 2026-04; de facto standards with 100M+ downloads each. |
 | AD engine (in-house) | HIGH | Exhaustively searched crates.io 2026-04; no crate replicates the bit-flag multilinear polynomial structure. Algorithmic identity with `xcfun-master/src/taylor/ctaylor.hpp` is the only route to 1e-12 parity. |
-| GPU layer (`cubecl` family) | MEDIUM | Only viable multi-backend Rust kernel DSL; pre-release (0.10.0-pre.3) pinned explicitly; f64 is conditionally supported per backend — design docs already handle the limitation. The one area where CI must permanently guard the accuracy contract across version bumps. |
+| GPU layer (`cubecl` family) | MEDIUM | Only viable multi-backend Rust kernel DSL; stable 0.10.0 pinned; f64 is conditionally supported per backend — design docs already handle the limitation. CI must permanently guard the accuracy contract across any future version bumps. |
 | C FFI (`cbindgen`, `cc`) | HIGH | `cbindgen` is Mozilla-maintained and directly targets our drop-in-header use case; `cc` is Rust's standard native-compile driver. |
 | Python (`pyo3`, `numpy`, `maturin`) | HIGH | Single dominant option with clear version-lock rules; zero-copy `f64` array interop is exactly the numpy crate's strength. |
 | Testing (`criterion`, `approx`, `proptest`, `rstest`) | HIGH | Standard Rust scientific-testing stack; all currently maintained with regular 2025–2026 releases. |
