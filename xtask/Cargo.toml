@@ -60,6 +60,19 @@ path = "src/bin/regen_capi_header.rs"
 name = "regen-mpmath-fixtures"
 path = "src/bin/regen_mpmath_fixtures.rs"
 
+[[bin]]
+# Phase 7 Plan 07-08 (D-15) — topological cargo publish driver. Walks the
+# workspace dep DAG via `cargo metadata`, runs `cargo publish --dry-run`
+# per crate, and (under `--execute`) shells out to `cargo publish -p
+# <crate>` with index-propagation polling between calls (Pitfall 4).
+# Per-crate `cargo publish --dry-run` runs BEFORE `cargo publish` to
+# guard against yank-irreversibility (Pitfall 5).
+#
+# Local-only (the maintainer runs it before tag push). The CI-driven
+# PyPI publish lives in `.github/workflows/release.yml` (Plan 07-09).
+name = "release-publish"
+path = "src/bin/release_publish.rs"
+
 [features]
 default = []
 # Phase 3 plan 03-05 (B5): the gen-potential-fixtures bin pulls in
