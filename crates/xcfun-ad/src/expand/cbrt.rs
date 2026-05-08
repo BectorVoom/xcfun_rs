@@ -53,14 +53,20 @@ use cubecl::prelude::*;
 pub fn cbrt_expand<F: Float>(t: &mut Array<F>, x0: F, #[comptime] n: u32) {
     // tmath.hpp:173 — precondition moved to host-side guard.
 
-    // tmath.hpp:174 — `t[0] = cbrt(x0)` via `powf(1/3)` fallback (see
-    // module header for the 1–2 ULP deviation note). The exponent must be
-    // computed in f64 — the previous literal `1.0_f32 / 3.0_f32` produced
-    // `0.3333333432674408_f32-promoted`, NOT `1/3` to f64 precision, with
-    // a ~3e-8 relative error in the exponent. That accumulated through the
-    // `pow` evaluation and propagated downstream to any functional using
-    // `cbrt_expand` (06-N7/07-00 audit).
-    t[0] = x0.powf(F::cast_from(1.0_f64 / 3.0_f64));
+    // tmath.hpp:174 — `t[0] = cbrt(x0)`. C++ xcfun's tmath.hpp uses
+    // libm `cbrt(x0)` for the seed; cubecl's `F: Float` doesn't expose
+    // `.cbrt()` directly, so we seed from `powf(1/3)` and refine with
+    // two Newton iterations: y_{k+1} = (2·y_k + x/y_k²) / 3, which
+    // converges from a 1–2 ULP seed to ≤ 1 ULP correctly-rounded cbrt.
+    // This matches C++ libm cbrt to within the f64 contract while
+    // staying inside the cubecl Float trait surface.
+    let y0 = x0.powf(F::cast_from(1.0_f64 / 3.0_f64));
+    // First Newton refinement.
+    let y0_sq = y0 * y0;
+    let y1 = (F::new(2.0) * y0 + x0 / y0_sq) / F::new(3.0);
+    // Second Newton refinement (correctly-rounded).
+    let y1_sq = y1 * y1;
+    t[0] = (F::new(2.0) * y1 + x0 / y1_sq) / F::new(3.0);
     // tmath.hpp:175 — `T x0inv = 1 / x0`
     let x0inv = F::new(1.0) / x0;
 

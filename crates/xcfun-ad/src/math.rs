@@ -238,6 +238,32 @@ pub fn ctaylor_pow<F: Float>(
 }
 
 // ---------------------------------------------------------------------------
+//  ctaylor_cbrt — out = cbrt(x).  06-N7/07-00 wrapper.
+// ---------------------------------------------------------------------------
+
+/// `out = cbrt(x)`. Routes through `cbrt_expand` (Newton-refined from
+/// `powf(1/3)` to libm-cbrt precision) instead of generic
+/// `ctaylor_pow(x, 1/3)`. Matches C++ `tmath.hpp:172-178`'s
+/// `cbrt_expand` template which uses `t[0] = cbrt(x0)`.
+///
+/// Plan 07-00 Task 0.3 audit identified `pow(x, 1/3)`-vs-`cbrt(x)` as
+/// a contributor to PW91C's systematic order-0 offset against C++.
+///
+/// Precondition: `x[0] > 0` (host-side guard).
+#[cube]
+pub fn ctaylor_cbrt<F: Float>(
+    x: &Array<F>,
+    out: &mut Array<F>,
+    #[comptime] n: u32,
+) {
+    let scratch_len = comptime!((n + 1) as usize);
+    let mut scratch = Array::<F>::new(scratch_len);
+
+    crate::expand::cbrt::cbrt_expand::<F>(&mut scratch, x[0], n);
+    ctaylor_compose::<F>(out, x, &scratch, n);
+}
+
+// ---------------------------------------------------------------------------
 //  ctaylor_erf — out = erf(x).  Port of ctaylor_math.hpp:194-206.
 // ---------------------------------------------------------------------------
 

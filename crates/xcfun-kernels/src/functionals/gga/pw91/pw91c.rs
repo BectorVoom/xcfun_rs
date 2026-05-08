@@ -32,8 +32,8 @@ use cubecl::prelude::*;
 use xcfun_ad::ctaylor::{ctaylor_add, ctaylor_scalar_mul, ctaylor_sub};
 use xcfun_ad::ctaylor_rec::mul::ctaylor_mul;
 use xcfun_ad::math::{
-    ctaylor_exp, ctaylor_expm1, ctaylor_log, ctaylor_pow, ctaylor_powi_2, ctaylor_powi_3,
-    ctaylor_powi_4, ctaylor_reciprocal, ctaylor_sqrt,
+    ctaylor_cbrt, ctaylor_exp, ctaylor_expm1, ctaylor_log, ctaylor_pow, ctaylor_powi_2,
+    ctaylor_powi_3, ctaylor_powi_4, ctaylor_reciprocal, ctaylor_sqrt,
 };
 
 use crate::density_vars::DensVarsDev;
@@ -307,7 +307,11 @@ pub fn pw91c_kernel<F: Float>(
     let mut three_pi_sq_n = Array::<F>::new(size);
     ctaylor_scalar_mul::<F>(&d.n, F::cast_from(THREE_PI_SQ), &mut three_pi_sq_n, n);
     let mut kf = Array::<F>::new(size);
-    ctaylor_pow::<F>(&three_pi_sq_n, F::cast_from(1.0_f64 / 3.0_f64), &mut kf, n);
+    // 06-N7/07-00 — use ctaylor_cbrt (libm-cbrt-precision via Newton
+    // refinement) instead of ctaylor_pow(x, 1/3). Matches C++ pw91c.cpp:67
+    // `cbrt(3 * M_PI * M_PI * d.n)` which routes through tmath.hpp:172-178
+    // cbrt_expand (uses libm cbrt for the seed), not pow.
+    ctaylor_cbrt::<F>(&three_pi_sq_n, &mut kf, n);
 
     // ks = 2 · sqrt(kF/π).
     const INV_PI: f64 = 0.318_309_886_183_790_67_f64;
