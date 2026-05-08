@@ -13,12 +13,8 @@ env:
 
 jobs:
   fmt:
-    # Advisory only (continue-on-error) — pre-existing fmt drift across
-    # crates/xcfun-ad/src/ exists at the time this workflow was authored.
-    # Surfacing is the point; will be cleaned up in a follow-up.
-    name: cargo fmt --check (advisory)
+    name: cargo fmt --check
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -28,13 +24,8 @@ jobs:
       - run: cargo fmt --all -- --check
 
   clippy:
-    # Advisory only (continue-on-error). Pre-existing unused-import /
-    # dead-code warnings in crates/xcfun-kernels/src/functionals/{lda,mgga,gga}/
-    # exist at the time this workflow was authored — they're surfaced as
-    # informational; cleanup is a follow-up task.
-    name: cargo clippy -D warnings (advisory)
+    name: cargo clippy -D warnings
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -42,7 +33,12 @@ jobs:
           toolchain: stable
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --workspace --exclude validation --all-targets -- -D warnings
+      - name: Clone xcfun-master at pinned HEAD (a89b783)
+        run: |
+          git clone https://github.com/dftlibs/xcfun.git --depth 1 xcfun-master
+          git -C xcfun-master fetch --depth 1 origin a89b783
+          git -C xcfun-master checkout a89b783
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
   build:
     name: cargo build --workspace --release
@@ -53,14 +49,12 @@ jobs:
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@v2
-      # Without --locked: lockfile MSRV-1.85 contract is broken by current
-      # transitive deps (cubecl-zspace 0.10.0-pre.3 → rustc 1.92, etc.) —
-      # tracked as separate cleanup. Stable toolchain handles current lockfile.
-      # Exclude `validation` — its build.rs depends on the `xcfun-master/`
-      # C++ upstream tree, which is .gitignore'd (operator restores it
-      # locally per CLAUDE.md "xcfun-master restored at HEAD a89b783").
-      # validation is app-boundary tooling, not part of the library graph.
-      - run: cargo build --workspace --exclude validation --release
+      - name: Clone xcfun-master at pinned HEAD (a89b783)
+        run: |
+          git clone https://github.com/dftlibs/xcfun.git --depth 1 xcfun-master
+          git -C xcfun-master fetch --depth 1 origin a89b783
+          git -C xcfun-master checkout a89b783
+      - run: cargo build --workspace --locked --release
 
   test:
     name: cargo nextest run --workspace
@@ -75,7 +69,12 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest
-      - run: cargo nextest run --workspace --exclude validation --release --no-fail-fast
+      - name: Clone xcfun-master at pinned HEAD (a89b783)
+        run: |
+          git clone https://github.com/dftlibs/xcfun.git --depth 1 xcfun-master
+          git -C xcfun-master fetch --depth 1 origin a89b783
+          git -C xcfun-master checkout a89b783
+      - run: cargo nextest run --workspace --locked --release --no-fail-fast
 
   mpmath-smoke:
     # Validates Plan 06-N5: mpmath sidecar regen for the smoke set
