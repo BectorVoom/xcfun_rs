@@ -200,12 +200,36 @@ fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
     let check_mode = args.iter().any(|a| a == "--check");
     let smoke_mode = args.iter().any(|a| a == "--smoke");
+    // Plan 07-00 Task 0.2 (CI matrix-split lane): `--only <name>` regenerates
+    // exactly one functional from `full_functionals()`. Used by the
+    // `regen-mpmath-full.yml` workflow to fan the ~6h corpus across 26 parallel
+    // GH Actions runners (~15min wall-clock instead of ~6h serial).
+    let only_idx = args.iter().position(|a| a == "--only");
+    let only: Option<&str> = only_idx.map(|i| {
+        args.get(i + 1)
+            .map(|s| s.as_str())
+            .expect("--only requires a functional name")
+    });
     if check_mode && smoke_mode {
         bail!("--check and --smoke are mutually exclusive");
     }
+    if only.is_some() && (check_mode || smoke_mode) {
+        bail!("--only is mutually exclusive with --check and --smoke");
+    }
 
+    let single: [&str; 1];
     let functionals: &[&str] = if smoke_mode {
         smoke_functionals()
+    } else if let Some(name) = only {
+        if !full_functionals().contains(&name) {
+            bail!(
+                "--only: '{}' is not in full_functionals(); valid: {:?}",
+                name,
+                full_functionals()
+            );
+        }
+        single = [name];
+        &single
     } else {
         full_functionals()
     };
