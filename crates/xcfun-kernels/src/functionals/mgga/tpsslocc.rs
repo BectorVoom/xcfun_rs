@@ -16,7 +16,7 @@ use xcfun_ad::ctaylor::{ctaylor_add, ctaylor_scalar_mul, ctaylor_sub};
 use xcfun_ad::ctaylor_rec::mul::ctaylor_mul;
 use xcfun_ad::math::{
     ctaylor_exp, ctaylor_expm1, ctaylor_log, ctaylor_pow, ctaylor_powi_2, ctaylor_powi_3,
-    ctaylor_reciprocal, ctaylor_sqrt,
+    ctaylor_reciprocal,
 };
 
 use crate::density_vars::DensVarsDev;

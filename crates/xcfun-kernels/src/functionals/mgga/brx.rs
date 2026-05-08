@@ -26,7 +26,7 @@
 use cubecl::prelude::*;
 use xcfun_ad::ctaylor::{ctaylor_add, ctaylor_scalar_mul};
 use xcfun_ad::ctaylor_rec::mul::ctaylor_mul;
-use xcfun_ad::math::{ctaylor_exp, ctaylor_log, ctaylor_pow, ctaylor_reciprocal};
+use xcfun_ad::math::{ctaylor_log, ctaylor_pow, ctaylor_reciprocal};
 
 use crate::density_vars::DensVarsDev;
 use crate::functionals::mgga::shared::br_like::polarized;

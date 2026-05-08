@@ -31,8 +31,10 @@ use xcfun_ad::ctaylor::{ctaylor_add, ctaylor_scalar_mul, ctaylor_sub};
 use xcfun_ad::ctaylor_rec::mul::ctaylor_mul;
 use xcfun_ad::math::{ctaylor_pow, ctaylor_reciprocal};
 
+#[allow(unused_imports)] // M0X_ALPHA_X_F64 and M0X_SCALEFACTOR_TF_F64 are used by calling kernels
 use super::constants::{
-    M0X_ALPHA_C_ANTIPARALLEL_F64, M0X_ALPHA_C_PARALLEL_F64, M0X_ALPHA_X_F64, M0X_SCALEFACTOR_TF_F64,
+    M0X_ALPHA_C_ANTIPARALLEL_F64, M0X_ALPHA_C_PARALLEL_F64, M0X_ALPHA_X_F64,
+    M0X_SCALEFACTOR_TF_F64,
 };
 use crate::density_vars::DensVarsDev;
 use crate::functionals::gga::shared::pw91_like;
@@ -40,6 +42,7 @@ use crate::functionals::lda::pw92eps;
 
 // `CF = 0.3 * (3*PI²)^(2/3)` per `xcfun-master/src/functionals/constants.hpp:31`.
 // Matches Phase 2 `LYP_CF_F64` value (verified at strict 1e-12).
+#[allow(dead_code)] // component; active product is M0X_CF_TIMES_SCALEFACTOR_TF below
 const M0X_CF_F64: f64 = 2.871_234_000_188_191_0_f64;
 
 /// `M0X_CF_F64 * M0X_SCALEFACTOR_TF_F64` — scale-corrected Thomas-Fermi

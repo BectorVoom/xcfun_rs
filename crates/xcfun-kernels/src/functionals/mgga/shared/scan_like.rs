@@ -204,7 +204,8 @@ const C_PP: f64 = 146.0 / 2025.0 * ETA_TERM * ETA_TERM - 73.0 / 405.0 * ETA_TERM
     + (ALPHA_GE_F64 * C2_X + MU_F64) * (ALPHA_GE_F64 * C2_X + MU_F64) / K1_F64;
 const DAMP4_A_SQ: f64 = DX_DAMP4_A_F64 * DX_DAMP4_A_F64;
 const DAMP4_P4: f64 = DX_DAMP4_P_F64 * DX_DAMP4_P_F64 * DX_DAMP4_P_F64 * DX_DAMP4_P_F64;
-// ALPHA_GE * C2_X + MU used in both C_PA and C_PP
+// ALPHA_GE * C2_X + MU used in both C_PA and C_PP — inline in those consts for now
+#[allow(dead_code)]
 const AGE_C2_MU: f64 = ALPHA_GE_F64 * C2_X + MU_F64;
 
 // ---------------------------------------------------------------------------

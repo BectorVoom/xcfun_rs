@@ -25,7 +25,7 @@ use cubecl::prelude::*;
 use xcfun_ad::ctaylor::{ctaylor_add, ctaylor_scalar_mul};
 use xcfun_ad::ctaylor_br_inverse;
 use xcfun_ad::ctaylor_rec::mul::ctaylor_mul;
-use xcfun_ad::math::{ctaylor_exp, ctaylor_log, ctaylor_pow, ctaylor_reciprocal};
+use xcfun_ad::math::{ctaylor_exp, ctaylor_pow, ctaylor_reciprocal};
 
 // Pre-computed constants for br_like.
 // 1.0 / (2.0/3.0 * PI^(2/3)):
