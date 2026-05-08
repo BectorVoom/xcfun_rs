@@ -12,6 +12,7 @@
 
 use pyo3::prelude::*;
 
+mod errors;
 mod functional;
 
 use functional::free_fns::{
@@ -27,7 +28,8 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // m.add_class::<functional::Functional>()?;          // Plan 07-04 (PY-02)
     // m.add_class::<functional::Mode>()?;                // Plan 07-04
     // m.add_class::<functional::Vars>()?;                // Plan 07-04
-    // m.add("XcfunError", m.py().get_type::<errors::XcfunError>())?; // Plan 07-03 (PY-05)
+    // PY-05 — single XcfunError class (the .code/.kind shim is in __init__.py).
+    m.add("XcfunError", m.py().get_type::<errors::XcfunError>())?;
 
     // ----- PY-04 — 11 module-level free functions.
     m.add_function(wrap_pyfunction!(version,                 m)?)?;
