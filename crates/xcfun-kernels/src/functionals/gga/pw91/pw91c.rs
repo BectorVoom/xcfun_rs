@@ -426,7 +426,12 @@ pub fn pw91c_kernel<F: Float>(
     let mut frac_cc = Array::<F>::new(size);
     ctaylor_mul::<F>(&cc_num, &inv_ccd, &mut frac_cc, n);
     let mut cc = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&frac_cc, F::new(0.001), &mut cc, n);
+    // 06-N7/07-00 — `F::new(x)` takes f32; `F::new(0.001)` parses 0.001
+    // as f32 first (=0.0010000000474974513 when promoted to f64), 4.75e-8
+    // relative away from the f64 truth `0.001`. Use F::cast_from(0.001_f64)
+    // to preserve f64 precision. Identified as a contributor to PW91C's
+    // systematic order-0 offset against C++.
+    ctaylor_scalar_mul::<F>(&frac_cc, F::cast_from(0.001_f64), &mut cc, n);
     cc[0] = cc[0] - F::cast_from(PW91C_CX);
 
     // H0 = 0.5 · gs³ · β²/α · log(1 + 2α·(T2 + A·T2²) / (β·(1 + A·T2·(1 + A·T2)))).
