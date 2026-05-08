@@ -1,7 +1,7 @@
 ---
 name: gsd:sketch
 description: Sketch UI/design ideas with throwaway HTML mockups, or propose what to sketch next (frontier mode)
-argument-hint: "[design idea to explore] [--quick] [--text] or [frontier]"
+argument-hint: "[design idea to explore] [--quick] [--text] [--wrap-up] or [frontier]"
 allowed-tools:
   - Read
   - Write
@@ -29,12 +29,13 @@ Does not require `/gsd-new-project` — auto-creates `.planning/sketches/` if ne
 </objective>
 
 <execution_context>
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/sketch.md
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/ui-brand.md
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/sketch-theme-system.md
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/sketch-interactivity.md
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/sketch-tooling.md
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/sketch-variant-patterns.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/sketch.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/sketch-wrap-up.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/ui-brand.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/sketch-theme-system.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/sketch-interactivity.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/sketch-tooling.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/sketch-variant-patterns.md
 </execution_context>
 
 <runtime_note>
@@ -46,9 +47,13 @@ Design idea: $ARGUMENTS
 
 **Available flags:**
 - `--quick` — Skip mood/direction intake, jump straight to decomposition and building. Use when the design direction is already clear.
+- `--wrap-up` — Package sketch design findings into a persistent project skill for future build conversations. Runs the sketch-wrap-up workflow.
 </context>
 
 <process>
-Execute the sketch workflow from @/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/sketch.md end-to-end.
+Parse the first token of $ARGUMENTS:
+- If it is `--wrap-up`: strip the flag, execute the sketch-wrap-up workflow from @/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/sketch-wrap-up.md end-to-end.
+- Otherwise: execute the sketch workflow from @/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/sketch.md end-to-end.
+
 Preserve all workflow gates (intake, decomposition, target stack research, variant evaluation, MANIFEST updates, commit patterns).
 </process>

@@ -133,8 +133,7 @@ pub fn read_completed_tuples(path: &str) -> Result<HashSet<TupleKey>> {
     if !Path::new(path).exists() {
         return Ok(set);
     }
-    let f = fs::File::open(path)
-        .with_context(|| format!("opening {} for resume scan", path))?;
+    let f = fs::File::open(path).with_context(|| format!("opening {} for resume scan", path))?;
     let reader = BufReader::new(f);
     let mut malformed = 0_usize;
     let mut total = 0_usize;
@@ -197,8 +196,7 @@ pub fn rebuild_matrix_from_jsonl(
     if !Path::new(path).exists() {
         return Ok(out);
     }
-    let f = fs::File::open(path)
-        .with_context(|| format!("opening {} for matrix rebuild", path))?;
+    let f = fs::File::open(path).with_context(|| format!("opening {} for matrix rebuild", path))?;
     let reader = BufReader::new(f);
     for line_res in reader.lines() {
         let line = match line_res {
@@ -249,10 +247,7 @@ pub fn rebuild_matrix_from_jsonl(
                 entry.clamp_stratum_failures += 1;
             }
         }
-        if !rec.pass
-            && !rec.excluded_by_upstream_spec
-            && !rec.excluded_by_regularize_clamp_design
-        {
+        if !rec.pass && !rec.excluded_by_upstream_spec && !rec.excluded_by_regularize_clamp_design {
             entry.records_failed += 1;
         }
         if rec.rust_unavailable {
@@ -273,7 +268,9 @@ pub fn write_html(report: &Report, path: &str) -> Result<()> {
     html.push_str("h1 { margin: 0 0 8px 0; }\n");
     html.push_str("p { margin: 4px 0; }\n");
     html.push_str("code { background: #f4f4f4; padding: 1px 5px; border-radius: 3px; }\n");
-    html.push_str("table { border-collapse: collapse; margin-top: 16px; font-family: Menlo, monospace; }\n");
+    html.push_str(
+        "table { border-collapse: collapse; margin-top: 16px; font-family: Menlo, monospace; }\n",
+    );
     html.push_str("th, td { border: 1px solid #aaa; padding: 6px 12px; text-align: right; }\n");
     html.push_str("th { background: #eee; text-align: center; }\n");
     html.push_str("td.name { text-align: left; font-weight: bold; }\n");
@@ -282,9 +279,13 @@ pub fn write_html(report: &Report, path: &str) -> Result<()> {
     html.push_str("td.red { background: #fcc; font-weight: bold; }\n");
     html.push_str("td.gray { background: #eee; color: #666; }\n");
     html.push_str("td.tol { text-align: center; }\n");
-    html.push_str("td.missing { background: #eef; color: #668; font-style: italic; text-align: center; }\n");
+    html.push_str(
+        "td.missing { background: #eef; color: #668; font-style: italic; text-align: center; }\n",
+    );
     html.push_str(".legend { margin-top: 20px; font-size: 0.95em; }\n");
-    html.push_str(".legend span { padding: 2px 8px; border: 1px solid #aaa; margin-right: 4px; }\n");
+    html.push_str(
+        ".legend span { padding: 2px 8px; border: 1px solid #aaa; margin-right: 4px; }\n",
+    );
     html.push_str("</style></head><body>\n");
     html.push_str("<h1>XCFun Tier-2 Parity Report</h1>\n");
     html.push_str("<p>Backend: <code>CpuRuntime (cubecl-cpu =0.10.0-pre.3)</code></p>\n");
@@ -295,11 +296,7 @@ pub fn write_html(report: &Report, path: &str) -> Result<()> {
     ));
     let failed = report.failed_count();
     let total = report.total_records();
-    let rust_unavail: usize = report
-        .matrix
-        .values()
-        .map(|c| c.rust_unavailable)
-        .sum();
+    let rust_unavail: usize = report.matrix.values().map(|c| c.rust_unavailable).sum();
     let clamp_total = report.clamp_stratum_total();
     let clamp_fails = report.clamp_stratum_failures_total();
     html.push_str(&format!(
@@ -394,7 +391,9 @@ pub fn write_html(report: &Report, path: &str) -> Result<()> {
 
     html.push_str("<div class=\"legend\">\n");
     html.push_str("<p>Color key: <span class=\"green\">GREEN</span> rel-err &lt; threshold/10; ");
-    html.push_str("<span class=\"yellow\">YELLOW</span> threshold/10 &le; rel-err &lt; threshold; ");
+    html.push_str(
+        "<span class=\"yellow\">YELLOW</span> threshold/10 &le; rel-err &lt; threshold; ",
+    );
     html.push_str("<span class=\"red\">RED</span> rel-err &ge; threshold (FAIL); ");
     html.push_str("<span class=\"gray\">GRAY</span> Rust launch arm not yet wired (D-19 INCONCLUSIVE trigger — NOT silent widening).</p>\n");
     html.push_str("<p>Threshold dispatch per CONTEXT D-24: strict 1e-12 for 8 LDAs; 1e-7 for the 3 LDAERF functionals (user-approved override, annotated above).</p>\n");

@@ -105,12 +105,7 @@ pub fn ctaylor_from_variable<F: Float>(
 /// }
 /// ```
 #[cube]
-pub fn ctaylor_add<F: Float>(
-    a: &Array<F>,
-    b: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_add<F: Float>(a: &Array<F>, b: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!(1_u32 << n);
     #[unroll]
     for i in 0..size {
@@ -132,12 +127,7 @@ pub fn ctaylor_add<F: Float>(
 /// }
 /// ```
 #[cube]
-pub fn ctaylor_sub<F: Float>(
-    a: &Array<F>,
-    b: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_sub<F: Float>(a: &Array<F>, b: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!(1_u32 << n);
     #[unroll]
     for i in 0..size {
@@ -177,12 +167,7 @@ pub fn ctaylor_neg<F: Float>(a: &Array<F>, out: &mut Array<F>, #[comptime] n: u3
 /// }
 /// ```
 #[cube]
-pub fn ctaylor_scalar_mul<F: Float>(
-    a: &Array<F>,
-    s: F,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_scalar_mul<F: Float>(a: &Array<F>, s: F, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!(1_u32 << n);
     #[unroll]
     for i in 0..size {

@@ -34,9 +34,7 @@
 use cubecl::prelude::*;
 use xcfun_ad::ctaylor::{ctaylor_add, ctaylor_scalar_mul, ctaylor_sub, ctaylor_zero};
 use xcfun_ad::ctaylor_rec::mul::ctaylor_mul;
-use xcfun_ad::math::{
-    ctaylor_atan, ctaylor_log, ctaylor_pow, ctaylor_reciprocal, ctaylor_sqrt,
-};
+use xcfun_ad::math::{ctaylor_atan, ctaylor_log, ctaylor_pow, ctaylor_reciprocal, ctaylor_sqrt};
 
 use crate::density_vars::DensVarsDev;
 
@@ -480,7 +478,12 @@ pub fn vwn5_eps<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n:
     let mut finter_one_m = Array::<F>::new(size);
     ctaylor_mul::<F>(&f_inter, &one_m_zeta4, &mut finter_one_m, n);
     let mut term_b = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&finter_one_m, F::cast_from(VWN5_INTER_FACTOR), &mut term_b, n);
+    ctaylor_scalar_mul::<F>(
+        &finter_one_m,
+        F::cast_from(VWN5_INTER_FACTOR),
+        &mut term_b,
+        n,
+    );
 
     // bracket = term_a + term_b
     let mut bracket = Array::<F>::new(size);

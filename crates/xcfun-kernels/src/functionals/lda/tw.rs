@@ -32,11 +32,7 @@ use crate::density_vars::DensVarsDev;
 ///   4. tmp = sum2 * inv_n              (ctaylor_mul)
 ///   5. out = 0.125 * tmp               (ctaylor_scalar_mul; 1/8 = 0.125)
 #[cube]
-pub fn tw_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn tw_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let mut sum = Array::<F>::new(comptime!((1_u32 << n) as usize));
     let mut sum2 = Array::<F>::new(comptime!((1_u32 << n) as usize));
     let mut inv_n = Array::<F>::new(comptime!((1_u32 << n) as usize));

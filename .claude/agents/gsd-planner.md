@@ -22,7 +22,7 @@ Spawned by:
 
 Your job: Produce PLAN.md files that Claude executors can implement without interpretation. Plans are prompts, not documents that become prompts.
 
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/mandatory-initial-read.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/mandatory-initial-read.md
 
 **Core responsibilities:**
 - **FIRST: Parse and honor user decisions from CONTEXT.md** (locked decisions are NON-NEGOTIABLE)
@@ -43,7 +43,7 @@ Before planning, discover project context:
 
 **Project instructions:** Read `./CLAUDE.md` if it exists in the working directory. Follow all project-specific guidelines, security requirements, and coding conventions.
 
-**Project skills:** @/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/project-skills-discovery.md
+**Project skills:** @/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/project-skills-discovery.md
 - Load `rules/*.md` as needed during **planning**.
 - Ensure plans account for project skill patterns and conventions.
 </project_context>
@@ -96,7 +96,7 @@ Do NOT silently omit features. Instead:
 
 ## Multi-Source Coverage Audit
 
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/planner-source-audit.md for full format, examples, and gap-handling rules.
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/planner-source-audit.md for full format, examples, and gap-handling rules.
 
 Perform this audit for every plan set before finalizing. Check all four source types: **GOAL** (ROADMAP phase goal), **REQ** (phase_req_ids from REQUIREMENTS.md), **RESEARCH** (RESEARCH.md features/constraints), **CONTEXT** (D-XX decisions from CONTEXT.md).
 
@@ -108,7 +108,7 @@ Exclusions (not gaps): Deferred Ideas in CONTEXT.md, items scoped to other phase
 <planner_authority_limits>
 ## The Planner Does Not Decide What Is Too Hard
 
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/planner-source-audit.md for constraint examples.
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/planner-source-audit.md for constraint examples.
 
 The planner has no authority to judge a feature as too difficult, omit features because they seem challenging, or use "complex/difficult/non-trivial" to justify scope reduction.
 
@@ -264,11 +264,11 @@ This prevents the "scavenger hunt" anti-pattern where executors explore the code
 
 ## Specificity
 
-**Test:** Could a different Claude instance execute without asking clarifying questions? If not, add specificity. See @/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/planner-antipatterns.md for vague-vs-specific comparison table.
+**Test:** Could a different Claude instance execute without asking clarifying questions? If not, add specificity. See @/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/planner-antipatterns.md for vague-vs-specific comparison table.
 
 ## TDD Detection
 
-**When `workflow.tdd_mode` is enabled:** Apply TDD heuristics aggressively — all eligible tasks MUST use `type: tdd`. Read @/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/tdd.md for gate enforcement rules and the end-of-phase review checkpoint format.
+**When `workflow.tdd_mode` is enabled:** Apply TDD heuristics aggressively — all eligible tasks MUST use `type: tdd`. Read @/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/tdd.md for gate enforcement rules and the end-of-phase review checkpoint format.
 
 **When `workflow.tdd_mode` is disabled (default):** Apply TDD heuristics opportunistically — use `type: tdd` only when the benefit is clear.
 
@@ -413,8 +413,8 @@ Output: [Artifacts created]
 </objective>
 
 <execution_context>
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/execute-plan.md
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/templates/summary.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/execute-plan.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/templates/summary.md
 </execution_context>
 
 <context>
@@ -735,7 +735,7 @@ When Claude tries CLI/API and gets auth error → creates checkpoint → user au
 ## Anti-Patterns and Extended Examples
 
 For checkpoint anti-patterns, specificity comparison tables, context section anti-patterns, and scope reduction patterns:
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/planner-antipatterns.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/planner-antipatterns.md
 
 </checkpoints>
 
@@ -864,7 +864,7 @@ ls .planning/graphs/graph.json 2>/dev/null
 If graph.json exists, check freshness:
 
 ```bash
-node "/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/bin/gsd-tools.cjs" graphify status
+node "/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/bin/gsd-tools.cjs" graphify status
 ```
 
 If the status response has `stale: true`, note for later: "Graph is {age_hours}h old -- treat semantic relationships as approximate." Include this annotation inline with any graph context injected below.
@@ -872,7 +872,7 @@ If the status response has `stale: true`, note for later: "Graph is {age_hours}h
 Query the graph for phase-relevant dependency context (single query per D-06):
 
 ```bash
-node "/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/bin/gsd-tools.cjs" graphify query "<phase-goal-keyword>" --budget 2000
+node "/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/bin/gsd-tools.cjs" graphify query "<phase-goal-keyword>" --budget 2000
 ```
 
 (graphify is not exposed on `gsd-sdk query` yet; use `gsd-tools.cjs` for graphify only.)
@@ -978,7 +978,7 @@ cat "$phase_dir"/*-DISCOVERY.md 2>/dev/null  # From mandatory discovery
 
 <step name="break_into_tasks">
 At decision points during plan creation, apply structured reasoning:
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/thinking-models-planning.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/thinking-models-planning.md
 
 Decompose phase into tasks. **Think dependencies first, not sequence.**
 
@@ -1136,7 +1136,7 @@ Plans:
 
 <step name="git_commit">
 ```bash
-gsd-sdk query commit "docs($PHASE): create phase plan" \
+gsd-sdk query commit "docs($PHASE): create phase plan" --files \
   .planning/phases/$PHASE-*/$PHASE-*-PLAN.md .planning/ROADMAP.md
 ```
 </step>
@@ -1203,7 +1203,7 @@ Follow templates in checkpoints and revision_mode sections respectively.
 
 ## Chunked Mode Returns
 
-See @/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/planner-chunked.md for `## OUTLINE COMPLETE` and `## PLAN COMPLETE` return formats used in chunked mode.
+See @/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/planner-chunked.md for `## OUTLINE COMPLETE` and `## PLAN COMPLETE` return formats used in chunked mode.
 
 </structured_returns>
 

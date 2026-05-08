@@ -80,11 +80,7 @@ fn pbesolx_channel<F: Float>(
 }
 
 #[cube]
-pub fn pbesolx_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn pbesolx_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
     let mut e_alpha = Array::<F>::new(size);
     pbesolx_channel::<F>(&d.a_43, &d.a, &d.gaa, &mut e_alpha, n);

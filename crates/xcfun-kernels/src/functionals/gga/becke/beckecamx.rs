@@ -77,7 +77,12 @@ fn becke_cam<F: Float>(
     let mut rho_13 = Array::<F>::new(size);
     ctaylor_pow::<F>(rho, F::cast_from(1.0_f64 / 3.0_f64), &mut rho_13, n);
     let mut denom_a = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&rho_13, F::new(6.0) * F::cast_from(SQRT_PI_F64), &mut denom_a, n);
+    ctaylor_scalar_mul::<F>(
+        &rho_13,
+        F::new(6.0) * F::cast_from(SQRT_PI_F64),
+        &mut denom_a,
+        n,
+    );
     let mut inv_denom_a = Array::<F>::new(size);
     ctaylor_reciprocal::<F>(&denom_a, &mut inv_denom_a, n);
     let mut mu_sqrt_k = Array::<F>::new(size);
@@ -150,11 +155,7 @@ fn becke_cam<F: Float>(
 }
 
 #[cube]
-pub fn beckecamx_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn beckecamx_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
     let mu = F::cast_from(DEFAULT_MU_F64);
     let alpha = F::cast_from(DEFAULT_CAM_ALPHA_F64);

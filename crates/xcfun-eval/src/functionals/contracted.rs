@@ -155,13 +155,8 @@ pub fn launch_contracted(
     // Plan 06-06 D-17: weights is now Vec<...>; iterate by reference.
     for &(id, weight) in functional.weights.iter() {
         let id_u32 = id as u32;
-        let out_vec = crate::functional::run_launch(
-            id_u32,
-            vars as u32,
-            order,
-            input,
-            coeff_count,
-        )?;
+        let out_vec =
+            crate::functional::run_launch(id_u32, vars as u32, order, input, coeff_count)?;
         debug_assert_eq!(out_vec.len(), coeff_count);
 
         // XCFunctional.cpp:633 `output[i] = out.get(i)` is a write — but

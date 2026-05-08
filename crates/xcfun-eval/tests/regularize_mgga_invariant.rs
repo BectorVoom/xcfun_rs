@@ -16,9 +16,9 @@
 use cubecl::prelude::*;
 use cubecl_cpu::CpuRuntime;
 // Phase 6 Plan 06-01 (D-08): density_vars migrated to xcfun-kernels.
+use xcfun_eval::for_tests::cpu_client;
 use xcfun_kernels::density_vars::DensVarsDevLaunch;
 use xcfun_kernels::density_vars::build::build_densvars;
-use xcfun_eval::for_tests::cpu_client;
 
 /// Thin `#[cube(launch_unchecked)]` wrapper over `build_densvars` so we can
 /// invoke the public `#[cube] fn` from a host-side test via launch_unchecked.

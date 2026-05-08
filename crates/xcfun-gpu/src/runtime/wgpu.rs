@@ -83,9 +83,7 @@ fn init_wgpu_with_f64() -> Option<WgpuClient> {
 /// adapter which the OS resolves to Vulkan / Metal / DX12 as
 /// appropriate.
 pub fn wgpu_with_shader_f64_available() -> bool {
-    WGPU_CLIENT
-        .get_or_init(init_wgpu_with_f64)
-        .is_some()
+    WGPU_CLIENT.get_or_init(init_wgpu_with_f64).is_some()
 }
 
 /// Apple Silicon Metal path — same probe as
@@ -140,15 +138,14 @@ pub fn wgpu_client() -> &'static WgpuClient {
 /// fall back to a sentinel `&'static str` so the error variant is
 /// always constructible.
 pub fn wgpu_no_f64_error(requested: crate::Backend) -> xcfun_core::XcError {
-    let adapter_name: &'static str =
-        match std::panic::catch_unwind(|| {
-            let device = WgpuDevice::default();
-            let client = WgpuRuntime::client(&device);
-            WgpuRuntime::name(&client)
-        }) {
-            Ok(name) => name,
-            Err(_) => "<wgpu init failed>",
-        };
+    let adapter_name: &'static str = match std::panic::catch_unwind(|| {
+        let device = WgpuDevice::default();
+        let client = WgpuRuntime::client(&device);
+        WgpuRuntime::name(&client)
+    }) {
+        Ok(name) => name,
+        Err(_) => "<wgpu init failed>",
+    };
     xcfun_core::XcError::WgpuNoF64 {
         adapter_name,
         requested_runtime: requested.into(),

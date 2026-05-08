@@ -43,11 +43,7 @@ const POLY_C6_F64: f64 = 1.196_35_f64;
 const POLY_C8_F64: f64 = -0.365_19_f64;
 
 #[cube]
-pub fn zvpbesolc_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn zvpbesolc_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     zvpbe_common::<F>(
         d,
         F::cast_from(ZVPBESOLC_ALPHA_F64),

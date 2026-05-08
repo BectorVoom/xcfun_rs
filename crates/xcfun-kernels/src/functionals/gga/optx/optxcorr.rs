@@ -47,11 +47,7 @@ fn optxcorr_alpha<F: Float>(
 
 /// XC_OPTXCORR kernel. 1:1 port of `optxcorr.cpp:18-33`.
 #[cube]
-pub fn optxcorr_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn optxcorr_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     let mut e_alpha = Array::<F>::new(size);

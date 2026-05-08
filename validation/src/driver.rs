@@ -39,10 +39,12 @@
 use anyhow::{Context as _, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashSet, VecDeque};
-use std::sync::{Arc, Mutex};
 use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
 
-use xcfun_core::{Dependency, FUNCTIONAL_DESCRIPTORS, FunctionalId, Mode, VARS_TABLE, Vars, taylorlen};
+use xcfun_core::{
+    Dependency, FUNCTIONAL_DESCRIPTORS, FunctionalId, Mode, VARS_TABLE, Vars, taylorlen,
+};
 use xcfun_eval::Functional;
 
 use crate::ffi::CppXcfun;
@@ -194,7 +196,8 @@ impl Report {
     /// `push_with_sink` so each retained record is also written + flushed
     /// to disk synchronously.
     pub fn push(&mut self, rec: ReportRecord) {
-        self.push_with_sink(rec, None).expect("no sink: cannot fail");
+        self.push_with_sink(rec, None)
+            .expect("no sink: cannot fail");
     }
 
     /// Append a record to the in-memory aggregate AND, if a sink is supplied,
@@ -236,8 +239,7 @@ impl Report {
                 entry.clamp_stratum_failures += 1;
             }
         }
-        if !rec.pass && !rec.excluded_by_upstream_spec && !rec.excluded_by_regularize_clamp_design
-        {
+        if !rec.pass && !rec.excluded_by_upstream_spec && !rec.excluded_by_regularize_clamp_design {
             entry.records_failed += 1;
         }
         if rec.rust_unavailable {
@@ -374,7 +376,13 @@ fn run_one_tuple_pd<F>(
 where
     F: FnMut(ReportRecord) -> Result<()>,
 {
-    let JobPD { id, name, vars, order, threshold } = *job;
+    let JobPD {
+        id,
+        name,
+        vars,
+        order,
+        threshold,
+    } = *job;
     let inlen = VARS_TABLE[vars as usize].len as usize;
     let outlen = taylorlen(inlen, order as usize);
 
@@ -432,8 +440,7 @@ where
         let mut rust_out = vec![0.0_f64; outlen];
         let mut cpp_out = vec![0.0_f64; outlen];
 
-        let in_clamp_stratum = input.len() >= 2
-            && input[0].min(input[1]) <= clamp_bound;
+        let in_clamp_stratum = input.len() >= 2 && input[0].min(input[1]) <= clamp_bound;
 
         cpp.eval(&input, &mut cpp_out);
 
@@ -490,7 +497,14 @@ fn run_one_tuple_potential<F>(
 where
     F: FnMut(ReportRecord) -> Result<()>,
 {
-    let JobPot { id, name, vars, inlen, outlen, threshold } = *job;
+    let JobPot {
+        id,
+        name,
+        vars,
+        inlen,
+        outlen,
+        threshold,
+    } = *job;
 
     let s = cpp.set(&cpp_name(name), 1.0);
     if s != 0 {
@@ -537,8 +551,7 @@ where
         let mut rust_out = vec![0.0_f64; outlen];
         let mut cpp_out = vec![0.0_f64; outlen];
 
-        let in_clamp_stratum = input.len() >= 2
-            && input[0].min(input[1]) <= clamp_bound;
+        let in_clamp_stratum = input.len() >= 2 && input[0].min(input[1]) <= clamp_bound;
 
         cpp.eval(&input, &mut cpp_out);
 
@@ -589,30 +602,31 @@ where
 /// (functional, order) because C++ `xcfun_output_length` dies for
 /// XC_CONTRACTED. Phase 6 will replace this with a direct
 /// `xcfun_eval` invocation bypassing the FFI shim's length check.
-fn run_one_tuple_contracted<F>(
-    job: &JobCon,
-    cpp: &mut CppXcfun,
-    mut emit: F,
-) -> Result<()>
+fn run_one_tuple_contracted<F>(job: &JobCon, cpp: &mut CppXcfun, mut emit: F) -> Result<()>
 where
     F: FnMut(ReportRecord) -> Result<()>,
 {
-    let JobCon { id: _, name, vars, order, threshold } = *job;
+    let JobCon {
+        id: _,
+        name,
+        vars,
+        order,
+        threshold,
+    } = *job;
 
     let s = cpp.set(&cpp_name(name), 1.0);
     if s != 0 {
-        anyhow::bail!(
-            "xcfun_set({}, 1.0) failed: status={}",
-            cpp_name(name),
-            s
-        );
+        anyhow::bail!("xcfun_set({}, 1.0) failed: status={}", cpp_name(name), s);
     }
     // mode = 3 (XC_CONTRACTED) per xcfun.h:39.
     let setup = cpp.eval_setup(vars as u32, 3, order as i32);
     if setup != 0 {
         anyhow::bail!(
             "xcfun_eval_setup({}, {:?}, CONTRACTED order={}) failed: status={}",
-            name, vars, order, setup
+            name,
+            vars,
+            order,
+            setup
         );
     }
     let cpp_inlen = cpp.input_length();
@@ -621,7 +635,9 @@ where
          C++ xcfun_output_length die's for XC_CONTRACTED \
          (XCFunctional.cpp:488); Phase-6 prerequisite for direct \
          xcfun_eval invocation (cpp_input_length={})",
-        name, order, cpp_inlen
+        name,
+        order,
+        cpp_inlen
     );
     let rec = ReportRecord {
         functional: name.into(),
@@ -963,29 +979,81 @@ pub fn run(
         // Phase-3 Wave-2 GGAs (17): PBE×12 + Becke×4 + LYP×1.
         (FunctionalId::XC_PBEX, "XC_PBEX", Vars::A_B_GAA_GAB_GBB),
         (FunctionalId::XC_PBEC, "XC_PBEC", Vars::A_B_GAA_GAB_GBB),
-        (FunctionalId::XC_REVPBEX, "XC_REVPBEX", Vars::A_B_GAA_GAB_GBB),
+        (
+            FunctionalId::XC_REVPBEX,
+            "XC_REVPBEX",
+            Vars::A_B_GAA_GAB_GBB,
+        ),
         (FunctionalId::XC_RPBEX, "XC_RPBEX", Vars::A_B_GAA_GAB_GBB),
-        (FunctionalId::XC_PBESOLX, "XC_PBESOLX", Vars::A_B_GAA_GAB_GBB),
-        (FunctionalId::XC_PBEINTX, "XC_PBEINTX", Vars::A_B_GAA_GAB_GBB),
-        (FunctionalId::XC_PBEINTC, "XC_PBEINTC", Vars::A_B_GAA_GAB_GBB),
+        (
+            FunctionalId::XC_PBESOLX,
+            "XC_PBESOLX",
+            Vars::A_B_GAA_GAB_GBB,
+        ),
+        (
+            FunctionalId::XC_PBEINTX,
+            "XC_PBEINTX",
+            Vars::A_B_GAA_GAB_GBB,
+        ),
+        (
+            FunctionalId::XC_PBEINTC,
+            "XC_PBEINTC",
+            Vars::A_B_GAA_GAB_GBB,
+        ),
         (FunctionalId::XC_SPBEC, "XC_SPBEC", Vars::A_B_GAA_GAB_GBB),
-        (FunctionalId::XC_PBELOCC, "XC_PBELOCC", Vars::A_B_GAA_GAB_GBB),
-        (FunctionalId::XC_ZVPBESOLC, "XC_ZVPBESOLC", Vars::A_B_GAA_GAB_GBB),
-        (FunctionalId::XC_ZVPBEINTC, "XC_ZVPBEINTC", Vars::A_B_GAA_GAB_GBB),
-        (FunctionalId::XC_VWN_PBEC, "XC_VWN_PBEC", Vars::A_B_GAA_GAB_GBB),
+        (
+            FunctionalId::XC_PBELOCC,
+            "XC_PBELOCC",
+            Vars::A_B_GAA_GAB_GBB,
+        ),
+        (
+            FunctionalId::XC_ZVPBESOLC,
+            "XC_ZVPBESOLC",
+            Vars::A_B_GAA_GAB_GBB,
+        ),
+        (
+            FunctionalId::XC_ZVPBEINTC,
+            "XC_ZVPBEINTC",
+            Vars::A_B_GAA_GAB_GBB,
+        ),
+        (
+            FunctionalId::XC_VWN_PBEC,
+            "XC_VWN_PBEC",
+            Vars::A_B_GAA_GAB_GBB,
+        ),
         (FunctionalId::XC_BECKEX, "XC_BECKEX", Vars::A_B_GAA_GAB_GBB),
-        (FunctionalId::XC_BECKECORRX, "XC_BECKECORRX", Vars::A_B_GAA_GAB_GBB),
-        (FunctionalId::XC_BECKESRX, "XC_BECKESRX", Vars::A_B_GAA_GAB_GBB),
-        (FunctionalId::XC_BECKECAMX, "XC_BECKECAMX", Vars::A_B_GAA_GAB_GBB),
+        (
+            FunctionalId::XC_BECKECORRX,
+            "XC_BECKECORRX",
+            Vars::A_B_GAA_GAB_GBB,
+        ),
+        (
+            FunctionalId::XC_BECKESRX,
+            "XC_BECKESRX",
+            Vars::A_B_GAA_GAB_GBB,
+        ),
+        (
+            FunctionalId::XC_BECKECAMX,
+            "XC_BECKECAMX",
+            Vars::A_B_GAA_GAB_GBB,
+        ),
         (FunctionalId::XC_LYPC, "XC_LYPC", Vars::A_B_GAA_GAB_GBB),
         // Phase-3 Wave-3 GGAs (10): OPTX×2 + PW86/91×4 + P86×2 + APBE×2.
         (FunctionalId::XC_PW86X, "XC_PW86X", Vars::A_B_GAA_GAB_GBB),
         (FunctionalId::XC_OPTX, "XC_OPTX", Vars::A_B_GAA_GAB_GBB),
-        (FunctionalId::XC_OPTXCORR, "XC_OPTXCORR", Vars::A_B_GAA_GAB_GBB),
+        (
+            FunctionalId::XC_OPTXCORR,
+            "XC_OPTXCORR",
+            Vars::A_B_GAA_GAB_GBB,
+        ),
         (FunctionalId::XC_PW91X, "XC_PW91X", Vars::A_B_GAA_GAB_GBB),
         (FunctionalId::XC_PW91K, "XC_PW91K", Vars::A_B_GAA_GAB_GBB),
         (FunctionalId::XC_P86C, "XC_P86C", Vars::A_B_GAA_GAB_GBB),
-        (FunctionalId::XC_P86CORRC, "XC_P86CORRC", Vars::A_B_GAA_GAB_GBB),
+        (
+            FunctionalId::XC_P86CORRC,
+            "XC_P86CORRC",
+            Vars::A_B_GAA_GAB_GBB,
+        ),
         (FunctionalId::XC_APBEX, "XC_APBEX", Vars::A_B_GAA_GAB_GBB),
         (FunctionalId::XC_APBEC, "XC_APBEC", Vars::A_B_GAA_GAB_GBB),
         (FunctionalId::XC_PW91C, "XC_PW91C", Vars::A_B_GAA_GAB_GBB),
@@ -1011,43 +1079,171 @@ pub fn run(
         // code needed here, the per-functional skip-list at line 362 may
         // need extension during execution if XC_BRX/BRC/BRXC/CSC abort.
         // ----- TPSS family + TPSSLOCC (5 ids) -----
-        (FunctionalId::XC_TPSSC, "XC_TPSSC", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_TPSSX, "XC_TPSSX", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_REVTPSSC, "XC_REVTPSSC", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_REVTPSSX, "XC_REVTPSSX", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_TPSSLOCC, "XC_TPSSLOCC", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (
+            FunctionalId::XC_TPSSC,
+            "XC_TPSSC",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_TPSSX,
+            "XC_TPSSX",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_REVTPSSC,
+            "XC_REVTPSSC",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_REVTPSSX,
+            "XC_REVTPSSX",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_TPSSLOCC,
+            "XC_TPSSLOCC",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
         // ----- BLOCX (1 id, TAUA_TAUB only) -----
-        (FunctionalId::XC_BLOCX, "XC_BLOCX", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (
+            FunctionalId::XC_BLOCX,
+            "XC_BLOCX",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
         // ----- SCAN family (10 ids) -----
-        (FunctionalId::XC_SCANC, "XC_SCANC", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_SCANX, "XC_SCANX", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_RSCANC, "XC_RSCANC", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_RSCANX, "XC_RSCANX", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_RPPSCANC, "XC_RPPSCANC", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_RPPSCANX, "XC_RPPSCANX", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_R2SCANC, "XC_R2SCANC", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_R2SCANX, "XC_R2SCANX", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_R4SCANC, "XC_R4SCANC", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_R4SCANX, "XC_R4SCANX", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (
+            FunctionalId::XC_SCANC,
+            "XC_SCANC",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_SCANX,
+            "XC_SCANX",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_RSCANC,
+            "XC_RSCANC",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_RSCANX,
+            "XC_RSCANX",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_RPPSCANC,
+            "XC_RPPSCANC",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_RPPSCANX,
+            "XC_RPPSCANX",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_R2SCANC,
+            "XC_R2SCANC",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_R2SCANX,
+            "XC_R2SCANX",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_R4SCANC,
+            "XC_R4SCANC",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_R4SCANX,
+            "XC_R4SCANX",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
         // ----- M05 family (4 ids) -----
-        (FunctionalId::XC_M05X, "XC_M05X", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_M05X2X, "XC_M05X2X", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_M05X2C, "XC_M05X2C", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_M05C, "XC_M05C", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (
+            FunctionalId::XC_M05X,
+            "XC_M05X",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_M05X2X,
+            "XC_M05X2X",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_M05X2C,
+            "XC_M05X2C",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_M05C,
+            "XC_M05C",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
         // ----- M06 family (8 ids) -----
-        (FunctionalId::XC_M06X, "XC_M06X", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_M06X2X, "XC_M06X2X", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_M06LX, "XC_M06LX", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_M06HFX, "XC_M06HFX", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_M06C, "XC_M06C", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_M06HFC, "XC_M06HFC", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_M06LC, "XC_M06LC", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-        (FunctionalId::XC_M06X2C, "XC_M06X2C", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+        (
+            FunctionalId::XC_M06X,
+            "XC_M06X",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_M06X2X,
+            "XC_M06X2X",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_M06LX,
+            "XC_M06LX",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_M06HFX,
+            "XC_M06HFX",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_M06C,
+            "XC_M06C",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_M06HFC,
+            "XC_M06HFC",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_M06LC,
+            "XC_M06LC",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
+        (
+            FunctionalId::XC_M06X2C,
+            "XC_M06X2C",
+            Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        ),
         // ----- BR family + CSC (4 ids at vars=17) -----
-        (FunctionalId::XC_BRX, "XC_BRX", Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB),
-        (FunctionalId::XC_BRC, "XC_BRC", Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB),
-        (FunctionalId::XC_BRXC, "XC_BRXC", Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB),
-        (FunctionalId::XC_CSC, "XC_CSC", Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB),
+        (
+            FunctionalId::XC_BRX,
+            "XC_BRX",
+            Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB,
+        ),
+        (
+            FunctionalId::XC_BRC,
+            "XC_BRC",
+            Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB,
+        ),
+        (
+            FunctionalId::XC_BRXC,
+            "XC_BRXC",
+            Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB,
+        ),
+        (
+            FunctionalId::XC_CSC,
+            "XC_CSC",
+            Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB,
+        ),
     ];
 
     // Quick task 260430-4x7 — pre-build job list and emit
@@ -1148,12 +1344,7 @@ pub fn run(
         for order in 0..=max_order.min(3) {
             // Plan 04-10: short-circuit if a prior interrupted run already
             // emitted records for this tuple (mode=1 == XC_PARTIAL_DERIVATIVES).
-            let tup_key: TupleKey = (
-                name.to_string(),
-                format!("{:?}", vars),
-                1u32,
-                order,
-            );
+            let tup_key: TupleKey = (name.to_string(), format!("{:?}", vars), 1u32, order);
             if cfg.skip_keys.contains(&tup_key) {
                 tracing::info!(
                     "Tier-2 RESUME-SKIP {} order={} (already on disk)",
@@ -1192,7 +1383,13 @@ pub fn run(
                 report.push_with_sink(rec, cfg.sink.as_deref_mut())?;
                 continue;
             }
-            jobs.push(JobPD { id, name, vars, order, threshold });
+            jobs.push(JobPD {
+                id,
+                name,
+                vars,
+                order,
+                threshold,
+            });
         }
     }
 
@@ -1335,12 +1532,7 @@ pub fn run_potential(
             );
             // Plan 04-10 — resume short-circuit (mode=2 == XC_POTENTIAL,
             // order=0 here per the marker convention).
-            let tup_key: TupleKey = (
-                name.to_string(),
-                format!("{:?}", Vars::A_B),
-                2u32,
-                0u32,
-            );
+            let tup_key: TupleKey = (name.to_string(), format!("{:?}", Vars::A_B), 2u32, 0u32);
             if cfg.skip_keys.contains(&tup_key) {
                 tracing::info!(
                     "Tier-2 (Mode::Potential) RESUME-SKIP {} (already on disk)",
@@ -1375,12 +1567,7 @@ pub fn run_potential(
             Vars::A_B
         };
         // Plan 04-10 — resume short-circuit (mode=2 == XC_POTENTIAL, order=0).
-        let tup_key: TupleKey = (
-            name.to_string(),
-            format!("{:?}", vars),
-            2u32,
-            0u32,
-        );
+        let tup_key: TupleKey = (name.to_string(), format!("{:?}", vars), 2u32, 0u32);
         if cfg.skip_keys.contains(&tup_key) {
             tracing::info!(
                 "Tier-2 (Mode::Potential) RESUME-SKIP {} (already on disk)",
@@ -1403,7 +1590,14 @@ pub fn run_potential(
             outlen,
             threshold
         );
-        jobs.push(JobPot { id, name, vars, inlen, outlen, threshold });
+        jobs.push(JobPot {
+            id,
+            name,
+            vars,
+            inlen,
+            outlen,
+            threshold,
+        });
     }
 
     dispatch_potential(&mut report, cfg, grid, jobs)?;
@@ -1461,10 +1655,7 @@ fn build_input_for_potential(gp: &GridPoint, vars: Vars) -> Vec<f64> {
             v[14] = gp.gbb;
             v
         }
-        other => panic!(
-            "Mode::Potential driver: unsupported vars {:?}",
-            other
-        ),
+        other => panic!("Mode::Potential driver: unsupported vars {:?}", other),
     }
 }
 
@@ -1570,17 +1761,15 @@ pub fn run_contracted(
         let threshold = threshold_for(name);
         tracing::info!(
             "Tier-2 (Mode::Contracted): {} (vars={:?} inlen={} threshold={:.0e})",
-            name, vars, inlen, threshold
+            name,
+            vars,
+            inlen,
+            threshold
         );
 
         for order in lo..=hi {
             // Plan 04-10 — resume short-circuit (mode=3 == XC_CONTRACTED).
-            let tup_key: TupleKey = (
-                name.to_string(),
-                format!("{:?}", vars),
-                3u32,
-                order,
-            );
+            let tup_key: TupleKey = (name.to_string(), format!("{:?}", vars), 3u32, order);
             if cfg.skip_keys.contains(&tup_key) {
                 tracing::info!(
                     "Tier-2 (Mode::Contracted) RESUME-SKIP {} order={} (already on disk)",
@@ -1596,7 +1785,13 @@ pub fn run_contracted(
                 inlen * coeff_count,
                 coeff_count
             );
-            jobs.push(JobCon { id, name, vars, order, threshold });
+            jobs.push(JobCon {
+                id,
+                name,
+                vars,
+                order,
+                threshold,
+            });
         }
     }
     // `subset` is reserved for the Phase-6 multi-point path; reference it
@@ -1618,12 +1813,16 @@ pub fn run_contracted(
     tracing::info!(
         "Tier-2 (Mode::Contracted) done: {} records ({} excluded as D-19 INCONCLUSIVE forwards)",
         report.total_records(),
-        report.records.iter().filter(|r| r.excluded_by_upstream_spec).count(),
+        report
+            .records
+            .iter()
+            .filter(|r| r.excluded_by_upstream_spec)
+            .count(),
     );
 
     // Force the helper to be referenced even when the Phase-6 path is
     // inactive (prevents a dead-code lint inside this validation crate).
-    let _ = pack_for_contracted_validation::<>(&[1.0_f64], 0);
+    let _ = pack_for_contracted_validation(&[1.0_f64], 0);
     Ok(report)
 }
 
@@ -1728,11 +1927,11 @@ pub fn run_tier3(
             // anyhow error documenting the failure summary otherwise so the
             // CLI exits non-zero for CI gating.
             let _ = (jobs, exclude_erf); // Cpu arm is intrinsically serial
-                                        // for KER-06 (numerical comparison
-                                        // does not benefit from parallelism
-                                        // for this fixture size); exclude_erf
-                                        // does not apply (CPU substrate
-                                        // handles ERF natively at f64).
+            // for KER-06 (numerical comparison
+            // does not benefit from parallelism
+            // for this fixture size); exclude_erf
+            // does not apply (CPU substrate
+            // handles ERF natively at f64).
             run_tier3_cpu_body(order, filter)
         }
         #[cfg(not(feature = "hip"))]
@@ -1962,7 +2161,11 @@ const TIER3_CPU_KNOWN_CLEAN_17: &[(FunctionalId, &str, Vars)] = &[
     (FunctionalId::XC_RPBEX, "rpbex", Vars::A_B_GAA_GAB_GBB),
     (FunctionalId::XC_PBESOLX, "pbesolx", Vars::A_B_GAA_GAB_GBB),
     (FunctionalId::XC_BECKEX, "beckex", Vars::A_B_GAA_GAB_GBB),
-    (FunctionalId::XC_BECKECORRX, "beckecorrx", Vars::A_B_GAA_GAB_GBB),
+    (
+        FunctionalId::XC_BECKECORRX,
+        "beckecorrx",
+        Vars::A_B_GAA_GAB_GBB,
+    ),
     (FunctionalId::XC_PW86X, "pw86x", Vars::A_B_GAA_GAB_GBB),
     (FunctionalId::XC_OPTXCORR, "optxcorr", Vars::A_B_GAA_GAB_GBB),
     (FunctionalId::XC_APBEX, "apbex", Vars::A_B_GAA_GAB_GBB),
@@ -2018,10 +2221,26 @@ impl Reference {
 /// `validation/fixtures/mpmath/<lowercase>.jsonl` and the
 /// `xtask/mpmath_eval/functionals/<lowercase>.py` module.
 pub const MPMATH_ONLY_FUNCTIONALS: &[&str] = &[
-    "brx", "brc", "brxc", "csc", "blocx",
-    "scanx", "scanc", "rscanx", "rscanc", "rppscanx", "rppscanc",
-    "r2scanx", "r2scanc", "r4scanx", "r4scanc",
-    "tw", "vwk", "pbelocc", "zvpbesolc", "zvpbeintc",
+    "brx",
+    "brc",
+    "brxc",
+    "csc",
+    "blocx",
+    "scanx",
+    "scanc",
+    "rscanx",
+    "rscanc",
+    "rppscanx",
+    "rppscanc",
+    "r2scanx",
+    "r2scanc",
+    "r4scanx",
+    "r4scanc",
+    "tw",
+    "vwk",
+    "pbelocc",
+    "zvpbesolc",
+    "zvpbeintc",
 ];
 
 /// Strict mpmath-truth tolerance (D-03 ACC-04 amendment): 1e-13 rel-err
@@ -2065,10 +2284,7 @@ pub struct MpmathRecord {
 /// under `target/mpmath_smoke/` (not committed); only after the offline
 /// ~6h MANUAL regen runs are fixtures committed under
 /// `validation/fixtures/mpmath/`.
-pub fn run_tier2_mpmath(
-    filter: &regex::Regex,
-    cfg: &mut RunConfig<'_>,
-) -> Result<Report> {
+pub fn run_tier2_mpmath(filter: &regex::Regex, cfg: &mut RunConfig<'_>) -> Result<Report> {
     let mut report = Report::default();
     let workspace_root = std::env::var("CARGO_MANIFEST_DIR")
         .map(std::path::PathBuf::from)
@@ -2077,8 +2293,8 @@ pub fn run_tier2_mpmath(
         .unwrap_or_else(|| std::path::PathBuf::from("."));
 
     let _ = cfg.skip_keys; // mpmath fixtures don't need the resume skip-set
-                            // (the harness is fast enough to never hit
-                            // SIGKILL mid-run; revisit if proven wrong).
+    // (the harness is fast enough to never hit
+    // SIGKILL mid-run; revisit if proven wrong).
 
     for fn_name in MPMATH_ONLY_FUNCTIONALS {
         if !filter.is_match(fn_name) {
@@ -2097,16 +2313,14 @@ pub fn run_tier2_mpmath(
             );
             continue;
         }
-        let body = std::fs::read_to_string(&fixture_path).with_context(|| {
-            format!("read mpmath fixture at {:?}", fixture_path)
-        })?;
+        let body = std::fs::read_to_string(&fixture_path)
+            .with_context(|| format!("read mpmath fixture at {:?}", fixture_path))?;
         let records: Vec<MpmathRecord> = body
             .lines()
             .filter(|l| !l.trim().is_empty())
             .map(|l| {
-                serde_json::from_str::<MpmathRecord>(l).with_context(|| {
-                    format!("parse mpmath JSONL line in {:?}", fixture_path)
-                })
+                serde_json::from_str::<MpmathRecord>(l)
+                    .with_context(|| format!("parse mpmath JSONL line in {:?}", fixture_path))
             })
             .collect::<Result<Vec<_>>>()?;
 
@@ -2131,11 +2345,7 @@ pub fn run_tier2_mpmath(
             let vars = match parse_vars(&rec.vars) {
                 Some(v) => v,
                 None => {
-                    anyhow::bail!(
-                        "mpmath fixture {} has unknown vars '{}'",
-                        fn_name,
-                        rec.vars
-                    );
+                    anyhow::bail!("mpmath fixture {} has unknown vars '{}'", fn_name, rec.vars);
                 }
             };
             // Construct the Rust Functional with this single-id weight=1
@@ -2146,11 +2356,8 @@ pub fn run_tier2_mpmath(
             func.vars = vars;
             func.mode = Mode::PartialDerivatives;
             func.order = rec.order;
-            let outlen = match Functional::output_length(
-                vars,
-                Mode::PartialDerivatives,
-                rec.order,
-            ) {
+            let outlen = match Functional::output_length(vars, Mode::PartialDerivatives, rec.order)
+            {
                 Ok(n) => n,
                 Err(e) => anyhow::bail!(
                     "output_length failed for {} (vars={:?}, order={}): {}",
@@ -2189,7 +2396,11 @@ pub fn run_tier2_mpmath(
                     point_idx,
                     element_idx,
                     input: rec.input.clone(),
-                    rust: if rust_unavailable { f64::NAN } else { *rust_val },
+                    rust: if rust_unavailable {
+                        f64::NAN
+                    } else {
+                        *rust_val
+                    },
                     cpp: *mpmath_val,
                     abs_err,
                     rel_err,
@@ -2233,15 +2444,11 @@ fn parse_vars(s: &str) -> Option<Vars> {
         "A_B_GAA_GAB_GBB_TAUA_TAUB" => Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
         "N_S_GNN_GNS_GSS_LAPN_LAPS" => Vars::N_S_GNN_GNS_GSS_LAPN_LAPS,
         "N_S_GNN_GNS_GSS_TAUN_TAUS" => Vars::N_S_GNN_GNS_GSS_TAUN_TAUS,
-        "A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB" => {
-            Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB
-        }
+        "A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB" => Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB,
         "A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB" => {
             Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB
         }
-        "N_S_GNN_GNS_GSS_LAPN_LAPS_TAUN_TAUS" => {
-            Vars::N_S_GNN_GNS_GSS_LAPN_LAPS_TAUN_TAUS
-        }
+        "N_S_GNN_GNS_GSS_LAPN_LAPS_TAUN_TAUS" => Vars::N_S_GNN_GNS_GSS_LAPN_LAPS_TAUN_TAUS,
         _ => return None,
     })
 }
@@ -2379,12 +2586,7 @@ fn run_tier3_cpu_body(order: u32, filter: &str) -> Result<()> {
             total_pass += tuple_pass;
             total_fail += tuple_fail;
             if tuple_fail > 0 {
-                per_functional_failures.push((
-                    name.to_string(),
-                    ord,
-                    tuple_fail,
-                    tuple_max_rel,
-                ));
+                per_functional_failures.push((name.to_string(), ord, tuple_fail, tuple_max_rel));
             }
         }
     }
@@ -2400,7 +2602,10 @@ fn run_tier3_cpu_body(order: u32, filter: &str) -> Result<()> {
         println!("KER-06: 0 failures across the 17 known-clean Phase-4 functional set.");
         Ok(())
     } else {
-        eprintln!("KER-06: {} failure(s) detected:", per_functional_failures.len());
+        eprintln!(
+            "KER-06: {} failure(s) detected:",
+            per_functional_failures.len()
+        );
         for (name, ord, count, max_rel) in &per_functional_failures {
             eprintln!(
                 "  {} order {}: {} record(s) above threshold; max rel-err {:.3e}",

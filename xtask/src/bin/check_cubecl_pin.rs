@@ -31,8 +31,9 @@ const PINNED_CRATES: &[&str] = &[
 ];
 
 fn project_root() -> Result<PathBuf> {
-    let manifest = std::env::var("CARGO_MANIFEST_DIR")
-        .context("CARGO_MANIFEST_DIR not set — run via cargo run -p xtask --bin check-cubecl-pin")?;
+    let manifest = std::env::var("CARGO_MANIFEST_DIR").context(
+        "CARGO_MANIFEST_DIR not set — run via cargo run -p xtask --bin check-cubecl-pin",
+    )?;
     Ok(PathBuf::from(manifest)
         .parent()
         .context("xtask has no parent directory")?

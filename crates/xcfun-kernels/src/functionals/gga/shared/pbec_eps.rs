@@ -205,11 +205,7 @@ pub fn phi_reorganised<F: Float>(
 /// `a_43`, `b_43`. Either is valid; this form is slightly more direct for
 /// arbitrary `ζ`.
 #[cube]
-pub fn phi<F: Float>(
-    zeta: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn phi<F: Float>(zeta: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
     // Step 1: pz = 1 + ζ.
     let mut pz = Array::<F>::new(size);

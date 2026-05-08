@@ -68,7 +68,7 @@
 //!   id == 54 → XC_R4SCANX     (Plan 04-02 — Wave 2)
 
 use cubecl::prelude::*;
-use xcfun_core::{Dependency, FunctionalId, Vars, FUNCTIONAL_DESCRIPTORS, VARS_TABLE};
+use xcfun_core::{Dependency, FUNCTIONAL_DESCRIPTORS, FunctionalId, VARS_TABLE, Vars};
 
 use crate::density_vars::DensVarsDev;
 

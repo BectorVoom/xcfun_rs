@@ -148,12 +148,12 @@ fn parse_jsonl(jsonl: &str) -> Result<(Vec<FunctionalRec>, Vec<VarsRowRec>)> {
                     test_mode: v["test_mode"].as_str().map(|s| s.to_string()),
                     test_order: v["test_order"].as_u64().map(|n| n as u32),
                     test_threshold: v["test_threshold"].as_f64(),
-                    test_in: v["test_in"].as_array().map(|a| {
-                        a.iter().filter_map(|x| x.as_f64()).collect::<Vec<_>>()
-                    }),
-                    test_out: v["test_out"].as_array().map(|a| {
-                        a.iter().filter_map(|x| x.as_f64()).collect::<Vec<_>>()
-                    }),
+                    test_in: v["test_in"]
+                        .as_array()
+                        .map(|a| a.iter().filter_map(|x| x.as_f64()).collect::<Vec<_>>()),
+                    test_out: v["test_out"]
+                        .as_array()
+                        .map(|a| a.iter().filter_map(|x| x.as_f64()).collect::<Vec<_>>()),
                 });
             }
             "vars_row" => {
@@ -176,90 +176,90 @@ fn parse_jsonl(jsonl: &str) -> Result<(Vec<FunctionalRec>, Vec<VarsRowRec>)> {
 /// discriminant order 0..78. Keep in sync with
 /// `crates/xcfun-core/src/functional_id.rs`.
 const FUNCTIONAL_IDS: &[&str] = &[
-    "XC_SLATERX",       // 0
-    "XC_PW86X",         // 1
-    "XC_VWN3C",         // 2
-    "XC_VWN5C",         // 3
-    "XC_PBEC",          // 4
-    "XC_PBEX",          // 5
-    "XC_BECKEX",        // 6
-    "XC_BECKECORRX",    // 7
-    "XC_BECKESRX",      // 8
-    "XC_BECKECAMX",     // 9
-    "XC_BRX",           // 10
-    "XC_BRC",           // 11
-    "XC_BRXC",          // 12
-    "XC_LDAERFX",       // 13
-    "XC_LDAERFC",       // 14
-    "XC_LDAERFC_JT",    // 15
-    "XC_LYPC",          // 16
-    "XC_OPTX",          // 17
-    "XC_OPTXCORR",      // 18
-    "XC_REVPBEX",       // 19
-    "XC_RPBEX",         // 20
-    "XC_SPBEC",         // 21
-    "XC_VWN_PBEC",      // 22
-    "XC_KTX",           // 23
-    "XC_TFK",           // 24
-    "XC_TW",            // 25
-    "XC_PW91X",         // 26
-    "XC_PW91K",         // 27
-    "XC_PW92C",         // 28
-    "XC_M05X",          // 29
-    "XC_M05X2X",        // 30
-    "XC_M06X",          // 31
-    "XC_M06X2X",        // 32
-    "XC_M06LX",         // 33
-    "XC_M06HFX",        // 34
-    "XC_M05X2C",        // 35
-    "XC_M05C",          // 36
-    "XC_M06C",          // 37
-    "XC_M06HFC",        // 38
-    "XC_M06LC",         // 39
-    "XC_M06X2C",        // 40
-    "XC_TPSSC",         // 41
-    "XC_TPSSX",         // 42
-    "XC_REVTPSSC",      // 43
-    "XC_REVTPSSX",      // 44
-    "XC_SCANC",         // 45
-    "XC_SCANX",         // 46
-    "XC_RSCANC",        // 47
-    "XC_RSCANX",        // 48
-    "XC_RPPSCANC",      // 49
-    "XC_RPPSCANX",      // 50
-    "XC_R2SCANC",       // 51
-    "XC_R2SCANX",       // 52
-    "XC_R4SCANC",       // 53
-    "XC_R4SCANX",       // 54
-    "XC_PZ81C",         // 55
-    "XC_P86C",          // 56
-    "XC_P86CORRC",      // 57
-    "XC_BTK",           // 58
-    "XC_VWK",           // 59
-    "XC_B97X",          // 60
-    "XC_B97C",          // 61
-    "XC_B97_1X",        // 62
-    "XC_B97_1C",        // 63
-    "XC_B97_2X",        // 64
-    "XC_B97_2C",        // 65
-    "XC_CSC",           // 66
-    "XC_APBEC",         // 67
-    "XC_APBEX",         // 68
-    "XC_ZVPBESOLC",     // 69
-    "XC_BLOCX",         // 70
-    "XC_PBEINTC",       // 71
-    "XC_PBEINTX",       // 72
-    "XC_PBELOCC",       // 73
-    "XC_PBESOLX",       // 74
-    "XC_TPSSLOCC",      // 75
-    "XC_ZVPBEINTC",     // 76
-    "XC_PW91C",         // 77
-    "XC_LB94",          // 78 — D-16 (Phase 5): present in Rust
-                        //          registry but NOT in upstream C++
-                        //          `list_of_functionals.hpp`. Body
-                        //          is `#if 0`'d in lb94.cpp. The
-                        //          descriptor is a stub; eval
-                        //          returns Runtime.
+    "XC_SLATERX",    // 0
+    "XC_PW86X",      // 1
+    "XC_VWN3C",      // 2
+    "XC_VWN5C",      // 3
+    "XC_PBEC",       // 4
+    "XC_PBEX",       // 5
+    "XC_BECKEX",     // 6
+    "XC_BECKECORRX", // 7
+    "XC_BECKESRX",   // 8
+    "XC_BECKECAMX",  // 9
+    "XC_BRX",        // 10
+    "XC_BRC",        // 11
+    "XC_BRXC",       // 12
+    "XC_LDAERFX",    // 13
+    "XC_LDAERFC",    // 14
+    "XC_LDAERFC_JT", // 15
+    "XC_LYPC",       // 16
+    "XC_OPTX",       // 17
+    "XC_OPTXCORR",   // 18
+    "XC_REVPBEX",    // 19
+    "XC_RPBEX",      // 20
+    "XC_SPBEC",      // 21
+    "XC_VWN_PBEC",   // 22
+    "XC_KTX",        // 23
+    "XC_TFK",        // 24
+    "XC_TW",         // 25
+    "XC_PW91X",      // 26
+    "XC_PW91K",      // 27
+    "XC_PW92C",      // 28
+    "XC_M05X",       // 29
+    "XC_M05X2X",     // 30
+    "XC_M06X",       // 31
+    "XC_M06X2X",     // 32
+    "XC_M06LX",      // 33
+    "XC_M06HFX",     // 34
+    "XC_M05X2C",     // 35
+    "XC_M05C",       // 36
+    "XC_M06C",       // 37
+    "XC_M06HFC",     // 38
+    "XC_M06LC",      // 39
+    "XC_M06X2C",     // 40
+    "XC_TPSSC",      // 41
+    "XC_TPSSX",      // 42
+    "XC_REVTPSSC",   // 43
+    "XC_REVTPSSX",   // 44
+    "XC_SCANC",      // 45
+    "XC_SCANX",      // 46
+    "XC_RSCANC",     // 47
+    "XC_RSCANX",     // 48
+    "XC_RPPSCANC",   // 49
+    "XC_RPPSCANX",   // 50
+    "XC_R2SCANC",    // 51
+    "XC_R2SCANX",    // 52
+    "XC_R4SCANC",    // 53
+    "XC_R4SCANX",    // 54
+    "XC_PZ81C",      // 55
+    "XC_P86C",       // 56
+    "XC_P86CORRC",   // 57
+    "XC_BTK",        // 58
+    "XC_VWK",        // 59
+    "XC_B97X",       // 60
+    "XC_B97C",       // 61
+    "XC_B97_1X",     // 62
+    "XC_B97_1C",     // 63
+    "XC_B97_2X",     // 64
+    "XC_B97_2C",     // 65
+    "XC_CSC",        // 66
+    "XC_APBEC",      // 67
+    "XC_APBEX",      // 68
+    "XC_ZVPBESOLC",  // 69
+    "XC_BLOCX",      // 70
+    "XC_PBEINTC",    // 71
+    "XC_PBEINTX",    // 72
+    "XC_PBELOCC",    // 73
+    "XC_PBESOLX",    // 74
+    "XC_TPSSLOCC",   // 75
+    "XC_ZVPBEINTC",  // 76
+    "XC_PW91C",      // 77
+    "XC_LB94",       // 78 — D-16 (Phase 5): present in Rust
+                     //          registry but NOT in upstream C++
+                     //          `list_of_functionals.hpp`. Body
+                     //          is `#if 0`'d in lb94.cpp. The
+                     //          descriptor is a stub; eval
+                     //          returns Runtime.
 ];
 
 // ---------- Rust source emission ----------
@@ -267,20 +267,27 @@ const FUNCTIONAL_IDS: &[&str] = &[
 /// Render a `Dependency::FLAG | Dependency::FLAG` expression from a bitmask.
 fn render_dependency(bits: u32) -> String {
     let mut parts = Vec::new();
-    if bits & 1 != 0 { parts.push("Dependency::DENSITY"); }
-    if bits & 2 != 0 { parts.push("Dependency::GRADIENT"); }
-    if bits & 4 != 0 { parts.push("Dependency::LAPLACIAN"); }
-    if bits & 8 != 0 { parts.push("Dependency::KINETIC"); }
-    if bits & 16 != 0 { parts.push("Dependency::JP"); }
+    if bits & 1 != 0 {
+        parts.push("Dependency::DENSITY");
+    }
+    if bits & 2 != 0 {
+        parts.push("Dependency::GRADIENT");
+    }
+    if bits & 4 != 0 {
+        parts.push("Dependency::LAPLACIAN");
+    }
+    if bits & 8 != 0 {
+        parts.push("Dependency::KINETIC");
+    }
+    if bits & 16 != 0 {
+        parts.push("Dependency::JP");
+    }
     if parts.is_empty() {
         "Dependency::empty()".to_string()
     } else if parts.len() == 1 {
         parts[0].to_string()
     } else {
-        parts.join(".union(")
-            .chars()
-            .collect::<String>()
-            + &")".repeat(parts.len() - 1)
+        parts.join(".union(").chars().collect::<String>() + &")".repeat(parts.len() - 1)
     }
 }
 
@@ -390,13 +397,17 @@ fn emit_functional_descriptors_rs(functionals: &[FunctionalRec]) -> String {
             if let (Some(ti), Some(to)) = (rec.test_in.as_ref(), rec.test_out.as_ref()) {
                 out.push_str(&format!("static {}_TEST_IN: [f64; {}] = [", id, ti.len()));
                 for (i, v) in ti.iter().enumerate() {
-                    if i > 0 { out.push_str(", "); }
+                    if i > 0 {
+                        out.push_str(", ");
+                    }
                     out.push_str(&format_f64(*v));
                 }
                 out.push_str("];\n");
                 out.push_str(&format!("static {}_TEST_OUT: [f64; {}] = [", id, to.len()));
                 for (i, v) in to.iter().enumerate() {
-                    if i > 0 { out.push_str(", "); }
+                    if i > 0 {
+                        out.push_str(", ");
+                    }
                     out.push_str(&format_f64(*v));
                 }
                 out.push_str("];\n");
@@ -420,18 +431,36 @@ fn emit_functional_descriptors_rs(functionals: &[FunctionalRec]) -> String {
                 out.push_str("    FunctionalDescriptor {\n");
                 out.push_str(&format!("        id: FunctionalId::{},\n", id));
                 out.push_str(&format!("        name: \"{}\",\n", id));
-                out.push_str(&format!("        short_description: \"{}\",\n", rust_escape(&rec.short_desc)));
-                out.push_str(&format!("        long_description: \"{}\",\n", rust_escape(&rec.long_desc)));
-                out.push_str(&format!("        depends: {},\n", render_dependency(rec.depends)));
+                out.push_str(&format!(
+                    "        short_description: \"{}\",\n",
+                    rust_escape(&rec.short_desc)
+                ));
+                out.push_str(&format!(
+                    "        long_description: \"{}\",\n",
+                    rust_escape(&rec.long_desc)
+                ));
+                out.push_str(&format!(
+                    "        depends: {},\n",
+                    render_dependency(rec.depends)
+                ));
                 out.push_str(&format!(
                     "        test_vars: Some({}),\n",
-                    rec.test_vars.as_deref().map(render_vars).unwrap_or_else(|| "Vars::A_B".to_string())
+                    rec.test_vars
+                        .as_deref()
+                        .map(render_vars)
+                        .unwrap_or_else(|| "Vars::A_B".to_string())
                 ));
                 out.push_str(&format!(
                     "        test_mode: Some({}),\n",
-                    rec.test_mode.as_deref().map(render_mode).unwrap_or_else(|| "Mode::PartialDerivatives".to_string())
+                    rec.test_mode
+                        .as_deref()
+                        .map(render_mode)
+                        .unwrap_or_else(|| "Mode::PartialDerivatives".to_string())
                 ));
-                out.push_str(&format!("        test_order: Some({}),\n", rec.test_order.unwrap_or(0)));
+                out.push_str(&format!(
+                    "        test_order: Some({}),\n",
+                    rec.test_order.unwrap_or(0)
+                ));
                 out.push_str(&format!(
                     "        test_threshold: Some({}),\n",
                     format_f64(rec.test_threshold.unwrap_or(0.0))
@@ -447,7 +476,9 @@ fn emit_functional_descriptors_rs(functionals: &[FunctionalRec]) -> String {
                 // Emit a stub that still carries the correct depends bitmask.
                 out.push_str(&format!(
                     "    FunctionalDescriptor::stub(FunctionalId::{}, \"{}\", {}),\n",
-                    id, id, render_dependency(rec.depends)
+                    id,
+                    id,
+                    render_dependency(rec.depends)
                 ));
             }
         } else if *id == "XC_LB94" {
@@ -572,9 +603,7 @@ fn emit_c_stubs_cpp(functionals: &[FunctionalRec]) -> (String, usize) {
     out.push_str(
         "// Stubs for Phase 2 cc-compile — every non-LDA functional ID needs a fundat_db\n",
     );
-    out.push_str(
-        "// specialisation or xcint.cpp template recursion fails to link.\n",
-    );
+    out.push_str("// specialisation or xcint.cpp template recursion fails to link.\n");
     out.push_str("//\n");
     out.push_str(
         "// Phase 3+ extends this file by re-running regen-registry; LDA IDs already get\n",
@@ -867,7 +896,11 @@ fn parse_aliases_cpp(cleaned: &str) -> Result<Vec<AliasRec>> {
             i = after;
             i = skip_ws(cleaned, i);
             if i >= bytes.len() || bytes[i] != b',' {
-                bail!("expected ',' after term name '{}' in alias '{}'", tname, name);
+                bail!(
+                    "expected ',' after term name '{}' in alias '{}'",
+                    tname,
+                    name
+                );
             }
             i += 1;
             i = skip_ws(cleaned, i);
@@ -932,10 +965,7 @@ fn parse_common_parameters_cpp(cleaned: &str) -> Result<Vec<ParameterRec>> {
         i += 1;
         i = skip_ws(cleaned, i);
         if i >= bytes.len() || bytes[i] != b'{' {
-            bail!(
-                "expected '{{' to open PARAMETER({}) initializer",
-                xc_ident
-            );
+            bail!("expected '{{' to open PARAMETER({}) initializer", xc_ident);
         }
         i += 1;
         i = skip_ws(cleaned, i);
@@ -943,10 +973,7 @@ fn parse_common_parameters_cpp(cleaned: &str) -> Result<Vec<ParameterRec>> {
         i = after;
         i = skip_ws(cleaned, i);
         if i >= bytes.len() || bytes[i] != b',' {
-            bail!(
-                "expected ',' after description in PARAMETER({})",
-                xc_ident
-            );
+            bail!("expected ',' after description in PARAMETER({})", xc_ident);
         }
         i += 1;
         i = skip_ws(cleaned, i);
@@ -954,10 +981,7 @@ fn parse_common_parameters_cpp(cleaned: &str) -> Result<Vec<ParameterRec>> {
         i = after;
         i = skip_ws(cleaned, i);
         if i >= bytes.len() || bytes[i] != b'}' {
-            bail!(
-                "expected '}}' to close PARAMETER({}) initializer",
-                xc_ident
-            );
+            bail!("expected '}}' to close PARAMETER({}) initializer", xc_ident);
         }
         i += 1;
 
@@ -1128,7 +1152,11 @@ fn main() -> Result<()> {
     let asset_src = root.join("xtask/assets/regen_registry/extractor.cpp");
     let target_dir = root.join("target/regen_registry");
     fs::create_dir_all(&target_dir)?;
-    let exe = target_dir.join(if cfg!(windows) { "extractor.exe" } else { "extractor" });
+    let exe = target_dir.join(if cfg!(windows) {
+        "extractor.exe"
+    } else {
+        "extractor"
+    });
 
     anyhow::ensure!(
         asset_src.exists(),
@@ -1139,7 +1167,10 @@ fn main() -> Result<()> {
     eprintln!("[regen-registry] compiling extractor -> {}", exe.display());
     compile_extractor(&xcfun_root, &asset_src, &exe)?;
 
-    eprintln!("[regen-registry] running extractor against {}", xcfun_root.display());
+    eprintln!(
+        "[regen-registry] running extractor against {}",
+        xcfun_root.display()
+    );
     let jsonl = run_extractor(&exe, &xcfun_root)?;
     let (functionals, vars_rows) = parse_jsonl(&jsonl)?;
 
@@ -1236,9 +1267,7 @@ fn main() -> Result<()> {
         }
         if drifted {
             eprintln!();
-            eprintln!(
-                "Committed registry sources drifted from a fresh regeneration. Run:"
-            );
+            eprintln!("Committed registry sources drifted from a fresh regeneration. Run:");
             eprintln!("    cargo run -p xtask --bin regen-registry");
             eprintln!("and commit the resulting changes under");
             eprintln!("    crates/xcfun-core/src/registry/generated/");
@@ -1250,7 +1279,10 @@ fn main() -> Result<()> {
     }
 
     fs::create_dir_all(&generated_dir)?;
-    write_with_sha256_stamp(&generated_dir.join("FUNCTIONAL_DESCRIPTORS.rs"), &descriptors_src)?;
+    write_with_sha256_stamp(
+        &generated_dir.join("FUNCTIONAL_DESCRIPTORS.rs"),
+        &descriptors_src,
+    )?;
     write_with_sha256_stamp(&generated_dir.join("VARS_TABLE.rs"), &vars_src)?;
     write_with_sha256_stamp(&generated_dir.join("ALIASES.rs"), &aliases_src)?;
     write_with_sha256_stamp(&generated_dir.join("parameters.rs"), &parameters_src)?;

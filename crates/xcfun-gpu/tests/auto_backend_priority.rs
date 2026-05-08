@@ -19,7 +19,7 @@
 //! is belt-and-braces.
 
 use std::sync::Mutex;
-use xcfun_gpu::{auto_backend, Backend};
+use xcfun_gpu::{Backend, auto_backend};
 
 static ENV_LOCK: Mutex<()> = Mutex::new(());
 

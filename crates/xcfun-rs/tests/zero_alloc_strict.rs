@@ -100,7 +100,8 @@ fn strict_zero_alloc_after_warmup() {
 
     let delta = ALLOC_COUNT.load(Ordering::SeqCst) - snap;
     assert_eq!(
-        delta, 0,
+        delta,
+        0,
         "STRICT zero-alloc breached: {} allocations across 100 eval calls \
          (~{:.1} allocs/eval). The cubecl-cpu run_launch substrate is still \
          calling client.create_from_slice / client.empty per call.",

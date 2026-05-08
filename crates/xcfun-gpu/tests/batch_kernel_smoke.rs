@@ -33,8 +33,7 @@ fn eval_vec_host_cpu_matches_scalar_eval_at_order_0() {
         settings_gen: 0,
     };
     let inlen = Functional::input_length(fun.vars);
-    let outlen = Functional::output_length(fun.vars, fun.mode, fun.order)
-        .expect("output_length");
+    let outlen = Functional::output_length(fun.vars, fun.mode, fun.order).expect("output_length");
     assert_eq!(inlen, 2);
     assert_eq!(outlen, 1);
 
@@ -75,9 +74,6 @@ fn eval_vec_host_cpu_matches_scalar_eval_at_order_0() {
         let s = out_scalar[p * outlen];
         // Both go through the same cubecl-cpu launch path; bit-equal
         // is the right contract here.
-        assert_eq!(
-            b, s,
-            "point {p}: batch={b:.17e} != scalar={s:.17e}",
-        );
+        assert_eq!(b, s, "point {p}: batch={b:.17e} != scalar={s:.17e}",);
     }
 }

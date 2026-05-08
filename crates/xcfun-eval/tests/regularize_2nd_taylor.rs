@@ -13,8 +13,8 @@
 use cubecl::prelude::*;
 use cubecl_cpu::CpuRuntime;
 // Phase 6 Plan 06-01 (D-08): density_vars migrated to xcfun-kernels.
-use xcfun_kernels::density_vars::regularize::{TINY_DENSITY_F64, regularize};
 use xcfun_eval::for_tests::cpu_client;
+use xcfun_kernels::density_vars::regularize::{TINY_DENSITY_F64, regularize};
 
 /// Thin `#[cube(launch_unchecked)]` wrapper over `regularize` so we can invoke
 /// the public `#[cube] fn` from a host-side test. N=3 (size=8) exercises the
@@ -84,6 +84,9 @@ fn regularize_leaves_above_clamp_unchanged() {
     let input: [f64; 8] = [1.0, 0.3, 0.5, 1.1, 0.7, 0.9, -0.4, 2.25];
     let output = run_regularize(&input);
     for i in 0..8 {
-        assert_eq!(output[i], input[i], "slot {i} must be unchanged above floor");
+        assert_eq!(
+            output[i], input[i],
+            "slot {i} must be unchanged above floor"
+        );
     }
 }

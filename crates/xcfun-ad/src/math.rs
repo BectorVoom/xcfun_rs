@@ -89,11 +89,7 @@ use crate::tfuns::{tfuns_compose, tfuns_multo, tfuns_shift};
 /// Precondition: `x[0] != 0` (host-side guard; `inv_expand` divides by
 /// `x[0]`).
 #[cube]
-pub fn ctaylor_reciprocal<F: Float>(
-    x: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_reciprocal<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     // ctaylor_math.hpp:14: T tmp[Nvar + 1];
     let scratch_len = comptime!((n + 1) as usize);
     let mut scratch = Array::<F>::new(scratch_len);
@@ -224,12 +220,7 @@ pub fn ctaylor_log<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u3
 /// Precondition: `x[0] > 0` (host-side guard; `pow_expand` divides by
 /// `x[0]` and calls `powf(x[0], a)`).
 #[cube]
-pub fn ctaylor_pow<F: Float>(
-    x: &Array<F>,
-    a: F,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_pow<F: Float>(x: &Array<F>, a: F, out: &mut Array<F>, #[comptime] n: u32) {
     let scratch_len = comptime!((n + 1) as usize);
     let mut scratch = Array::<F>::new(scratch_len);
 
@@ -251,11 +242,7 @@ pub fn ctaylor_pow<F: Float>(
 ///
 /// Precondition: `x[0] > 0` (host-side guard).
 #[cube]
-pub fn ctaylor_cbrt<F: Float>(
-    x: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_cbrt<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let scratch_len = comptime!((n + 1) as usize);
     let mut scratch = Array::<F>::new(scratch_len);
 
@@ -382,11 +369,7 @@ pub fn ctaylor_atan<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u
 
 /// Positive-exponent helper — copy x into out.
 #[cube]
-fn ctaylor_powi_copy<F: Float>(
-    x: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn ctaylor_powi_copy<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!(1_u32 << n);
     #[unroll]
     for i in 0..size {
@@ -397,21 +380,13 @@ fn ctaylor_powi_copy<F: Float>(
 
 /// `out = x` (exponent 1).
 #[cube]
-pub fn ctaylor_powi_1<F: Float>(
-    x: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_powi_1<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_powi_copy::<F>(x, out, n);
 }
 
 /// `out = x * x` (exponent 2).
 #[cube]
-pub fn ctaylor_powi_2<F: Float>(
-    x: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_powi_2<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     // C++: res = t; res *= t;
     // Fused: out = x * x — use mul_set rather than copy-then-multo to keep
     // associativity (equivalent — multo(x*x) == x*x because the copy step
@@ -442,81 +417,49 @@ fn ctaylor_powi_positive<F: Float>(
 
 /// `out = x^3`.
 #[cube]
-pub fn ctaylor_powi_3<F: Float>(
-    x: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_powi_3<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_powi_positive::<F>(x, out, 3_u32, n);
 }
 
 /// `out = x^4`.
 #[cube]
-pub fn ctaylor_powi_4<F: Float>(
-    x: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_powi_4<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_powi_positive::<F>(x, out, 4_u32, n);
 }
 
 /// `out = x^5`.
 #[cube]
-pub fn ctaylor_powi_5<F: Float>(
-    x: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_powi_5<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_powi_positive::<F>(x, out, 5_u32, n);
 }
 
 /// `out = x^6`.
 #[cube]
-pub fn ctaylor_powi_6<F: Float>(
-    x: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_powi_6<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_powi_positive::<F>(x, out, 6_u32, n);
 }
 
 /// `out = x^7`.
 #[cube]
-pub fn ctaylor_powi_7<F: Float>(
-    x: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_powi_7<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_powi_positive::<F>(x, out, 7_u32, n);
 }
 
 /// `out = x^8`.
 #[cube]
-pub fn ctaylor_powi_8<F: Float>(
-    x: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_powi_8<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_powi_positive::<F>(x, out, 8_u32, n);
 }
 
 /// `out = x^9`.
 #[cube]
-pub fn ctaylor_powi_9<F: Float>(
-    x: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_powi_9<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_powi_positive::<F>(x, out, 9_u32, n);
 }
 
 /// `out = x^10`.
 #[cube]
-pub fn ctaylor_powi_10<F: Float>(
-    x: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_powi_10<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_powi_positive::<F>(x, out, 10_u32, n);
 }
 
@@ -544,21 +487,13 @@ pub fn ctaylor_powi_0<F: Float>(out: &mut Array<F>, #[comptime] n: u32) {
 
 /// `out = x^(-1)` — delegates to `ctaylor_pow` with `a = -1`.
 #[cube]
-pub fn ctaylor_powi_neg1<F: Float>(
-    x: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_powi_neg1<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_pow::<F>(x, F::new(-1.0), out, n);
 }
 
 /// `out = x^(-2)` — delegates to `ctaylor_pow` with `a = -2`.
 #[cube]
-pub fn ctaylor_powi_neg2<F: Float>(
-    x: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_powi_neg2<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_pow::<F>(x, F::new(-2.0), out, n);
 }
 
@@ -677,11 +612,7 @@ pub(crate) const Q_PADE_F64: [f64; 9] = [
 /// Phase 1 caps tfuns_compose at n ≤ 6, which is also within the [8,8]
 /// Padé order envelope.
 #[cube]
-fn pade_8_8_sqrtx_asinh_sqrtx<F: Float>(
-    x: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn pade_8_8_sqrtx_asinh_sqrtx<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     // tmath.hpp line 307 — T tmp[Nvar + 1], pq[9];
     let scratch_len = comptime!((n + 1) as usize);
     let mut tmp = Array::<F>::new(scratch_len);
@@ -745,11 +676,7 @@ fn pade_8_8_sqrtx_asinh_sqrtx<F: Float>(
 ///   `pade_8_8_sqrtx_asinh_sqrtx`. Preserves 1e-14 precision as `x[0] → 0`
 ///   where the direct form would produce NaN/∞ derivatives.
 #[cube]
-pub fn ctaylor_sqrtx_asinh_sqrtx<F: Float>(
-    x: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_sqrtx_asinh_sqrtx<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
     let threshold = F::cast_from(0.5_f64);
     let abs_x0 = x[0].abs();
@@ -818,15 +745,10 @@ pub fn ctaylor_sqrtx_asinh_sqrtx<F: Float>(
 ///
 /// Port reference: `xcfun-master/src/functionals/brx.cpp:50-71` (BR_taylor).
 #[cube]
-pub fn ctaylor_br_inverse<F: Float>(
-    _z: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_br_inverse<F: Float>(_z: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     // Step 1: linear-method polynomial sweep (uses pre-seeded out[0]).
     br_inverse_expand::<F>(out, n);
 
     // Suppress unused-warning on the imported `br_inverse_expand` if the
     // comptime size==1 branch elides it. cubecl 0.10-pre.3 should not warn.
 }
-

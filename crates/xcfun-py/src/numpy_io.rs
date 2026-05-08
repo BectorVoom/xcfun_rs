@@ -64,13 +64,12 @@ pub fn eval_vec_impl<'py>(
         // Source: pyo3 guide §parallelism.md.
         py.detach(|| {
             inner.eval_vec(
-                dens_view,
-                inlen,           // density_pitch == inlen for C-contiguous
-                out_view,
-                outlen,          // out_pitch == outlen for fresh allocation
+                dens_view, inlen, // density_pitch == inlen for C-contiguous
+                out_view, outlen, // out_pitch == outlen for fresh allocation
                 nr_points,
             )
-        }).map_err(crate::errors::xc_to_py)?;
+        })
+        .map_err(crate::errors::xc_to_py)?;
     }
 
     Ok(out_array)

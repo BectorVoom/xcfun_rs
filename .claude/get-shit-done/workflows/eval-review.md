@@ -5,7 +5,7 @@ Use after /gsd-execute-phase to verify that the evaluation strategy from AI-SPEC
 </purpose>
 
 <required_reading>
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/ai-evals.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/ai-evals.md
 </required_reading>
 
 <process>
@@ -78,7 +78,7 @@ Build file list for auditor:
 Build prompt:
 
 ```markdown
-Read /home/chemtech/workspace/xcfun_rs/.claude/agents/gsd-eval-auditor.md for instructions.
+Read /home/user/Documents/workspace/xcfun_rs/.claude/agents/gsd-eval-auditor.md for instructions.
 
 <objective>
 Conduct evaluation coverage audit of Phase {phase_number}: {phase_name}

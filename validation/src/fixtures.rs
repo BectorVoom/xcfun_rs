@@ -96,7 +96,11 @@ fn generate_bulk(rng: &mut Xoshiro256PlusPlus, count: usize) -> Vec<GridPoint> {
             let u = next_uniform_01(rng);
             let n = 1e-5 * 10.0_f64.powf(6.0 * u); // log-uniform [1e-5, 1e1]
             let z_abs = 0.95 * next_uniform_01(rng);
-            let z_sign = if next_uniform_01(rng) < 0.5 { -1.0 } else { 1.0 };
+            let z_sign = if next_uniform_01(rng) < 0.5 {
+                -1.0
+            } else {
+                1.0
+            };
             let s = z_sign * z_abs * n;
             GridPoint {
                 n,
@@ -142,7 +146,11 @@ fn generate_polarised(rng: &mut Xoshiro256PlusPlus, count: usize) -> Vec<GridPoi
             let u = next_uniform_01(rng);
             let n = 1e-3 * 10.0_f64.powf(4.0 * u);
             let z_abs = 0.95 + 0.05 * next_uniform_01(rng);
-            let z_sign = if next_uniform_01(rng) < 0.5 { -1.0 } else { 1.0 };
+            let z_sign = if next_uniform_01(rng) < 0.5 {
+                -1.0
+            } else {
+                1.0
+            };
             let s = z_sign * z_abs * n;
             GridPoint {
                 n,
@@ -209,7 +217,11 @@ pub fn generate_metagga_stratum() -> Vec<MetaGgaGridPoint> {
         let n = 0.1_f64 * 10.0_f64.powf(2.0 * u);
         // |zeta| uniform [0, 0.95].
         let z_abs = 0.95 * next_uniform_01(&mut rng);
-        let z_sign = if next_uniform_01(&mut rng) < 0.5 { -1.0 } else { 1.0 };
+        let z_sign = if next_uniform_01(&mut rng) < 0.5 {
+            -1.0
+        } else {
+            1.0
+        };
         let s = z_sign * z_abs * n;
         let a = (n + s) * 0.5;
         let b = (n - s) * 0.5;
@@ -226,10 +238,8 @@ pub fn generate_metagga_stratum() -> Vec<MetaGgaGridPoint> {
         let taua = tau_max_a * next_uniform_01(&mut rng);
         let taub = tau_max_b * next_uniform_01(&mut rng);
         // lap_α, lap_β ∈ [-0.01·n, 0.01·n].
-        let lapa =
-            (next_uniform_01(&mut rng) * 2.0 - 1.0) * 0.01 * a;
-        let lapb =
-            (next_uniform_01(&mut rng) * 2.0 - 1.0) * 0.01 * b;
+        let lapa = (next_uniform_01(&mut rng) * 2.0 - 1.0) * 0.01 * a;
+        let lapb = (next_uniform_01(&mut rng) * 2.0 - 1.0) * 0.01 * b;
         // jp_αα, jp_ββ ∈ [-0.1, 0.1].
         let jpaa = (next_uniform_01(&mut rng) * 2.0 - 1.0) * 0.1;
         let jpbb = (next_uniform_01(&mut rng) * 2.0 - 1.0) * 0.1;
@@ -366,7 +376,11 @@ fn high_polarisation(rng: &mut Xoshiro256PlusPlus, n: usize) -> Vec<GridPoint> {
             let u = next_uniform_01(rng);
             let n_total = 0.1 * 10.0_f64.powf(2.0 * u);
             let z_abs = 0.9 + 0.099 * next_uniform_01(rng); // [0.9, 0.999]
-            let z_sign = if next_uniform_01(rng) < 0.5 { -1.0 } else { 1.0 };
+            let z_sign = if next_uniform_01(rng) < 0.5 {
+                -1.0
+            } else {
+                1.0
+            };
             let s = z_sign * z_abs * n_total;
             let v = next_uniform_01(rng);
             let grad_sq = 0.01 * 10.0_f64.powf(6.0 * v); // [0.01, 1e4]
@@ -403,8 +417,7 @@ fn rs_sweep(rng: &mut Xoshiro256PlusPlus, n: usize) -> Vec<GridPoint> {
         .map(|_| {
             let u = next_uniform_01(rng);
             let r_s = 1e-2 * 10.0_f64.powf(8.0 * u); // [1e-2, 1e6]
-            let n_total =
-                3.0 / (4.0 * std::f64::consts::PI * r_s.powi(3));
+            let n_total = 3.0 / (4.0 * std::f64::consts::PI * r_s.powi(3));
             let z = (next_uniform_01(rng) * 2.0 - 1.0) * 0.95;
             let s = z * n_total;
             let v = next_uniform_01(rng);
@@ -443,8 +456,7 @@ fn generate_gradient_stress(rng: &mut Xoshiro256PlusPlus, count: usize) -> Vec<G
             let theta = next_uniform_01(rng) * std::f64::consts::PI;
             let gaa = grad_sq * theta.cos().powi(2);
             let gbb = grad_sq * theta.sin().powi(2);
-            let gab =
-                (gaa * gbb).sqrt() * (next_uniform_01(rng) * 2.0 - 1.0); // |gab| ≤ sqrt(gaa*gbb)
+            let gab = (gaa * gbb).sqrt() * (next_uniform_01(rng) * 2.0 - 1.0); // |gab| ≤ sqrt(gaa*gbb)
             let z = (next_uniform_01(rng) * 2.0 - 1.0) * 0.5;
             let s = z * n;
             let gnn = gaa + 2.0 * gab + gbb;
@@ -491,11 +503,7 @@ mod tests {
     fn bulk_stratum_has_correct_n_range() {
         let grid = generate_grid();
         for gp in grid.iter().take(N_BULK) {
-            assert!(
-                gp.n >= 1e-5 && gp.n <= 10.0,
-                "bulk n={} out of range",
-                gp.n
-            );
+            assert!(gp.n >= 1e-5 && gp.n <= 10.0, "bulk n={} out of range", gp.n);
             assert!(
                 gp.s.abs() <= 0.95 * gp.n + 1e-15,
                 "bulk |s|={} exceeds 0.95*n={}",
@@ -521,11 +529,7 @@ mod tests {
     #[test]
     fn polarised_stratum_has_high_zeta() {
         let grid = generate_grid();
-        for gp in grid
-            .iter()
-            .skip(N_BULK + N_REGULARIZE)
-            .take(N_POLARISED)
-        {
+        for gp in grid.iter().skip(N_BULK + N_REGULARIZE).take(N_POLARISED) {
             let zeta_abs = (gp.s / gp.n).abs();
             assert!(
                 zeta_abs >= 0.95 - 1e-12 && zeta_abs <= 1.0 + 1e-12,
@@ -563,8 +567,16 @@ mod tests {
         for (a, b) in g1.iter().zip(g2.iter()) {
             assert_eq!(a.n.to_bits(), b.n.to_bits(), "supplement n bit-identity");
             assert_eq!(a.s.to_bits(), b.s.to_bits(), "supplement s bit-identity");
-            assert_eq!(a.gaa.to_bits(), b.gaa.to_bits(), "supplement gaa bit-identity");
-            assert_eq!(a.gbb.to_bits(), b.gbb.to_bits(), "supplement gbb bit-identity");
+            assert_eq!(
+                a.gaa.to_bits(),
+                b.gaa.to_bits(),
+                "supplement gaa bit-identity"
+            );
+            assert_eq!(
+                a.gbb.to_bits(),
+                b.gbb.to_bits(),
+                "supplement gbb bit-identity"
+            );
         }
     }
 

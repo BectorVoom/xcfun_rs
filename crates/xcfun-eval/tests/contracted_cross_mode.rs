@@ -74,12 +74,7 @@ fn pack_for_contracted(input: &[f64], order: u32) -> Vec<f64> {
 
 /// Run Mode::Contracted at the given order on `(id, vars)` for the per-point
 /// scalar input. Returns the `(1 << order)`-element output coefficient array.
-fn run_contracted(
-    id: FunctionalId,
-    vars: Vars,
-    order: u32,
-    input: &[f64],
-) -> Vec<f64> {
+fn run_contracted(id: FunctionalId, vars: Vars, order: u32, input: &[f64]) -> Vec<f64> {
     let weights: Vec<(FunctionalId, f64)> = vec![(id, 1.0)];
     let f = Functional {
         weights,
@@ -92,20 +87,19 @@ fn run_contracted(
     let coeff_count = 1_usize << order;
     let flat_input = pack_for_contracted(input, order);
     let mut out = vec![0.0_f64; coeff_count];
-    f.eval(&flat_input, &mut out)
-        .unwrap_or_else(|e| panic!("Mode::Contracted eval failed at order {} ({:?}): {:?}", order, id, e));
+    f.eval(&flat_input, &mut out).unwrap_or_else(|e| {
+        panic!(
+            "Mode::Contracted eval failed at order {} ({:?}): {:?}",
+            order, id, e
+        )
+    });
     out
 }
 
 /// Run Mode::PartialDerivatives at the given order on `(id, vars)` for the
 /// per-point scalar input. Returns the `taylorlen(inlen, order)`-element
 /// output array.
-fn run_partial_derivatives(
-    id: FunctionalId,
-    vars: Vars,
-    order: u32,
-    input: &[f64],
-) -> Vec<f64> {
+fn run_partial_derivatives(id: FunctionalId, vars: Vars, order: u32, input: &[f64]) -> Vec<f64> {
     let weights: Vec<(FunctionalId, f64)> = vec![(id, 1.0)];
     let f = Functional {
         weights,
@@ -136,13 +130,7 @@ fn rel_err(got: f64, want: f64) -> f64 {
 /// Generate a small set of well-conditioned input points away from the
 /// regularize clamp (a, b, gaa, gab, gbb all >> TINY_DENSITY = 1e-14).
 fn density_points_a_b() -> Vec<[f64; 2]> {
-    vec![
-        [0.7, 0.4],
-        [0.5, 0.5],
-        [0.9, 0.2],
-        [0.3, 0.6],
-        [0.1, 0.8],
-    ]
+    vec![[0.7, 0.4], [0.5, 0.5], [0.9, 0.2], [0.3, 0.6], [0.1, 0.8]]
 }
 
 fn density_points_a_b_gaa_gab_gbb() -> Vec<[f64; 5]> {
@@ -171,7 +159,10 @@ fn contracted_vs_partial_slaterx_order_0() {
         assert!(
             rel_err(cont[0], pd[0]) <= TOLERANCE,
             "SLATERX order 0 cross-mode: got {} vs {} (rel_err {:.3e}) at input {:?}",
-            cont[0], pd[0], rel_err(cont[0], pd[0]), input
+            cont[0],
+            pd[0],
+            rel_err(cont[0], pd[0]),
+            input
         );
     }
 }
@@ -191,13 +182,19 @@ fn contracted_vs_partial_slaterx_order_1() {
         assert!(
             rel_err(cont[0], pd[0]) <= TOLERANCE,
             "SLATERX order 1 CNST: cont={} pd={} rel_err={:.3e} at {:?}",
-            cont[0], pd[0], rel_err(cont[0], pd[0]), input
+            cont[0],
+            pd[0],
+            rel_err(cont[0], pd[0]),
+            input
         );
         // VAR0 coefficient: ∂E/∂a.
         assert!(
             rel_err(cont[1], pd[1]) <= TOLERANCE,
             "SLATERX order 1 VAR0: cont={} pd={} rel_err={:.3e} at {:?}",
-            cont[1], pd[1], rel_err(cont[1], pd[1]), input
+            cont[1],
+            pd[1],
+            rel_err(cont[1], pd[1]),
+            input
         );
     }
 }
@@ -223,7 +220,10 @@ fn contracted_vs_partial_slaterx_order_2() {
         assert!(
             rel_err(cont[3], pd[3]) <= TOLERANCE,
             "SLATERX order 2 VAR0|VAR1 (∂²E/∂a²): cont={} pd={} rel_err={:.3e} at {:?}",
-            cont[3], pd[3], rel_err(cont[3], pd[3]), input
+            cont[3],
+            pd[3],
+            rel_err(cont[3], pd[3]),
+            input
         );
     }
 }
@@ -243,7 +243,11 @@ fn contracted_vs_partial_slaterx_order_3() {
         assert!(
             rel_err(cont[7], pd[pd_a3_idx]) <= TOLERANCE,
             "SLATERX order 3 ∂³E/∂a³: cont[7]={} pd[{}]={} rel_err={:.3e} at {:?}",
-            cont[7], pd_a3_idx, pd[pd_a3_idx], rel_err(cont[7], pd[pd_a3_idx]), input
+            cont[7],
+            pd_a3_idx,
+            pd[pd_a3_idx],
+            rel_err(cont[7], pd[pd_a3_idx]),
+            input
         );
     }
 }
@@ -262,7 +266,11 @@ fn contracted_vs_partial_slaterx_order_4() {
         assert!(
             rel_err(cont[15], pd[pd_a4_idx]) <= TOLERANCE,
             "SLATERX order 4 ∂⁴E/∂a⁴: cont[15]={} pd[{}]={} rel_err={:.3e} at {:?}",
-            cont[15], pd_a4_idx, pd[pd_a4_idx], rel_err(cont[15], pd[pd_a4_idx]), input
+            cont[15],
+            pd_a4_idx,
+            pd[pd_a4_idx],
+            rel_err(cont[15], pd[pd_a4_idx]),
+            input
         );
     }
 }
@@ -280,7 +288,10 @@ fn contracted_vs_partial_pbex_order_0() {
         assert!(
             rel_err(cont[0], pd[0]) <= TOLERANCE,
             "PBEX order 0: cont={} pd={} rel_err={:.3e} at {:?}",
-            cont[0], pd[0], rel_err(cont[0], pd[0]), input
+            cont[0],
+            pd[0],
+            rel_err(cont[0], pd[0]),
+            input
         );
     }
 }
@@ -296,7 +307,10 @@ fn contracted_vs_partial_pbex_order_1() {
         assert!(
             rel_err(cont[1], pd[1]) <= TOLERANCE,
             "PBEX order 1 ∂E/∂a: cont={} pd={} rel_err={:.3e} at {:?}",
-            cont[1], pd[1], rel_err(cont[1], pd[1]), input
+            cont[1],
+            pd[1],
+            rel_err(cont[1], pd[1]),
+            input
         );
     }
 }
@@ -315,7 +329,10 @@ fn contracted_vs_partial_pbex_order_2() {
         assert!(
             rel_err(cont[3], pd[6]) <= TOLERANCE,
             "PBEX order 2 ∂²E/∂a²: cont[3]={} pd[6]={} rel_err={:.3e} at {:?}",
-            cont[3], pd[6], rel_err(cont[3], pd[6]), input
+            cont[3],
+            pd[6],
+            rel_err(cont[3], pd[6]),
+            input
         );
     }
 }
@@ -331,7 +348,11 @@ fn contracted_vs_partial_pbex_order_3() {
         assert!(
             rel_err(cont[7], pd[pd_a3_idx]) <= TOLERANCE,
             "PBEX order 3 ∂³E/∂a³: cont[7]={} pd[{}]={} rel_err={:.3e} at {:?}",
-            cont[7], pd_a3_idx, pd[pd_a3_idx], rel_err(cont[7], pd[pd_a3_idx]), input
+            cont[7],
+            pd_a3_idx,
+            pd[pd_a3_idx],
+            rel_err(cont[7], pd[pd_a3_idx]),
+            input
         );
     }
 }
@@ -347,7 +368,11 @@ fn contracted_vs_partial_pbex_order_4() {
         assert!(
             rel_err(cont[15], pd[pd_a4_idx]) <= TOLERANCE,
             "PBEX order 4 ∂⁴E/∂a⁴: cont[15]={} pd[{}]={} rel_err={:.3e} at {:?}",
-            cont[15], pd_a4_idx, pd[pd_a4_idx], rel_err(cont[15], pd[pd_a4_idx]), input
+            cont[15],
+            pd_a4_idx,
+            pd[pd_a4_idx],
+            rel_err(cont[15], pd[pd_a4_idx]),
+            input
         );
     }
 }
@@ -401,7 +426,8 @@ fn contracted_slaterx_order_5_launches() {
         assert!(
             v.is_finite(),
             "SLATERX order 5 cont[{}] = {} is non-finite",
-            i, v
+            i,
+            v
         );
     }
 }
@@ -415,7 +441,8 @@ fn contracted_slaterx_order_6_launches() {
         assert!(
             v.is_finite(),
             "SLATERX order 6 cont[{}] = {} is non-finite",
-            i, v
+            i,
+            v
         );
     }
 }
@@ -429,7 +456,8 @@ fn contracted_pbex_order_5_launches() {
         assert!(
             v.is_finite(),
             "PBEX order 5 cont[{}] = {} is non-finite",
-            i, v
+            i,
+            v
         );
     }
 }
@@ -443,7 +471,8 @@ fn contracted_pbex_order_6_launches() {
         assert!(
             v.is_finite(),
             "PBEX order 6 cont[{}] = {} is non-finite",
-            i, v
+            i,
+            v
         );
     }
 }
@@ -496,12 +525,7 @@ const MGGA_INPUT: [f64; 7] = [1.1, 1.0, 0.04, 0.005, 0.05, 0.5, 0.45];
 /// Always compares `cont[0] == pd[0]` (energy) as well.
 ///
 /// Strict 1e-12 tolerance per ACC-02 / D-12.
-fn assert_cross_mode_parity(
-    id: FunctionalId,
-    vars: Vars,
-    input: &[f64],
-    order: u32,
-) {
+fn assert_cross_mode_parity(id: FunctionalId, vars: Vars, input: &[f64], order: u32) {
     let cont = run_contracted(id, vars, order, input);
     let pd = run_partial_derivatives(id, vars, order, input);
 
@@ -509,7 +533,13 @@ fn assert_cross_mode_parity(
     assert!(
         rel_err(cont[0], pd[0]) <= TOLERANCE,
         "{:?} vars={:?} order={} CNST: cont[0]={} pd[0]={} rel_err={:.3e} input={:?}",
-        id, vars, order, cont[0], pd[0], rel_err(cont[0], pd[0]), input
+        id,
+        vars,
+        order,
+        cont[0],
+        pd[0],
+        rel_err(cont[0], pd[0]),
+        input
     );
 
     if order >= 1 {
@@ -519,19 +549,34 @@ fn assert_cross_mode_parity(
         assert!(
             cont.len() > cont_top,
             "{:?} order={} cont len {} < required {}",
-            id, order, cont.len(), cont_top + 1
+            id,
+            order,
+            cont.len(),
+            cont_top + 1
         );
         assert!(
             pd.len() > pd_top,
             "{:?} order={} pd len {} < required {}",
-            id, order, pd.len(), pd_top + 1
+            id,
+            order,
+            pd.len(),
+            pd_top + 1
         );
         let err = rel_err(cont[cont_top], pd[pd_top]);
         assert!(
             err <= TOLERANCE,
             "{:?} vars={:?} order={} ∂^{}E/∂x_0^{}: cont[{}]={} pd[{}]={} rel_err={:.3e} input={:?}",
-            id, vars, order, order, order,
-            cont_top, cont[cont_top], pd_top, pd[pd_top], err, input
+            id,
+            vars,
+            order,
+            order,
+            order,
+            cont_top,
+            cont[cont_top],
+            pd_top,
+            pd[pd_top],
+            err,
+            input
         );
     }
 }
@@ -548,28 +593,53 @@ fn assert_cross_mode_parity(
 
 #[test]
 fn test_contracted_tpssx_order_0_cross_mode() {
-    assert_cross_mode_parity(FunctionalId::XC_TPSSX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 0);
+    assert_cross_mode_parity(
+        FunctionalId::XC_TPSSX,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        &MGGA_INPUT,
+        0,
+    );
 }
 
 #[test]
 fn test_contracted_tpssx_order_1_cross_mode() {
-    assert_cross_mode_parity(FunctionalId::XC_TPSSX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 1);
+    assert_cross_mode_parity(
+        FunctionalId::XC_TPSSX,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        &MGGA_INPUT,
+        1,
+    );
 }
 
 #[test]
 fn test_contracted_tpssx_order_2_cross_mode() {
-    assert_cross_mode_parity(FunctionalId::XC_TPSSX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 2);
+    assert_cross_mode_parity(
+        FunctionalId::XC_TPSSX,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        &MGGA_INPUT,
+        2,
+    );
 }
 
 #[test]
 fn test_contracted_tpssx_order_3_cross_mode() {
-    assert_cross_mode_parity(FunctionalId::XC_TPSSX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 3);
+    assert_cross_mode_parity(
+        FunctionalId::XC_TPSSX,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        &MGGA_INPUT,
+        3,
+    );
 }
 
 #[test]
 #[ignore = "Plan 04-05 D-19 forward: metaGGA Mode::Contracted at N=4 falls through ctaylor_compose/multo dispatch (only N∈{0,1,2,3} specialised); Phase 6 prerequisite"]
 fn test_contracted_tpssx_order_4_cross_mode() {
-    assert_cross_mode_parity(FunctionalId::XC_TPSSX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 4);
+    assert_cross_mode_parity(
+        FunctionalId::XC_TPSSX,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        &MGGA_INPUT,
+        4,
+    );
 }
 
 /// Aggregate driver — runs orders 0..=3 in sequence; named to satisfy
@@ -592,28 +662,53 @@ fn test_contracted_tpssx_orders_0_to_4_cross_mode() {
 
 #[test]
 fn test_contracted_scanx_order_0_cross_mode() {
-    assert_cross_mode_parity(FunctionalId::XC_SCANX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 0);
+    assert_cross_mode_parity(
+        FunctionalId::XC_SCANX,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        &MGGA_INPUT,
+        0,
+    );
 }
 
 #[test]
 fn test_contracted_scanx_order_1_cross_mode() {
-    assert_cross_mode_parity(FunctionalId::XC_SCANX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 1);
+    assert_cross_mode_parity(
+        FunctionalId::XC_SCANX,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        &MGGA_INPUT,
+        1,
+    );
 }
 
 #[test]
 fn test_contracted_scanx_order_2_cross_mode() {
-    assert_cross_mode_parity(FunctionalId::XC_SCANX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 2);
+    assert_cross_mode_parity(
+        FunctionalId::XC_SCANX,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        &MGGA_INPUT,
+        2,
+    );
 }
 
 #[test]
 fn test_contracted_scanx_order_3_cross_mode() {
-    assert_cross_mode_parity(FunctionalId::XC_SCANX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 3);
+    assert_cross_mode_parity(
+        FunctionalId::XC_SCANX,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        &MGGA_INPUT,
+        3,
+    );
 }
 
 #[test]
 #[ignore = "Plan 04-05 D-19 forward: metaGGA Mode::Contracted at N=4 falls through ctaylor_compose/multo dispatch (only N∈{0,1,2,3} specialised); Phase 6 prerequisite"]
 fn test_contracted_scanx_order_4_cross_mode() {
-    assert_cross_mode_parity(FunctionalId::XC_SCANX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 4);
+    assert_cross_mode_parity(
+        FunctionalId::XC_SCANX,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        &MGGA_INPUT,
+        4,
+    );
 }
 
 #[test]
@@ -633,28 +728,53 @@ fn test_contracted_scanx_orders_0_to_4_cross_mode() {
 
 #[test]
 fn test_contracted_m06x_order_0_cross_mode() {
-    assert_cross_mode_parity(FunctionalId::XC_M06X, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 0);
+    assert_cross_mode_parity(
+        FunctionalId::XC_M06X,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        &MGGA_INPUT,
+        0,
+    );
 }
 
 #[test]
 fn test_contracted_m06x_order_1_cross_mode() {
-    assert_cross_mode_parity(FunctionalId::XC_M06X, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 1);
+    assert_cross_mode_parity(
+        FunctionalId::XC_M06X,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        &MGGA_INPUT,
+        1,
+    );
 }
 
 #[test]
 fn test_contracted_m06x_order_2_cross_mode() {
-    assert_cross_mode_parity(FunctionalId::XC_M06X, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 2);
+    assert_cross_mode_parity(
+        FunctionalId::XC_M06X,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        &MGGA_INPUT,
+        2,
+    );
 }
 
 #[test]
 fn test_contracted_m06x_order_3_cross_mode() {
-    assert_cross_mode_parity(FunctionalId::XC_M06X, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 3);
+    assert_cross_mode_parity(
+        FunctionalId::XC_M06X,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        &MGGA_INPUT,
+        3,
+    );
 }
 
 #[test]
 #[ignore = "Plan 04-05 D-19 forward: metaGGA Mode::Contracted at N=4 falls through ctaylor_compose/multo dispatch (only N∈{0,1,2,3} specialised); Phase 6 prerequisite"]
 fn test_contracted_m06x_order_4_cross_mode() {
-    assert_cross_mode_parity(FunctionalId::XC_M06X, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, &MGGA_INPUT, 4);
+    assert_cross_mode_parity(
+        FunctionalId::XC_M06X,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        &MGGA_INPUT,
+        4,
+    );
 }
 
 #[test]

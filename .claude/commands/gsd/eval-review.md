@@ -1,6 +1,6 @@
 ---
 name: gsd:eval-review
-description: Retroactively audit an executed AI phase's evaluation coverage — scores each eval dimension as COVERED/PARTIAL/MISSING and produces an actionable EVAL-REVIEW.md with remediation plan
+description: Audit an executed AI phase's evaluation coverage and produce an EVAL-REVIEW.md remediation plan.
 argument-hint: "[phase number]"
 allowed-tools:
   - Read
@@ -18,8 +18,8 @@ Produces EVAL-REVIEW.md with score, verdict, gaps, and remediation plan.
 </objective>
 
 <execution_context>
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/eval-review.md
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/ai-evals.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/eval-review.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/ai-evals.md
 </execution_context>
 
 <context>
@@ -27,6 +27,6 @@ Phase: $ARGUMENTS — optional, defaults to last completed phase.
 </context>
 
 <process>
-Execute @/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/eval-review.md end-to-end.
+Execute @/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/eval-review.md end-to-end.
 Preserve all workflow gates.
 </process>

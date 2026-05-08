@@ -143,7 +143,12 @@ pub fn build_densvars<F: Float>(
     // r_s = RS_PREFACTOR * n_m13
     //   RS_PREFACTOR = 0.6203504908994001 — f64 precision for 1e-11 parity.
     let _ = RS_PREFACTOR_F32;
-    ctaylor_scalar_mul::<F>(&out.n_m13, F::cast_from(0.6203504908994001_f64), &mut out.r_s, n);
+    ctaylor_scalar_mul::<F>(
+        &out.n_m13,
+        F::cast_from(0.6203504908994001_f64),
+        &mut out.r_s,
+        n,
+    );
 }
 
 /// `XC_A_B` variant arm — populates `a`, `b`, `n`, `s` from a pre-seeded
@@ -168,11 +173,7 @@ pub fn build_densvars<F: Float>(
 /// Used by 8 LDAs: SLATERX, VWN3C, VWN5C, PW92C, PZ81C, LDAERFX, LDAERFC, TFK.
 /// Pitfall PHASE2-D: TW + VWK use XC_A_B_GAA_GAB_GBB (Plan 02-05 Wave-1C-1), NOT this arm.
 #[cube]
-pub fn build_xc_a_b<F: Float>(
-    input: &Array<F>,
-    out: &mut DensVarsDev<F>,
-    #[comptime] n: u32,
-) {
+pub fn build_xc_a_b<F: Float>(input: &Array<F>, out: &mut DensVarsDev<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // Copy pre-seeded coefficients of `a` from input[0..size] into out.a.
@@ -291,11 +292,7 @@ pub fn build_xc_a_b_gaa_gab_gbb<F: Float>(
 /// `build_xc_a_b` / `build_xc_a_b_gaa_gab_gbb` — this low-level arm is the
 /// chain target for `build_xc_a_gaa` and `build_xc_a_2nd_taylor`.
 #[cube]
-pub fn build_xc_a<F: Float>(
-    input: &Array<F>,
-    out: &mut DensVarsDev<F>,
-    #[comptime] n: u32,
-) {
+pub fn build_xc_a<F: Float>(input: &Array<F>, out: &mut DensVarsDev<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
     #[unroll]
     for i in 0..size {
@@ -319,11 +316,7 @@ pub fn build_xc_a<F: Float>(
 ///
 /// W4 resolution: chain target for `build_xc_n_gnn` and `build_xc_n_2nd_taylor`.
 #[cube]
-pub fn build_xc_n<F: Float>(
-    input: &Array<F>,
-    out: &mut DensVarsDev<F>,
-    #[comptime] n: u32,
-) {
+pub fn build_xc_n<F: Float>(input: &Array<F>, out: &mut DensVarsDev<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
     #[unroll]
     for i in 0..size {
@@ -351,11 +344,7 @@ pub fn build_xc_n<F: Float>(
 /// W4 resolution: chain target for `build_xc_n_s_gnn_gns_gss` and
 /// `build_xc_n_s_2nd_taylor`.
 #[cube]
-pub fn build_xc_n_s<F: Float>(
-    input: &Array<F>,
-    out: &mut DensVarsDev<F>,
-    #[comptime] n: u32,
-) {
+pub fn build_xc_n_s<F: Float>(input: &Array<F>, out: &mut DensVarsDev<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
     #[unroll]
     for i in 0..size {
@@ -381,11 +370,7 @@ pub fn build_xc_n_s<F: Float>(
 ///
 /// Explicit chain to `build_xc_a` (replaces C fallthrough at densvars.hpp ~90).
 #[cube]
-pub fn build_xc_a_gaa<F: Float>(
-    input: &Array<F>,
-    out: &mut DensVarsDev<F>,
-    #[comptime] n: u32,
-) {
+pub fn build_xc_a_gaa<F: Float>(input: &Array<F>, out: &mut DensVarsDev<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
     #[unroll]
     for i in 0..size {
@@ -403,11 +388,7 @@ pub fn build_xc_a_gaa<F: Float>(
 ///
 /// Explicit chain to `build_xc_n` (replaces C fallthrough at densvars.hpp ~95).
 #[cube]
-pub fn build_xc_n_gnn<F: Float>(
-    input: &Array<F>,
-    out: &mut DensVarsDev<F>,
-    #[comptime] n: u32,
-) {
+pub fn build_xc_n_gnn<F: Float>(input: &Array<F>, out: &mut DensVarsDev<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
     #[unroll]
     for i in 0..size {

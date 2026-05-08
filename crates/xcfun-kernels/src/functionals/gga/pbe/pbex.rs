@@ -17,11 +17,7 @@ use crate::functionals::gga::shared::constants::R_PBE_F64;
 use crate::functionals::gga::shared::pbex as pbex_shared;
 
 #[cube]
-pub fn pbex_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn pbex_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
     let r = F::cast_from(R_PBE_F64);
 

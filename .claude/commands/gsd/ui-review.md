@@ -18,8 +18,8 @@ Output: {phase_num}-UI-REVIEW.md
 </objective>
 
 <execution_context>
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/ui-review.md
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/ui-brand.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/ui-review.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/ui-brand.md
 </execution_context>
 
 <context>
@@ -27,6 +27,6 @@ Phase: $ARGUMENTS — optional, defaults to last completed phase.
 </context>
 
 <process>
-Execute @/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/ui-review.md end-to-end.
+Execute @/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/ui-review.md end-to-end.
 Preserve all workflow gates.
 </process>

@@ -57,12 +57,7 @@ use cubecl::prelude::*;
 /// }
 /// ```
 #[cube]
-pub fn tfuns_mul<F: Float>(
-    z: &mut Array<F>,
-    x: &Array<F>,
-    y: &Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn tfuns_mul<F: Float>(z: &mut Array<F>, x: &Array<F>, y: &Array<F>, #[comptime] n: u32) {
     #[unroll]
     for i in 0_u32..=n {
         let k = i as usize;

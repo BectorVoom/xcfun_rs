@@ -19,19 +19,19 @@
 //! O(1) instead. See `xcfun_eval::Functional::settings_generation`.
 
 #[cfg(feature = "cpu")]
-pub use crate::runtime::cpu::{cpu_client, CpuClient};
+pub use crate::runtime::cpu::{CpuClient, cpu_client};
 
 // Plan 06-03 — HIP/ROCm primary. Re-export the cached client + alias
 // behind the `hip` feature flag so callers can `xcfun_gpu::pool::hip_client()`
 // in the same shape as `pool::cpu_client()`. The OnceLock itself lives
 // in `runtime::hip` (probe + cache co-located).
 #[cfg(feature = "hip")]
-pub use crate::runtime::hip::{hip_client, HipClient};
+pub use crate::runtime::hip::{HipClient, hip_client};
 
 // Plan 06-04 — CUDA opt-in. Re-export mirrors `hip_client` shape; the
 // OnceLock<Option<CudaClient>> lives in `runtime::cuda`.
 #[cfg(feature = "cuda")]
-pub use crate::runtime::cuda::{cuda_client, CudaClient};
+pub use crate::runtime::cuda::{CudaClient, cuda_client};
 
 // Plan 06-04 — Wgpu (Vulkan/Metal/DX12/WebGPU) opt-in. Re-export
 // mirrors `hip_client` shape; the OnceLock<Option<WgpuClient>> lives in
@@ -39,7 +39,7 @@ pub use crate::runtime::cuda::{cuda_client, CudaClient};
 // `wgpu` (RESEARCH §"Pitfall 9" / R-02), so no separate metal_client is
 // needed — Metal is reached through the same `wgpu_client` accessor.
 #[cfg(feature = "wgpu")]
-pub use crate::runtime::wgpu::{wgpu_client, WgpuClient};
+pub use crate::runtime::wgpu::{WgpuClient, wgpu_client};
 
 /// Buffer-handle bundle owned by a [`crate::Batch<R>`]. Generic over the
 /// runtime so each backend gets its own monomorphised set of handles.

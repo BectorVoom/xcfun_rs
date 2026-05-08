@@ -201,10 +201,7 @@ pub fn describe_short(name: &str) -> Option<&'static str> {
         let off = (pid as usize) - UPSTREAM_FUNCTIONAL_COUNT;
         return Some(PARAMETERS[off].description);
     }
-    if let Some(alias) = ALIASES
-        .iter()
-        .find(|a| a.name.eq_ignore_ascii_case(name))
-    {
+    if let Some(alias) = ALIASES.iter().find(|a| a.name.eq_ignore_ascii_case(name)) {
         return Some(alias.description);
     }
     None
@@ -222,10 +219,7 @@ pub fn describe_long(name: &str) -> Option<&'static str> {
         let off = (pid as usize) - UPSTREAM_FUNCTIONAL_COUNT;
         return Some(PARAMETERS[off].description);
     }
-    if let Some(alias) = ALIASES
-        .iter()
-        .find(|a| a.name.eq_ignore_ascii_case(name))
-    {
+    if let Some(alias) = ALIASES.iter().find(|a| a.name.eq_ignore_ascii_case(name)) {
         return Some(alias.description);
     }
     None

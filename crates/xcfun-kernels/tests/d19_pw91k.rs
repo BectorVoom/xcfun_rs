@@ -42,9 +42,30 @@ fn run_energy(input: &[f64; 5]) -> f64 {
     let array_len = arr_cnt * std::mem::size_of::<f64>();
     let mk = || client.empty(array_len);
     let h: [_; 24] = [
-        mk(), mk(), mk(), mk(), mk(), mk(), mk(), mk(),
-        mk(), mk(), mk(), mk(), mk(), mk(), mk(), mk(),
-        mk(), mk(), mk(), mk(), mk(), mk(), mk(), mk(),
+        mk(),
+        mk(),
+        mk(),
+        mk(),
+        mk(),
+        mk(),
+        mk(),
+        mk(),
+        mk(),
+        mk(),
+        mk(),
+        mk(),
+        mk(),
+        mk(),
+        mk(),
+        mk(),
+        mk(),
+        mk(),
+        mk(),
+        mk(),
+        mk(),
+        mk(),
+        mk(),
+        mk(),
     ];
     let out_len = 1_usize;
     let out_h = client.empty(out_len * std::mem::size_of::<f64>());
@@ -106,11 +127,7 @@ fn d19_pw91k_baseline_regression() {
     );
     for (i, rec) in records.iter().enumerate() {
         let actual = run_energy(&rec.input);
-        assert_relative_eq!(
-            actual,
-            rec.expected_energy,
-            max_relative = REL_TOL
-        );
+        assert_relative_eq!(actual, rec.expected_energy, max_relative = REL_TOL);
         eprintln!(
             "rec[{}]: input={:?} actual={:.17e} expected={:.17e}",
             i, rec.input, actual, rec.expected_energy

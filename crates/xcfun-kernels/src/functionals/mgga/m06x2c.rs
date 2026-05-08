@@ -83,7 +83,10 @@ pub fn m06x2c_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptim
         F::cast_from(M06X2C_ANTI_D3_F64),
         F::cast_from(M06X2C_ANTI_D4_F64),
         F::cast_from(M06X2C_ANTI_D5_F64),
-        &chi_a2, &zet_a, &chi_b2, &zet_b,
+        &chi_a2,
+        &zet_a,
+        &chi_b2,
+        &zet_b,
         &mut m06_anti,
         n,
     );
@@ -101,7 +104,9 @@ pub fn m06x2c_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptim
         F::cast_from(M06X2C_PARA_D3_F64),
         F::cast_from(M06X2C_PARA_D4_F64),
         F::cast_from(M06X2C_PARA_D5_F64),
-        &chi_a2, &zet_a, &dsigma_a,
+        &chi_a2,
+        &zet_a,
+        &dsigma_a,
         &mut m06_para_a,
         n,
     );
@@ -119,7 +124,9 @@ pub fn m06x2c_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptim
         F::cast_from(M06X2C_PARA_D3_F64),
         F::cast_from(M06X2C_PARA_D4_F64),
         F::cast_from(M06X2C_PARA_D5_F64),
-        &chi_b2, &zet_b, &dsigma_b,
+        &chi_b2,
+        &zet_b,
+        &dsigma_b,
         &mut m06_para_b,
         n,
     );

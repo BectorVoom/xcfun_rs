@@ -39,16 +39,10 @@ pub enum XcError {
     },
 
     #[error("variable type {vars:?} does not provide required dependencies {required:?}")]
-    InvalidVars {
-        vars: Vars,
-        required: Dependency,
-    },
+    InvalidVars { vars: Vars, required: Dependency },
 
     #[error("mode {mode:?} is not supported for functionals with dependencies {depends:?}")]
-    InvalidMode {
-        mode: Mode,
-        depends: Dependency,
-    },
+    InvalidMode { mode: Mode, depends: Dependency },
 
     /// Combined `XC_EVARS | XC_EMODE` (= 6) returned by
     /// `xcfun-master/src/XCFunctional.cpp:441-443` when `Mode::Potential`
@@ -133,10 +127,10 @@ impl XcError {
     /// the upstream lb94.cpp is `#if 0`'d) maps to `-1`.
     pub fn as_c_code(&self) -> i32 {
         match self {
-            Self::InvalidOrder { .. } => 1,         // XC_EORDER
-            Self::InvalidVars { .. } => 2,          // XC_EVARS
-            Self::InvalidMode { .. } => 4,          // XC_EMODE
-            Self::InvalidVarsAndMode { .. } => 6,   // XC_EVARS | XC_EMODE
+            Self::InvalidOrder { .. } => 1,       // XC_EORDER
+            Self::InvalidVars { .. } => 2,        // XC_EVARS
+            Self::InvalidMode { .. } => 4,        // XC_EMODE
+            Self::InvalidVarsAndMode { .. } => 6, // XC_EVARS | XC_EMODE
             // Phase 6 Plan 06-02a — no upstream `XC_E*` mapping for the GPU
             // device-feature errors; `-1` matches the `UnknownName` /
             // `Runtime` precedent (returned by `xcfun_set` / `xcfun_get`
@@ -193,8 +187,12 @@ mod tests {
     #[test]
     fn as_c_code_invalid_order() {
         assert_eq!(
-            XcError::InvalidOrder { order: 5, mode: Mode::PartialDerivatives, n_vars: 2 }
-                .as_c_code(),
+            XcError::InvalidOrder {
+                order: 5,
+                mode: Mode::PartialDerivatives,
+                n_vars: 2
+            }
+            .as_c_code(),
             1,
         );
     }
@@ -202,8 +200,11 @@ mod tests {
     #[test]
     fn as_c_code_invalid_vars() {
         assert_eq!(
-            XcError::InvalidVars { vars: Vars::A, required: Dependency::GRADIENT }
-                .as_c_code(),
+            XcError::InvalidVars {
+                vars: Vars::A,
+                required: Dependency::GRADIENT
+            }
+            .as_c_code(),
             2,
         );
     }
@@ -211,8 +212,11 @@ mod tests {
     #[test]
     fn as_c_code_invalid_mode() {
         assert_eq!(
-            XcError::InvalidMode { mode: Mode::Potential, depends: Dependency::KINETIC }
-                .as_c_code(),
+            XcError::InvalidMode {
+                mode: Mode::Potential,
+                depends: Dependency::KINETIC
+            }
+            .as_c_code(),
             4,
         );
     }
@@ -248,7 +252,11 @@ mod tests {
     #[test]
     fn as_c_code_input_length_mismatch() {
         assert_eq!(
-            XcError::InputLengthMismatch { expected: 2, got: 1 }.as_c_code(),
+            XcError::InputLengthMismatch {
+                expected: 2,
+                got: 1
+            }
+            .as_c_code(),
             -1,
         );
     }
@@ -256,7 +264,11 @@ mod tests {
     #[test]
     fn as_c_code_output_length_mismatch() {
         assert_eq!(
-            XcError::OutputLengthMismatch { expected: 2, got: 1 }.as_c_code(),
+            XcError::OutputLengthMismatch {
+                expected: 2,
+                got: 1
+            }
+            .as_c_code(),
             -1,
         );
     }

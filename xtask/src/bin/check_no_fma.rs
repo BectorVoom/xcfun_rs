@@ -131,9 +131,11 @@ fn main() -> Result<()> {
         // Step 1: cargo rustc --emit=asm for this crate. We retain the Phase-1
         // `--features cpu` for xcfun-ad; xcfun-eval is built with its default
         // feature set until the gate is extended further.
-        println!("check-no-fma: emitting asm for {} --release ...", crate_name);
-        let mut cargo_args: Vec<&str> =
-            vec!["rustc", "-p", crate_name, "--release", "--lib"];
+        println!(
+            "check-no-fma: emitting asm for {} --release ...",
+            crate_name
+        );
+        let mut cargo_args: Vec<&str> = vec!["rustc", "-p", crate_name, "--release", "--lib"];
         if *crate_name == "xcfun-ad" {
             cargo_args.extend_from_slice(&["--features", "cpu"]);
         }

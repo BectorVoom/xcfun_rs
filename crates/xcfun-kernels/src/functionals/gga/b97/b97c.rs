@@ -40,12 +40,7 @@ use crate::functionals::lda::pw92eps;
 
 /// `s2_ab2 = (gaa / a_43) / a_43` — left-associative C++ div chain.
 #[cube]
-fn s2_ab2<F: Float>(
-    gaa: &Array<F>,
-    a_43: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn s2_ab2<F: Float>(gaa: &Array<F>, a_43: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
     let mut inv_a43 = Array::<F>::new(size);
     ctaylor_reciprocal::<F>(a_43, &mut inv_a43, n);
@@ -147,11 +142,7 @@ fn energy_b97c_antipar<F: Float>(
 
 /// XC_B97C kernel. 1:1 port of `b97xc.cpp:25-34`.
 #[cube]
-pub fn b97c_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn b97c_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // Parallel-spin contributions (per α, β).

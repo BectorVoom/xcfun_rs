@@ -19,12 +19,7 @@ use crate::functionals::gga::shared::constants::{B97_1X_COEF, B97_GAMMA_X_F64};
 
 /// `s2_ab(gaa, a_43) = (gaa / a_43) / a_43` — C++ left-associative div chain.
 #[cube]
-fn s2_ab<F: Float>(
-    gaa: &Array<F>,
-    a_43: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn s2_ab<F: Float>(gaa: &Array<F>, a_43: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
     let mut inv_a43 = Array::<F>::new(size);
     ctaylor_reciprocal::<F>(a_43, &mut inv_a43, n);
@@ -65,11 +60,7 @@ fn energy_b97x_ab<F: Float>(
 
 /// XC_B97_1X kernel. 1:1 port of `b97-1xc.cpp:20-23`.
 #[cube]
-pub fn b97_1x_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn b97_1x_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     let gamma = F::cast_from(B97_GAMMA_X_F64);

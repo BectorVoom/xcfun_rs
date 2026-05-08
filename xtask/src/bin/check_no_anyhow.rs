@@ -33,8 +33,8 @@ fn project_root() -> Result<PathBuf> {
 
 /// Check one crate's Cargo.toml for an anyhow dep in `[dependencies]`.
 fn check_cargo_toml(path: &Path) -> Result<Vec<String>> {
-    let contents = std::fs::read_to_string(path)
-        .with_context(|| format!("read {}", path.display()))?;
+    let contents =
+        std::fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
     let value: Value =
         toml::from_str(&contents).with_context(|| format!("parse {}", path.display()))?;
     let mut violations = Vec::new();

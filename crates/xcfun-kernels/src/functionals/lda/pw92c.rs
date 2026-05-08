@@ -16,11 +16,7 @@ use crate::density_vars::DensVarsDev;
 
 /// PW92 correlation kernel. 1:1 port of `pw92c.cpp:18-20`.
 #[cube]
-pub fn pw92c_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn pw92c_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     // C++: return pw92eps::pw92eps(d) * d.n;
     //   ctaylor_mul is commutative but we preserve C++ operand order (eps * n).
     let mut eps = Array::<F>::new(comptime!((1_u32 << n) as usize));

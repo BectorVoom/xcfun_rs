@@ -45,8 +45,7 @@ const TMP5_P3_COEFF_F64: f64 = BLOCX_E_F64 * BLOCX_MU_F64;
 const TMP3_INNER_FIRST_F64: f64 = 0.5_f64 * 0.6_f64 * 0.6_f64;
 
 // `(10 / 81)^2 / kappa` — coefficient of `p²` in tmp4.
-const TMP4_P2_COEFF_F64: f64 =
-    (10.0_f64 / 81.0_f64) * (10.0_f64 / 81.0_f64) / BLOCX_KAPPA_F64;
+const TMP4_P2_COEFF_F64: f64 = (10.0_f64 / 81.0_f64) * (10.0_f64 / 81.0_f64) / BLOCX_KAPPA_F64;
 
 /// BLOCX exchange energy density `energy_blocx(d_n, d_gnn, d_tau)`.
 ///
@@ -154,12 +153,7 @@ pub fn blocx_energy<F: Float>(
 
         // b_term = b · alpha · (alpha-1)
         let mut b_term = Array::<F>::new(size);
-        ctaylor_scalar_mul::<F>(
-            &alpha_alpha_m1,
-            F::cast_from(BLOCX_B_F64),
-            &mut b_term,
-            n,
-        );
+        ctaylor_scalar_mul::<F>(&alpha_alpha_m1, F::cast_from(BLOCX_B_F64), &mut b_term, n);
 
         // sqrt_arg = 1 + b_term
         let mut sqrt_arg = Array::<F>::new(size);
@@ -183,12 +177,7 @@ pub fn blocx_energy<F: Float>(
 
         // first_term = (9/20) · ratio
         let mut first_term = Array::<F>::new(size);
-        ctaylor_scalar_mul::<F>(
-            &ratio,
-            F::cast_from(9.0_f64 / 20.0_f64),
-            &mut first_term,
-            n,
-        );
+        ctaylor_scalar_mul::<F>(&ratio, F::cast_from(9.0_f64 / 20.0_f64), &mut first_term, n);
 
         // second_term = (2/3) · p
         let mut second_term = Array::<F>::new(size);
@@ -270,12 +259,7 @@ pub fn blocx_energy<F: Float>(
     {
         let mut qb_sq = Array::<F>::new(size);
         ctaylor_mul::<F>(&q_b, &q_b, &mut qb_sq, n);
-        ctaylor_scalar_mul::<F>(
-            &qb_sq,
-            F::cast_from(146.0_f64 / 2025.0_f64),
-            &mut tmp2,
-            n,
-        );
+        ctaylor_scalar_mul::<F>(&qb_sq, F::cast_from(146.0_f64 / 2025.0_f64), &mut tmp2, n);
     }
 
     // -----------------------------------------------------------------

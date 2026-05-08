@@ -1,6 +1,6 @@
 ---
 name: gsd:inbox
-description: Triage and review all open GitHub issues and PRs against project templates and contribution guidelines
+description: Triage and review open GitHub issues and PRs against project templates and contribution guidelines.
 argument-hint: "[--issues] [--prs] [--label] [--close-incomplete] [--repo owner/repo]"
 allowed-tools:
   - Read
@@ -20,7 +20,7 @@ and optionally applies labels or closes non-compliant submissions.
 </objective>
 
 <execution_context>
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/inbox.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/inbox.md
 </execution_context>
 
 <context>
@@ -33,6 +33,6 @@ and optionally applies labels or closes non-compliant submissions.
 </context>
 
 <process>
-Execute the inbox workflow from @/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/inbox.md end-to-end.
+Execute the inbox workflow from @/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/inbox.md end-to-end.
 Parse flags from arguments and pass to workflow.
 </process>

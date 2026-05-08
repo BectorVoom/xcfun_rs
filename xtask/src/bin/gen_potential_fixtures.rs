@@ -76,9 +76,7 @@ struct PotentialRecord {
 }
 
 /// 5 representative GGAs covering 4 of the 8 GGA families.
-const FIXTURE_FUNCTIONALS: &[&str] = &[
-    "XC_PBEX", "XC_BECKEX", "XC_LYPC", "XC_PW91X", "XC_B97X",
-];
+const FIXTURE_FUNCTIONALS: &[&str] = &["XC_PBEX", "XC_BECKEX", "XC_LYPC", "XC_PW91X", "XC_B97X"];
 
 /// `(n0, α, r)` Gaussian-atom grid candidates: 30 points before
 /// down-sampling.
@@ -258,8 +256,7 @@ fn generate_records() -> Result<Vec<PotentialRecord>> {
 fn main() -> Result<()> {
     let root = project_root()?;
     let records = generate_records()?;
-    let out_path = root
-        .join("crates/xcfun-eval/tests/data/potential_reference_100.json");
+    let out_path = root.join("crates/xcfun-eval/tests/data/potential_reference_100.json");
     fs::create_dir_all(out_path.parent().context("out path has no parent")?)?;
 
     let json = serde_json::to_string_pretty(&records)?;

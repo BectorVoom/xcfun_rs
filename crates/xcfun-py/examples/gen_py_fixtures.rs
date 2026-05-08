@@ -28,8 +28,9 @@ fn run_one(name: &str, vars: Vars, mode: Mode, order: u32, density: Vec<f64>) ->
     let mut f = Functional::new();
     f.set(name, 1.0)
         .unwrap_or_else(|e| panic!("set({name}, 1.0) failed: {e:?}"));
-    f.eval_setup(vars, mode, order)
-        .unwrap_or_else(|e| panic!("eval_setup({name}, {vars:?}, {mode:?}, {order}) failed: {e:?}"));
+    f.eval_setup(vars, mode, order).unwrap_or_else(|e| {
+        panic!("eval_setup({name}, {vars:?}, {mode:?}, {order}) failed: {e:?}")
+    });
     let inlen = f.input_buffer_length();
     assert_eq!(
         density.len(),
@@ -58,61 +59,87 @@ fn main() {
 
     // LDA tier (Phase 2)
     fixtures.push(run_one(
-        "slaterx", Vars::A_B, Mode::PartialDerivatives, 0,
+        "slaterx",
+        Vars::A_B,
+        Mode::PartialDerivatives,
+        0,
         vec![0.3, 0.2],
     ));
     fixtures.push(run_one(
-        "slaterx", Vars::A_B, Mode::PartialDerivatives, 1,
+        "slaterx",
+        Vars::A_B,
+        Mode::PartialDerivatives,
+        1,
         vec![0.3, 0.2],
     ));
     fixtures.push(run_one(
-        "vwn5c", Vars::A_B, Mode::PartialDerivatives, 0,
+        "vwn5c",
+        Vars::A_B,
+        Mode::PartialDerivatives,
+        0,
         vec![0.4, 0.3],
     ));
     fixtures.push(run_one(
-        "tfk", Vars::A_B, Mode::PartialDerivatives, 0,
+        "tfk",
+        Vars::A_B,
+        Mode::PartialDerivatives,
+        0,
         vec![0.5, 0.5],
     ));
 
     // GGA tier (Phase 3) — A_B_GAA_GAB_GBB = 5 inputs (rho_a, rho_b, gaa, gab, gbb)
     fixtures.push(run_one(
-        "pbex", Vars::A_B_GAA_GAB_GBB, Mode::PartialDerivatives, 1,
+        "pbex",
+        Vars::A_B_GAA_GAB_GBB,
+        Mode::PartialDerivatives,
+        1,
         vec![0.30, 0.20, 0.10, 0.05, 0.10],
     ));
     fixtures.push(run_one(
-        "pbec", Vars::A_B_GAA_GAB_GBB, Mode::PartialDerivatives, 1,
+        "pbec",
+        Vars::A_B_GAA_GAB_GBB,
+        Mode::PartialDerivatives,
+        1,
         vec![0.30, 0.20, 0.10, 0.05, 0.10],
     ));
     fixtures.push(run_one(
-        "lypc", Vars::A_B_GAA_GAB_GBB, Mode::PartialDerivatives, 2,
+        "lypc",
+        Vars::A_B_GAA_GAB_GBB,
+        Mode::PartialDerivatives,
+        2,
         vec![0.30, 0.20, 0.10, 0.05, 0.10],
     ));
     fixtures.push(run_one(
-        "blyp", Vars::A_B_GAA_GAB_GBB, Mode::PartialDerivatives, 2,
+        "blyp",
+        Vars::A_B_GAA_GAB_GBB,
+        Mode::PartialDerivatives,
+        2,
         vec![0.30, 0.20, 0.10, 0.05, 0.10],
     ));
 
     // metaGGA tier exemplar (Phase 4) — A_B_GAA_GAB_GBB_TAUA_TAUB = 7 inputs
     fixtures.push(run_one(
-        "tpssx", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, Mode::PartialDerivatives, 1,
+        "tpssx",
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        Mode::PartialDerivatives,
+        1,
         vec![0.30, 0.20, 0.10, 0.05, 0.10, 0.20, 0.15],
     ));
     fixtures.push(run_one(
-        "m06x", Vars::A_B_GAA_GAB_GBB_TAUA_TAUB, Mode::PartialDerivatives, 1,
+        "m06x",
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+        Mode::PartialDerivatives,
+        1,
         vec![0.30, 0.20, 0.10, 0.05, 0.10, 0.20, 0.15],
     ));
 
-    let json = serde_json::to_string_pretty(&fixtures)
-        .expect("serialize fixtures");
+    let json = serde_json::to_string_pretty(&fixtures).expect("serialize fixtures");
     let out_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
         .join("fixtures")
         .join("eval_parity.json");
-    fs::create_dir_all(out_path.parent().unwrap())
-        .expect("create fixtures dir");
-    fs::write(&out_path, json).unwrap_or_else(|e| {
-        panic!("write {}: {e}", out_path.display())
-    });
+    fs::create_dir_all(out_path.parent().unwrap()).expect("create fixtures dir");
+    fs::write(&out_path, json).unwrap_or_else(|e| panic!("write {}: {e}", out_path.display()));
     eprintln!(
         "wrote {} fixtures to {}",
         fixtures.len(),

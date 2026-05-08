@@ -1,6 +1,6 @@
 ---
 name: gsd:ai-integration-phase
-description: Generate AI design contract (AI-SPEC.md) for phases that involve building AI systems — framework selection, implementation guidance from official docs, and evaluation strategy
+description: Generate an AI-SPEC.md design contract for phases that involve building AI systems.
 argument-hint: "[phase number]"
 allowed-tools:
   - Read
@@ -21,9 +21,9 @@ Flow: Select Framework → Research Docs → Research Domain → Design Eval Str
 </objective>
 
 <execution_context>
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/ai-integration-phase.md
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/ai-frameworks.md
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/ai-evals.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/ai-integration-phase.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/ai-frameworks.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/ai-evals.md
 </execution_context>
 
 <context>
@@ -31,6 +31,6 @@ Phase number: $ARGUMENTS — optional, auto-detects next unplanned phase if omit
 </context>
 
 <process>
-Execute @/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/ai-integration-phase.md end-to-end.
+Execute @/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/ai-integration-phase.md end-to-end.
 Preserve all workflow gates.
 </process>

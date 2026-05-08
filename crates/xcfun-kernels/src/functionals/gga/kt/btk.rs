@@ -30,12 +30,7 @@ use crate::functionals::gga::shared::constants::{BTK_BETA_F64, BTK_FUDGE_F64, BT
 /// Per-spin BTK contribution. `na = 2·d.a` and `gaa_in = 4·d.gaa` are
 /// caller-rescaled (see `btk.cpp:26`).
 #[cube]
-fn btk_alpha<F: Float>(
-    na: &Array<F>,
-    gaa_in: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn btk_alpha<F: Float>(na: &Array<F>, gaa_in: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // na53 = pow(na, 5/3).
@@ -77,11 +72,7 @@ fn btk_alpha<F: Float>(
 
 /// XC_BTK kernel. 1:1 port of `btk.cpp:25-27`.
 #[cube]
-pub fn btk_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn btk_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // na_alpha = 2 · d.a;   gaa_in_alpha = 4 · d.gaa.

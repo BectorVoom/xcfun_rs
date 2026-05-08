@@ -76,10 +76,10 @@ pub fn cbrt_expand<F: Float>(t: &mut Array<F>, x0: F, #[comptime] n: u32) {
     for i in 1_u32..=n {
         let k = i as usize;
         let i_f = F::cast_from(i);
-        let num = F::new(4.0) * x0inv;         // 4 * x0inv
-        let den = F::new(3.0) * i_f;           // 3 * i
-        let quot = num / den;                  // (4*x0inv) / (3*i)
-        let factor = quot - x0inv;             // ... - x0inv
-        t[k] = t[k - 1] * factor;              // t[i-1] * factor
+        let num = F::new(4.0) * x0inv; // 4 * x0inv
+        let den = F::new(3.0) * i_f; // 3 * i
+        let quot = num / den; // (4*x0inv) / (3*i)
+        let factor = quot - x0inv; // ... - x0inv
+        t[k] = t[k - 1] * factor; // t[i-1] * factor
     }
 }

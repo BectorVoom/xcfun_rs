@@ -169,11 +169,7 @@ fn c2<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
 /// return result;
 /// ```
 #[cube]
-pub fn ldaerfc_jt_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ldaerfc_jt_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
     let mu = F::new(RANGESEP_MU_F32);
     let mu2 = F::new(RANGESEP_MU_F32 * RANGESEP_MU_F32);

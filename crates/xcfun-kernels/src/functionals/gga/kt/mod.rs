@@ -11,5 +11,5 @@
 //! - **LB94 (legacy `setup_lb94` pattern, not `FUNCTIONAL`)** is not in the
 //!   78-entry FunctionalId enum; deferred to Phase 5 per D-19.
 
-pub mod ktx;
 pub mod btk;
+pub mod ktx;

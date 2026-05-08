@@ -41,9 +41,7 @@
 use cubecl::prelude::*;
 use xcfun_ad::ctaylor::{ctaylor_add, ctaylor_scalar_mul, ctaylor_sub, ctaylor_zero};
 use xcfun_ad::ctaylor_rec::mul::ctaylor_mul;
-use xcfun_ad::math::{
-    ctaylor_exp, ctaylor_log, ctaylor_pow, ctaylor_reciprocal, ctaylor_sqrt,
-};
+use xcfun_ad::math::{ctaylor_exp, ctaylor_log, ctaylor_pow, ctaylor_reciprocal, ctaylor_sqrt};
 
 use super::pw92eps::pw92_eps;
 use crate::density_vars::DensVarsDev;
@@ -369,12 +367,7 @@ fn pow8<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
 
 #[cube]
 #[allow(clippy::too_many_arguments)]
-fn ecorrlr<F: Float>(
-    d: &DensVarsDev<F>,
-    ec: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn ecorrlr<F: Float>(d: &DensVarsDev<F>, ec: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
     let mu = F::cast_from(RANGESEP_MU_F64);
 
@@ -562,7 +555,12 @@ fn ecorrlr<F: Float>(
 
     // coe4 = -9/(64*rs3) * coe4_bracket = -9/64 * (1/rs3) * coe4_bracket
     let mut coe4_prescale = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&inv_rs3, F::cast_from(-9.0_f64 / 64.0_f64), &mut coe4_prescale, n);
+    ctaylor_scalar_mul::<F>(
+        &inv_rs3,
+        F::cast_from(-9.0_f64 / 64.0_f64),
+        &mut coe4_prescale,
+        n,
+    );
     let mut coe4 = Array::<F>::new(size);
     ctaylor_mul::<F>(&coe4_prescale, &coe4_bracket, &mut coe4, n);
 
@@ -728,11 +726,7 @@ fn ecorrlr<F: Float>(
 /// Short-range LDA correlation kernel. 1:1 port of `ldaerfc.cpp:106-110`:
 /// `return d.n * (eps - ecorrlr(d, mu, eps));` where eps = pw92eps(d).
 #[cube]
-pub fn ldaerfc_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ldaerfc_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // eps = pw92eps(d)

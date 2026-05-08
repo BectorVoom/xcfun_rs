@@ -8,7 +8,7 @@
 //! The module name remains `for_tests` (rename deferred to avoid touching
 //! ~30 workspace-wide import sites).
 
-pub use xcfun_eval::for_tests::{cpu_client, CpuClient};
+pub use xcfun_eval::for_tests::{CpuClient, cpu_client};
 
 /// CPU is always available — the substrate is statically linked once the
 /// `cpu` feature flag is enabled (default).

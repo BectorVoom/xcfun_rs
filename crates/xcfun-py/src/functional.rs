@@ -288,33 +288,53 @@ pub mod free_fns {
 
     /// xcfun_rs.version() -> str.
     #[pyfunction]
-    pub fn version() -> &'static str { rs::version() }
+    pub fn version() -> &'static str {
+        rs::version()
+    }
 
     /// xcfun_rs.splash() -> str.
     #[pyfunction]
-    pub fn splash() -> &'static str { rs::splash() }
+    pub fn splash() -> &'static str {
+        rs::splash()
+    }
 
     /// xcfun_rs.authors() -> str.
     #[pyfunction]
-    pub fn authors() -> &'static str { rs::authors() }
+    pub fn authors() -> &'static str {
+        rs::authors()
+    }
 
     /// xcfun_rs.is_compatible_library() -> bool.
     #[pyfunction]
-    pub fn is_compatible_library() -> bool { rs::is_compatible_library() }
+    pub fn is_compatible_library() -> bool {
+        rs::is_compatible_library()
+    }
 
     /// xcfun_rs.self_test() -> int — failure count (0 = pass).
     #[pyfunction]
-    pub fn self_test() -> i32 { rs::self_test() }
+    pub fn self_test() -> i32 {
+        rs::self_test()
+    }
 
     /// xcfun_rs.which_vars(...) -> Optional[int].
     #[pyfunction]
     pub fn which_vars(
-        func_type: u32, dens_type: u32,
-        laplacian: u32, kinetic: u32,
-        current: u32, explicit_derivatives: u32,
+        func_type: u32,
+        dens_type: u32,
+        laplacian: u32,
+        kinetic: u32,
+        current: u32,
+        explicit_derivatives: u32,
     ) -> Option<u32> {
-        rs::which_vars(func_type, dens_type, laplacian, kinetic, current,
-                       explicit_derivatives).map(|v| v as u32)
+        rs::which_vars(
+            func_type,
+            dens_type,
+            laplacian,
+            kinetic,
+            current,
+            explicit_derivatives,
+        )
+        .map(|v| v as u32)
     }
 
     /// xcfun_rs.which_mode(mode_type) -> Optional[int].

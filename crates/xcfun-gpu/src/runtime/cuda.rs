@@ -135,15 +135,14 @@ pub fn cuda_no_f64_error(requested: crate::Backend) -> xcfun_core::XcError {
     // Best-effort recover the adapter name. If client construction
     // succeeds (the f64 probe failed but init succeeded), we get the
     // runtime's `&'static str` name. Otherwise fall back to a sentinel.
-    let adapter_name: &'static str =
-        match std::panic::catch_unwind(|| {
-            let device = CudaDevice::default();
-            let client = CudaRuntime::client(&device);
-            CudaRuntime::name(&client)
-        }) {
-            Ok(name) => name,
-            Err(_) => "<cuda init failed>",
-        };
+    let adapter_name: &'static str = match std::panic::catch_unwind(|| {
+        let device = CudaDevice::default();
+        let client = CudaRuntime::client(&device);
+        CudaRuntime::name(&client)
+    }) {
+        Ok(name) => name,
+        Err(_) => "<cuda init failed>",
+    };
     xcfun_core::XcError::CudaNoF64 {
         adapter_name,
         requested_runtime: requested.into(),

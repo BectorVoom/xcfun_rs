@@ -20,11 +20,7 @@ use crate::density_vars::DensVarsDev;
 use crate::functionals::gga::shared::{pbex as pbex_shared, pw91_like};
 
 #[cube]
-pub fn rpbex_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn rpbex_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // alpha-channel:

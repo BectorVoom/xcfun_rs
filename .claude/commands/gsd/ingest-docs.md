@@ -1,6 +1,6 @@
 ---
 name: gsd:ingest-docs
-description: Scan a repo for mixed ADRs, PRDs, SPECs, and DOCs and bootstrap or merge the full .planning/ setup from them. Classifies each doc in parallel, synthesizes a consolidated context with a conflicts report, and routes to new-project or merge-milestone depending on whether .planning/ already exists.
+description: Bootstrap or merge a .planning/ setup from existing ADRs, PRDs, SPECs, and docs in a repo.
 argument-hint: "[path] [--mode new|merge] [--manifest <file>] [--resolve auto|interactive]"
 allowed-tools:
   - Read
@@ -27,10 +27,10 @@ Auto-synthesizes most conflicts using the precedence rule `ADR > SPEC > PRD > DO
 </objective>
 
 <execution_context>
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/ingest-docs.md
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/ui-brand.md
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/gate-prompts.md
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/doc-conflict-engine.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/ingest-docs.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/ui-brand.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/gate-prompts.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/doc-conflict-engine.md
 </execution_context>
 
 <context>

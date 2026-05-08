@@ -29,12 +29,7 @@ use super::constants::{NEG_C_SLATER_F64, S2_PREFACTOR_F64};
 ///
 /// **FULL BODY** (Wave 2, plan 03-02 — W3 conversion).
 #[cube]
-pub fn chi2<F: Float>(
-    rho: &Array<F>,
-    grad2: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn chi2<F: Float>(rho: &Array<F>, grad2: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     // FULL BODY — port of `pw9xx.hpp:39-41`:
     //   chi2(ρ, |∇ρ|²) = grad2 / pow(rho, 8/3) = grad2 · pow(rho, -8/3)
     //
@@ -65,12 +60,7 @@ pub fn chi2<F: Float>(
 ///
 /// Preconditions: `rho[0] > 0` (post-regularize); `grad2[0] >= 0`.
 #[cube]
-pub fn s2<F: Float>(
-    rho: &Array<F>,
-    grad2: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn s2<F: Float>(rho: &Array<F>, grad2: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // rho_m83 = rho^(-8/3). f64 exponent cast at kernel time per SP-2.
@@ -121,11 +111,7 @@ pub fn prefactor<F: Float>(rho: &Array<F>, out: &mut Array<F>, #[comptime] n: u3
 ///   1. `rho_53 = pow(rho, 5/3)`
 ///   2. `out    = (CF · 2^(2/3)) · rho_53`
 #[cube]
-pub fn pw91k_prefactor<F: Float>(
-    rho: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn pw91k_prefactor<F: Float>(rho: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
     let mut rho_53 = Array::<F>::new(size);
     ctaylor_pow::<F>(rho, F::cast_from(5.0_f64 / 3.0_f64), &mut rho_53, n);

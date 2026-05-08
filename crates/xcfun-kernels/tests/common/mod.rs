@@ -142,7 +142,10 @@ pub fn vars_from_u32(v: u32) -> Vars {
         2 => Vars::A_B,
         6 => Vars::A_B_GAA_GAB_GBB,
         13 => Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
-        _ => panic!("D19Record: unsupported vars discriminant {} (Plan 06-N3 uses 6 + 13)", v),
+        _ => panic!(
+            "D19Record: unsupported vars discriminant {} (Plan 06-N3 uses 6 + 13)",
+            v
+        ),
     }
 }
 
@@ -167,9 +170,8 @@ pub fn n3_fixture_path(name: &str) -> PathBuf {
 /// in the same module.
 pub fn n3_load_fixture(name: &str) -> Vec<D19Record> {
     let path = n3_fixture_path(name);
-    let contents = fs::read_to_string(&path).unwrap_or_else(|e| {
-        panic!("D19 fixture missing: {} ({})", path.display(), e)
-    });
+    let contents = fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("D19 fixture missing: {} ({})", path.display(), e));
     contents
         .lines()
         .filter(|l| !l.trim().is_empty())
@@ -189,11 +191,7 @@ pub fn n3_load_fixture(name: &str) -> Vec<D19Record> {
 /// id surfaces immediately).
 pub fn run_d19_n3_contract(name: &str, id: FunctionalId) {
     let records = n3_load_fixture(name);
-    assert!(
-        !records.is_empty(),
-        "D19 fixture {} has zero records",
-        name
-    );
+    assert!(!records.is_empty(), "D19 fixture {} has zero records", name);
     for (idx, rec) in records.iter().enumerate() {
         assert_eq!(
             rec.functional, name,
@@ -203,13 +201,14 @@ pub fn run_d19_n3_contract(name: &str, id: FunctionalId) {
         assert!(
             rec.rel_err_threshold == 1.0e-13,
             "D19 fixture {} record {}: rel_err_threshold {} != 1.0e-13 (CONTEXT.md D-02)",
-            name, idx, rec.rel_err_threshold
+            name,
+            idx,
+            rec.rel_err_threshold
         );
 
         let mut fun = Functional::new();
-        fun.set(name.to_uppercase().as_str(), 1.0).unwrap_or_else(|e| {
-            panic!("Functional::set({}) failed: {:?}", name.to_uppercase(), e)
-        });
+        fun.set(name.to_uppercase().as_str(), 1.0)
+            .unwrap_or_else(|e| panic!("Functional::set({}) failed: {:?}", name.to_uppercase(), e));
         fun.weights = vec![(id, 1.0)];
         fun.vars = vars_from_u32(rec.vars);
         fun.mode = mode_from_u32(rec.mode);
@@ -229,7 +228,13 @@ pub fn run_d19_n3_contract(name: &str, id: FunctionalId) {
                  (snapshot regression — either Plan 06-00 substrate output changed,\n\
                   or a follow-up kernel-edit plan was intended; surface as PLANNING\n\
                   INCONCLUSIVE escalation per Plan 06-N3 acceptance criteria)",
-                name, idx, i, rel, rec.rel_err_threshold, got, want
+                name,
+                idx,
+                i,
+                rel,
+                rec.rel_err_threshold,
+                got,
+                want
             );
         }
     }

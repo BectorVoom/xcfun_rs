@@ -38,8 +38,7 @@ fn slaterx_potential_a_b_matches_analytic() {
 
     // SLATERX energy:  E = -c_slater · (a^(4/3) + b^(4/3))
     // SLATERX potential (∂E/∂a):  -(4/3) · c_slater · a^(1/3)
-    let want_energy =
-        -C_SLATER * (a.powf(4.0 / 3.0) + b.powf(4.0 / 3.0));
+    let want_energy = -C_SLATER * (a.powf(4.0 / 3.0) + b.powf(4.0 / 3.0));
     let want_pot_a = -(4.0 / 3.0) * C_SLATER * a.cbrt();
     let want_pot_b = -(4.0 / 3.0) * C_SLATER * b.cbrt();
 
@@ -72,8 +71,7 @@ fn slaterx_potential_a_b_2nd_taylor_matches_analytic() {
     f.eval(&input, &mut out)
         .expect("Mode::Potential SLATERX A_B_2ND_TAYLOR eval");
 
-    let want_energy =
-        -C_SLATER * (a.powf(4.0 / 3.0) + b.powf(4.0 / 3.0));
+    let want_energy = -C_SLATER * (a.powf(4.0 / 3.0) + b.powf(4.0 / 3.0));
     let want_pot_a = -(4.0 / 3.0) * C_SLATER * a.cbrt();
     let want_pot_b = -(4.0 / 3.0) * C_SLATER * b.cbrt();
 

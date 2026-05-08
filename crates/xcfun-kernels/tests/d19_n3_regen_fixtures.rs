@@ -38,8 +38,8 @@
 
 #![cfg(feature = "testing")]
 #![allow(dead_code)] // common/ helpers are used by other test files but
-                     // each cargo test integration target re-includes the
-                     // module independently, so unused warnings are normal.
+// each cargo test integration target re-includes the
+// module independently, so unused warnings are normal.
 
 mod common;
 
@@ -141,16 +141,56 @@ const MGGA_GRID: &[GridPoint] = &[
 /// `Dependency` mask (read via `crates/xcfun-core/src/registry/generated`).
 const PLAN_SCOPE: &[(&str, FunctionalId, Vars)] = &[
     // M05 / M06 family — metaGGA, vars=13.
-    ("m05x", FunctionalId::XC_M05X, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-    ("m05c", FunctionalId::XC_M05C, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-    ("m05x2c", FunctionalId::XC_M05X2C, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-    ("m06x", FunctionalId::XC_M06X, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-    ("m06c", FunctionalId::XC_M06C, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-    ("m06lx", FunctionalId::XC_M06LX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-    ("m06lc", FunctionalId::XC_M06LC, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-    ("m06hfx", FunctionalId::XC_M06HFX, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-    ("m06hfc", FunctionalId::XC_M06HFC, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
-    ("m06x2c", FunctionalId::XC_M06X2C, Vars::A_B_GAA_GAB_GBB_TAUA_TAUB),
+    (
+        "m05x",
+        FunctionalId::XC_M05X,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+    ),
+    (
+        "m05c",
+        FunctionalId::XC_M05C,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+    ),
+    (
+        "m05x2c",
+        FunctionalId::XC_M05X2C,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+    ),
+    (
+        "m06x",
+        FunctionalId::XC_M06X,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+    ),
+    (
+        "m06c",
+        FunctionalId::XC_M06C,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+    ),
+    (
+        "m06lx",
+        FunctionalId::XC_M06LX,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+    ),
+    (
+        "m06lc",
+        FunctionalId::XC_M06LC,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+    ),
+    (
+        "m06hfx",
+        FunctionalId::XC_M06HFX,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+    ),
+    (
+        "m06hfc",
+        FunctionalId::XC_M06HFC,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+    ),
+    (
+        "m06x2c",
+        FunctionalId::XC_M06X2C,
+        Vars::A_B_GAA_GAB_GBB_TAUA_TAUB,
+    ),
     // B97 family X-side — GGA, vars=6.
     ("b97x", FunctionalId::XC_B97X, Vars::A_B_GAA_GAB_GBB),
     ("b97_1x", FunctionalId::XC_B97_1X, Vars::A_B_GAA_GAB_GBB),
@@ -180,11 +220,7 @@ fn taylorlen(inlen: usize, order: usize) -> usize {
 }
 
 /// Emit one fixture file. Returns the number of records written.
-fn emit_fixture(
-    name: &str,
-    id: FunctionalId,
-    vars: Vars,
-) -> usize {
+fn emit_fixture(name: &str, id: FunctionalId, vars: Vars) -> usize {
     let inlen = vars.input_len();
     let outlen = taylorlen(inlen, ORDER as usize);
 
@@ -310,5 +346,9 @@ fn regen_all_d19_n3_fixtures() {
         total += n;
         println!("regen {}: {} records ({} vars={:?})", name, n, name, vars);
     }
-    assert_eq!(total, PLAN_SCOPE.len() * 5, "expected 5 records per functional");
+    assert_eq!(
+        total,
+        PLAN_SCOPE.len() * 5,
+        "expected 5 records per functional"
+    );
 }

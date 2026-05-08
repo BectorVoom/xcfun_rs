@@ -33,12 +33,9 @@ fn lb94_descriptor_present() {
 fn descriptors_match_functional_id_ordering() {
     for (i, desc) in FUNCTIONAL_DESCRIPTORS.iter().enumerate() {
         assert_eq!(
-            desc.id as u32,
-            i as u32,
+            desc.id as u32, i as u32,
             "descriptor at index {} has id discriminant {} (expected {})",
-            i,
-            desc.id as u32,
-            i
+            i, desc.id as u32, i
         );
     }
 }
@@ -61,26 +58,14 @@ fn lda_descriptors_have_test_data() {
         FunctionalId::XC_LDAERFC,
     ] {
         let desc = &FUNCTIONAL_DESCRIPTORS[id as usize];
-        assert!(
-            desc.test_in.is_some(),
-            "{:?} should have test_in",
-            id
-        );
-        assert!(
-            desc.test_out.is_some(),
-            "{:?} should have test_out",
-            id
-        );
+        assert!(desc.test_in.is_some(), "{:?} should have test_in", id);
+        assert!(desc.test_out.is_some(), "{:?} should have test_out", id);
         assert!(
             desc.test_threshold.is_some(),
             "{:?} should have test_threshold",
             id
         );
-        assert!(
-            desc.test_vars.is_some(),
-            "{:?} should have test_vars",
-            id
-        );
+        assert!(desc.test_vars.is_some(), "{:?} should have test_vars", id);
     }
 }
 

@@ -248,10 +248,14 @@ pub extern "C" fn xcfun_new() -> *mut xcfun_s {
 #[unsafe(no_mangle)]
 pub extern "C" fn xcfun_delete(fun: *mut xcfun_s) {
     // CAPI-03: silent no-op on null. Mirrors C++ `delete (T*)nullptr`.
-    if fun.is_null() { return; }
+    if fun.is_null() {
+        return;
+    }
     // SAFETY: caller MUST have obtained `fun` from xcfun_new and not
     // already deleted it. Library cannot detect double-delete.
-    unsafe { drop(Box::from_raw(fun)); }
+    unsafe {
+        drop(Box::from_raw(fun));
+    }
 }
 
 // =====================================================================
@@ -260,11 +264,7 @@ pub extern "C" fn xcfun_delete(fun: *mut xcfun_s) {
 
 /// xcfun.h:284.
 #[unsafe(no_mangle)]
-pub extern "C" fn xcfun_set(
-    fun: *mut xcfun_s,
-    name: *const c_char,
-    value: c_double,
-) -> c_int {
+pub extern "C" fn xcfun_set(fun: *mut xcfun_s, name: *const c_char, value: c_double) -> c_int {
     c_entry!("xcfun_set", fun, name => {
         let name_str = match unsafe { CStr::from_ptr(name) }.to_str() {
             Ok(s) => s,
@@ -394,11 +394,7 @@ pub extern "C" fn xcfun_output_length(fun: *const xcfun_s) -> c_int {
 
 /// xcfun.h:366. VOID return — die_with on Err per D-06.
 #[unsafe(no_mangle)]
-pub extern "C" fn xcfun_eval(
-    fun: *const xcfun_s,
-    density: *const c_double,
-    result: *mut c_double,
-) {
+pub extern "C" fn xcfun_eval(fun: *const xcfun_s, density: *const c_double, result: *mut c_double) {
     c_entry!("xcfun_eval", fun, density, result => {
         let f = unsafe { &(*fun).inner };
         // Plan 05-04 fix: input buffer length is `inlen × (1 << order)`

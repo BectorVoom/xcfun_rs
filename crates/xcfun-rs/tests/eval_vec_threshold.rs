@@ -39,7 +39,8 @@ fn make_slaterx_partial_deriv() -> Functional {
     // so the weight slice is non-empty before `eval_setup`.
     let mut f = Functional::new();
     f.set("slaterx", 1.0).unwrap();
-    f.eval_setup(Vars::A_B, Mode::PartialDerivatives, 0).unwrap();
+    f.eval_setup(Vars::A_B, Mode::PartialDerivatives, 0)
+        .unwrap();
     f
 }
 
@@ -52,13 +53,12 @@ fn small_nr_points_uses_eval_loop_path() {
     let nr = 32_usize;
     // Construct a stratified density grid in (a, b) space; a, b > 0 so
     // SLATERX produces well-defined output at every point.
-    let density: Vec<f64> = (0..nr * inlen)
-        .map(|i| 0.1 + (i as f64) * 0.001)
-        .collect();
+    let density: Vec<f64> = (0..nr * inlen).map(|i| 0.1 + (i as f64) * 0.001).collect();
     let mut out_vec = vec![0.0; nr * outlen];
     let mut out_loop = vec![0.0; nr * outlen];
 
-    f.eval_vec(&density, inlen, &mut out_vec, outlen, nr).unwrap();
+    f.eval_vec(&density, inlen, &mut out_vec, outlen, nr)
+        .unwrap();
     for k in 0..nr {
         let din = &density[k * inlen..(k + 1) * inlen];
         let dout = &mut out_loop[k * outlen..(k + 1) * outlen];
@@ -77,13 +77,12 @@ fn large_nr_points_uses_batch_path() {
     let outlen = f.output_length().unwrap();
 
     let nr = 128_usize;
-    let density: Vec<f64> = (0..nr * inlen)
-        .map(|i| 0.1 + (i as f64) * 0.001)
-        .collect();
+    let density: Vec<f64> = (0..nr * inlen).map(|i| 0.1 + (i as f64) * 0.001).collect();
     let mut out_vec = vec![0.0; nr * outlen];
     let mut out_loop = vec![0.0; nr * outlen];
 
-    f.eval_vec(&density, inlen, &mut out_vec, outlen, nr).unwrap();
+    f.eval_vec(&density, inlen, &mut out_vec, outlen, nr)
+        .unwrap();
     for k in 0..nr {
         let din = &density[k * inlen..(k + 1) * inlen];
         let dout = &mut out_loop[k * outlen..(k + 1) * outlen];
@@ -115,13 +114,12 @@ fn min_batch_size_default_is_64() {
 
     // Two boundary calls — one below threshold, one at threshold.
     for nr in [63_usize, 64_usize] {
-        let density: Vec<f64> = (0..nr * inlen)
-            .map(|i| 0.1 + (i as f64) * 0.001)
-            .collect();
+        let density: Vec<f64> = (0..nr * inlen).map(|i| 0.1 + (i as f64) * 0.001).collect();
         let mut out_vec = vec![0.0; nr * outlen];
         let mut out_loop = vec![0.0; nr * outlen];
 
-        f.eval_vec(&density, inlen, &mut out_vec, outlen, nr).unwrap();
+        f.eval_vec(&density, inlen, &mut out_vec, outlen, nr)
+            .unwrap();
         for k in 0..nr {
             let din = &density[k * inlen..(k + 1) * inlen];
             let dout = &mut out_loop[k * outlen..(k + 1) * outlen];
@@ -225,7 +223,8 @@ fn gga_pbex_eval_vec_matches_scalar_eval() {
     let mut out_vec = vec![0.0; nr * outlen];
     let mut out_loop = vec![0.0; nr * outlen];
 
-    f.eval_vec(&density, inlen, &mut out_vec, outlen, nr).unwrap();
+    f.eval_vec(&density, inlen, &mut out_vec, outlen, nr)
+        .unwrap();
     for k in 0..nr {
         let din = &density[k * inlen..(k + 1) * inlen];
         let dout = &mut out_loop[k * outlen..(k + 1) * outlen];

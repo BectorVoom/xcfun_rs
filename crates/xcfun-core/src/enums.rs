@@ -213,10 +213,7 @@ impl Vars {
             Vars::A | Vars::N | Vars::A_B | Vars::N_S => Dependency::DENSITY,
 
             // GGA (squared gradient): density + gradient
-            Vars::A_GAA
-            | Vars::N_GNN
-            | Vars::A_B_GAA_GAB_GBB
-            | Vars::N_S_GNN_GNS_GSS => {
+            Vars::A_GAA | Vars::N_GNN | Vars::A_B_GAA_GAB_GBB | Vars::N_S_GNN_GNS_GSS => {
                 Dependency::DENSITY.union(Dependency::GRADIENT)
             }
 
@@ -224,67 +221,53 @@ impl Vars {
             Vars::A_GAA_LAPA
             | Vars::N_GNN_LAPN
             | Vars::A_B_GAA_GAB_GBB_LAPA_LAPB
-            | Vars::N_S_GNN_GNS_GSS_LAPN_LAPS => {
-                Dependency::DENSITY
-                    .union(Dependency::GRADIENT)
-                    .union(Dependency::LAPLACIAN)
-            }
+            | Vars::N_S_GNN_GNS_GSS_LAPN_LAPS => Dependency::DENSITY
+                .union(Dependency::GRADIENT)
+                .union(Dependency::LAPLACIAN),
 
             // metaGGA with kinetic: density + gradient + kinetic
             Vars::A_GAA_TAUA
             | Vars::N_GNN_TAUN
             | Vars::A_B_GAA_GAB_GBB_TAUA_TAUB
-            | Vars::N_S_GNN_GNS_GSS_TAUN_TAUS => {
-                Dependency::DENSITY
-                    .union(Dependency::GRADIENT)
-                    .union(Dependency::KINETIC)
-            }
+            | Vars::N_S_GNN_GNS_GSS_TAUN_TAUS => Dependency::DENSITY
+                .union(Dependency::GRADIENT)
+                .union(Dependency::KINETIC),
 
             // metaGGA with laplacian + kinetic
             Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB
-            | Vars::N_S_GNN_GNS_GSS_LAPN_LAPS_TAUN_TAUS => {
-                Dependency::DENSITY
-                    .union(Dependency::GRADIENT)
-                    .union(Dependency::LAPLACIAN)
-                    .union(Dependency::KINETIC)
-            }
+            | Vars::N_S_GNN_GNS_GSS_LAPN_LAPS_TAUN_TAUS => Dependency::DENSITY
+                .union(Dependency::GRADIENT)
+                .union(Dependency::LAPLACIAN)
+                .union(Dependency::KINETIC),
 
             // metaGGA with current density: density + gradient + laplacian + kinetic + JP
-            Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB => {
-                Dependency::DENSITY
-                    .union(Dependency::GRADIENT)
-                    .union(Dependency::LAPLACIAN)
-                    .union(Dependency::KINETIC)
-                    .union(Dependency::JP)
-            }
+            Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB => Dependency::DENSITY
+                .union(Dependency::GRADIENT)
+                .union(Dependency::LAPLACIAN)
+                .union(Dependency::KINETIC)
+                .union(Dependency::JP),
 
             // GGA (gradient components): density + gradient
             Vars::A_AX_AY_AZ
             | Vars::A_B_AX_AY_AZ_BX_BY_BZ
             | Vars::N_NX_NY_NZ
-            | Vars::N_S_NX_NY_NZ_SX_SY_SZ => {
-                Dependency::DENSITY.union(Dependency::GRADIENT)
-            }
+            | Vars::N_S_NX_NY_NZ_SX_SY_SZ => Dependency::DENSITY.union(Dependency::GRADIENT),
 
             // metaGGA (gradient components + kinetic): density + gradient + kinetic
             Vars::A_AX_AY_AZ_TAUA
             | Vars::A_B_AX_AY_AZ_BX_BY_BZ_TAUA_TAUB
             | Vars::N_NX_NY_NZ_TAUN
-            | Vars::N_S_NX_NY_NZ_SX_SY_SZ_TAUN_TAUS => {
-                Dependency::DENSITY
-                    .union(Dependency::GRADIENT)
-                    .union(Dependency::KINETIC)
-            }
+            | Vars::N_S_NX_NY_NZ_SX_SY_SZ_TAUN_TAUS => Dependency::DENSITY
+                .union(Dependency::GRADIENT)
+                .union(Dependency::KINETIC),
 
             // 2nd order Taylor: density + gradient + laplacian
             Vars::A_2ND_TAYLOR
             | Vars::A_B_2ND_TAYLOR
             | Vars::N_2ND_TAYLOR
-            | Vars::N_S_2ND_TAYLOR => {
-                Dependency::DENSITY
-                    .union(Dependency::GRADIENT)
-                    .union(Dependency::LAPLACIAN)
-            }
+            | Vars::N_S_2ND_TAYLOR => Dependency::DENSITY
+                .union(Dependency::GRADIENT)
+                .union(Dependency::LAPLACIAN),
         }
     }
 
@@ -368,7 +351,10 @@ mod tests {
         assert_eq!(Vars::A_B_GAA_GAB_GBB.input_len(), 5);
         assert_eq!(Vars::A_AX_AY_AZ.input_len(), 4);
         assert_eq!(Vars::A_B_AX_AY_AZ_BX_BY_BZ.input_len(), 8);
-        assert_eq!(Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB.input_len(), 11);
+        assert_eq!(
+            Vars::A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB.input_len(),
+            11
+        );
         assert_eq!(Vars::A_2ND_TAYLOR.input_len(), 10);
         assert_eq!(Vars::A_B_2ND_TAYLOR.input_len(), 20);
     }
@@ -412,11 +398,26 @@ mod tests {
     #[test]
     fn parameter_id_from_name_case_insensitive() {
         // C++ xcint_lookup_parameter uses strcasecmp on the symbol minus "XC_".
-        assert_eq!(ParameterId::from_name("rangesep_mu"), Some(ParameterId::XC_RANGESEP_MU));
-        assert_eq!(ParameterId::from_name("RANGESEP_MU"), Some(ParameterId::XC_RANGESEP_MU));
-        assert_eq!(ParameterId::from_name("XC_RANGESEP_MU"), Some(ParameterId::XC_RANGESEP_MU));
-        assert_eq!(ParameterId::from_name("Cam_Alpha"), Some(ParameterId::XC_CAM_ALPHA));
-        assert_eq!(ParameterId::from_name("xc_cam_beta"), Some(ParameterId::XC_CAM_BETA));
+        assert_eq!(
+            ParameterId::from_name("rangesep_mu"),
+            Some(ParameterId::XC_RANGESEP_MU)
+        );
+        assert_eq!(
+            ParameterId::from_name("RANGESEP_MU"),
+            Some(ParameterId::XC_RANGESEP_MU)
+        );
+        assert_eq!(
+            ParameterId::from_name("XC_RANGESEP_MU"),
+            Some(ParameterId::XC_RANGESEP_MU)
+        );
+        assert_eq!(
+            ParameterId::from_name("Cam_Alpha"),
+            Some(ParameterId::XC_CAM_ALPHA)
+        );
+        assert_eq!(
+            ParameterId::from_name("xc_cam_beta"),
+            Some(ParameterId::XC_CAM_BETA)
+        );
         assert_eq!(ParameterId::from_name("not_a_param"), None);
         assert_eq!(ParameterId::from_name(""), None);
     }

@@ -30,11 +30,7 @@ const PBELOCC_BETA0_F64: f64 = 0.0375_f64;
 const PBELOCC_AA_F64: f64 = 0.08_f64;
 
 #[cube]
-pub fn pbelocc_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn pbelocc_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     let mut u = Array::<F>::new(size);
@@ -81,7 +77,12 @@ pub fn pbelocc_kernel<F: Float>(
 
     // bg = beta / γ.
     let mut bg = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&beta_arr, F::new(1.0) / F::cast_from(PBEC_GAMMA_F64), &mut bg, n);
+    ctaylor_scalar_mul::<F>(
+        &beta_arr,
+        F::new(1.0) / F::cast_from(PBEC_GAMMA_F64),
+        &mut bg,
+        n,
+    );
 
     let mut eps = Array::<F>::new(size);
     pw92eps::pw92_eps::<F>(d, &mut eps, n);

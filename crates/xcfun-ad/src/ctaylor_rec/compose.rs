@@ -48,8 +48,8 @@
 //! ```
 
 use crate::ctaylor_rec::multo::{
-    ctaylor_multo_skipconst_n1, ctaylor_multo_skipconst_n2,
-    ctaylor_multo_skipconst_n3, ctaylor_multo_skipconst_n4,
+    ctaylor_multo_skipconst_n1, ctaylor_multo_skipconst_n2, ctaylor_multo_skipconst_n3,
+    ctaylor_multo_skipconst_n4,
 };
 use cubecl::prelude::*;
 
@@ -61,11 +61,7 @@ use cubecl::prelude::*;
 ///
 /// `f` is expected to be length-1 (a single scalar constant).
 #[cube]
-pub(crate) fn ctaylor_compose_n0<F: Float>(
-    out: &mut Array<F>,
-    _x: &Array<F>,
-    f: &Array<F>,
-) {
+pub(crate) fn ctaylor_compose_n0<F: Float>(out: &mut Array<F>, _x: &Array<F>, f: &Array<F>) {
     out[0] = f[0];
 }
 
@@ -76,11 +72,7 @@ pub(crate) fn ctaylor_compose_n0<F: Float>(
 /// res[1] = coeff[1] * x[1];
 /// ```
 #[cube]
-pub(crate) fn ctaylor_compose_n1<F: Float>(
-    out: &mut Array<F>,
-    x: &Array<F>,
-    f: &Array<F>,
-) {
+pub(crate) fn ctaylor_compose_n1<F: Float>(out: &mut Array<F>, x: &Array<F>, f: &Array<F>) {
     out[0] = f[0];
     out[1] = f[1] * x[1];
 }
@@ -97,11 +89,7 @@ pub(crate) fn ctaylor_compose_n1<F: Float>(
 /// The trailing term at `res[3]` reads `2 * x[1] * x[2] * coeff[2]`;
 /// C++ left-to-right gives `((2 * x[1]) * x[2]) * coeff[2]`.
 #[cube]
-pub(crate) fn ctaylor_compose_n2<F: Float>(
-    out: &mut Array<F>,
-    x: &Array<F>,
-    f: &Array<F>,
-) {
+pub(crate) fn ctaylor_compose_n2<F: Float>(out: &mut Array<F>, x: &Array<F>, f: &Array<F>) {
     out[0] = f[0];
     out[1] = f[1] * x[1];
     out[2] = f[1] * x[2];
@@ -130,11 +118,7 @@ pub(crate) fn ctaylor_compose_n2<F: Float>(
 ///   i=1: multo_skipconst_n3(out, x); out[0] += f[1];
 ///   i=0: multo_skipconst_n3(out, x); out[0] += f[0];
 #[cube]
-pub(crate) fn ctaylor_compose_n3<F: Float>(
-    out: &mut Array<F>,
-    x: &Array<F>,
-    f: &Array<F>,
-) {
+pub(crate) fn ctaylor_compose_n3<F: Float>(out: &mut Array<F>, x: &Array<F>, f: &Array<F>) {
     let zero = F::new(0.0);
 
     // Seed with coeff[N] and zero out higher-order slots.
@@ -172,11 +156,7 @@ pub(crate) fn ctaylor_compose_n3<F: Float>(
 
 #[cube]
 #[allow(dead_code)]
-pub(crate) fn ctaylor_compose_rec_n1<F: Float>(
-    out: &mut Array<F>,
-    x: &Array<F>,
-    f: &Array<F>,
-) {
+pub(crate) fn ctaylor_compose_rec_n1<F: Float>(out: &mut Array<F>, x: &Array<F>, f: &Array<F>) {
     // Mirrors the general-recursion body for Nvar=1.
     out[0] = f[1];
     out[1] = F::new(0.0);
@@ -186,11 +166,7 @@ pub(crate) fn ctaylor_compose_rec_n1<F: Float>(
 
 #[cube]
 #[allow(dead_code)]
-pub(crate) fn ctaylor_compose_rec_n2<F: Float>(
-    out: &mut Array<F>,
-    x: &Array<F>,
-    f: &Array<F>,
-) {
+pub(crate) fn ctaylor_compose_rec_n2<F: Float>(out: &mut Array<F>, x: &Array<F>, f: &Array<F>) {
     // Mirrors the general-recursion body for Nvar=2.
     let zero = F::new(0.0);
     out[0] = f[2];
@@ -226,11 +202,7 @@ pub(crate) fn ctaylor_compose_rec_n2<F: Float>(
 /// `f` is the (Nvar+1)-length scalar-series coefficient table; `x` and
 /// `out` are length 1<<4 = 16.
 #[cube]
-pub fn ctaylor_compose_n4<F: Float>(
-    out: &mut Array<F>,
-    x: &Array<F>,
-    f: &Array<F>,
-) {
+pub fn ctaylor_compose_n4<F: Float>(out: &mut Array<F>, x: &Array<F>, f: &Array<F>) {
     let zero = F::new(0.0);
 
     // Seed with coeff[N=4] and zero out higher-order slots (size 16).

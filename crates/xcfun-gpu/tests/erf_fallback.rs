@@ -36,7 +36,7 @@
 //! flip is a Plan 06-05 follow-up.
 
 use xcfun_core::traits::Dependency;
-use xcfun_gpu::{error_routing::must_fall_back_to_cpu, Backend};
+use xcfun_gpu::{Backend, error_routing::must_fall_back_to_cpu};
 
 /// Routing-predicate axis: the `Dependency::ERF` bit triggers the CPU
 /// fallback on Wgpu and Metal but not on the f64-native backends. The
@@ -71,8 +71,8 @@ fn wgpu_host_path_matches_cpu_baseline_or_returns_typed_error() {
     use approx::assert_relative_eq;
     use cubecl_wgpu::WgpuRuntime;
     use xcfun_core::{FunctionalId, Mode, Vars, XcError};
-    use xcfun_eval::functional::DEFAULT_SETTINGS;
     use xcfun_eval::Functional;
+    use xcfun_eval::functional::DEFAULT_SETTINGS;
     use xcfun_gpu::Batch;
 
     // Direct-struct construction matches the existing xcfun-eval
@@ -175,7 +175,9 @@ fn ldaerfx_eval_shape_compatible_with_wgpu_host_path() {
     let nr_points = 8_usize;
     let inlen = Functional::input_length(fun.vars);
     let outlen = Functional::output_length(fun.vars, fun.mode, fun.order).unwrap();
-    let density: Vec<f64> = (0..nr_points * inlen).map(|i| 1.0 + (i as f64) * 0.1).collect();
+    let density: Vec<f64> = (0..nr_points * inlen)
+        .map(|i| 1.0 + (i as f64) * 0.1)
+        .collect();
     let mut out = vec![0.0_f64; nr_points * outlen];
 
     let result = Batch::<WgpuRuntime>::eval_vec_host_wgpu(

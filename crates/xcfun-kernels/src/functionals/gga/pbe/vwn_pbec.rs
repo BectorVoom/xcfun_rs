@@ -16,11 +16,7 @@ use crate::functionals::gga::shared::pbec_eps;
 use crate::functionals::lda::vwn_eps;
 
 #[cube]
-pub fn vwn_pbec_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn vwn_pbec_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     let mut eps = Array::<F>::new(size);

@@ -150,13 +150,7 @@ fn main() -> Result<()> {
     // CLI wiring + the `run_tier3` driver skeleton (Cpu arm scoped for 06-05,
     // ROCm/CUDA/Wgpu/Metal arms bail with feature-flag hints).
     if tier == 3 {
-        return validation::driver::run_tier3(
-            backend,
-            order,
-            jobs.get(),
-            filter,
-            exclude_erf,
-        );
+        return validation::driver::run_tier3(backend, order, jobs.get(), filter, exclude_erf);
     }
 
     // Tier-2 path (default; Phase 2-5 behaviour). Only `--backend cpu` is
@@ -200,10 +194,7 @@ fn main() -> Result<()> {
             g.extend(validation::fixtures::gga_stratified_supplement());
             g
         }
-        other => anyhow::bail!(
-            "--grid must be 'default' or 'supplemental'; got {}",
-            other
-        ),
+        other => anyhow::bail!("--grid must be 'default' or 'supplemental'; got {}", other),
     };
     tracing::info!("Generated grid: {} points", grid.len());
 
@@ -216,10 +207,7 @@ fn main() -> Result<()> {
     let jsonl_path = "validation/report.jsonl";
     let skip_keys: HashSet<validation::report::TupleKey> = if resume {
         let s = validation::report::read_completed_tuples(jsonl_path)?;
-        tracing::info!(
-            "--resume: {} prior tuple(s) will be skipped",
-            s.len()
-        );
+        tracing::info!("--resume: {} prior tuple(s) will be skipped", s.len());
         s
     } else {
         HashSet::new()

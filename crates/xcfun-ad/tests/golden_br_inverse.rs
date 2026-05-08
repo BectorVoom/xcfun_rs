@@ -29,11 +29,7 @@ use xcfun_ad::for_tests::cpu_client;
 /// Kernel adapter — wraps `ctaylor_br_inverse` so the host launcher can
 /// thread the comptime `n` through.
 #[cube(launch_unchecked)]
-fn kernel_br_inverse<F: Float>(
-    z: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn kernel_br_inverse<F: Float>(z: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_br_inverse::<F>(z, out, n);
 }
 
@@ -144,8 +140,7 @@ fn ctaylor_br_inverse_first_derivative_at_n1() {
 
         // BR_z'(x) = exp(2x/3) · [2/x² + 2/3 - 4/(3x)]
         let exp_arg = (2.0_f64 / 3.0_f64) * x0;
-        let bracket =
-            2.0 / (x0 * x0) + 2.0 / 3.0 - 4.0 / (3.0 * x0);
+        let bracket = 2.0 / (x0 * x0) + 2.0 / 3.0 - 4.0 / (3.0 * x0);
         let dz_dx = exp_arg.exp() * bracket;
 
         let product = inv_dz_dx * dz_dx;

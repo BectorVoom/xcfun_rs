@@ -43,8 +43,9 @@ use fixtures::{FixtureRecord, FixturesManifest};
 /// Locate the repo root (xtask's parent). Relies on `CARGO_MANIFEST_DIR`
 /// being `<repo>/xtask`.
 fn project_root() -> Result<PathBuf> {
-    let manifest = std::env::var("CARGO_MANIFEST_DIR")
-        .context("CARGO_MANIFEST_DIR not set — run via `cargo run -p xtask --bin regen-ad-fixtures`")?;
+    let manifest = std::env::var("CARGO_MANIFEST_DIR").context(
+        "CARGO_MANIFEST_DIR not set — run via `cargo run -p xtask --bin regen-ad-fixtures`",
+    )?;
     let xtask_dir = PathBuf::from(manifest);
     let root = xtask_dir
         .parent()
@@ -167,8 +168,8 @@ fn header_sha256(xcfun_taylor: &Path) -> Result<String> {
     // Hash in a deterministic order. Do NOT include Zone.Identifier files.
     for fname in ["ctaylor.hpp", "ctaylor_math.hpp", "tmath.hpp"] {
         let path = xcfun_taylor.join(fname);
-        let contents = fs::read(&path)
-            .with_context(|| format!("read xcfun-master header {:?}", path))?;
+        let contents =
+            fs::read(&path).with_context(|| format!("read xcfun-master header {:?}", path))?;
         hasher.update(&contents);
     }
     let sha = hasher.finalize();
@@ -181,7 +182,13 @@ fn git_head_sha(root: &Path) -> Option<String> {
         .current_dir(root)
         .output()
         .ok()
-        .and_then(|o| if o.status.success() { String::from_utf8(o.stdout).ok() } else { None })
+        .and_then(|o| {
+            if o.status.success() {
+                String::from_utf8(o.stdout).ok()
+            } else {
+                None
+            }
+        })
         .map(|s| s.trim().to_string())
 }
 

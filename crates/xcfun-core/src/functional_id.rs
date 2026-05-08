@@ -249,14 +249,26 @@ mod tests {
 
     #[test]
     fn from_name_round_trip() {
-        assert_eq!(FunctionalId::from_name("slaterx"), Some(FunctionalId::XC_SLATERX));
-        assert_eq!(FunctionalId::from_name("XC_SLATERX"), Some(FunctionalId::XC_SLATERX));
+        assert_eq!(
+            FunctionalId::from_name("slaterx"),
+            Some(FunctionalId::XC_SLATERX)
+        );
+        assert_eq!(
+            FunctionalId::from_name("XC_SLATERX"),
+            Some(FunctionalId::XC_SLATERX)
+        );
         assert_eq!(FunctionalId::from_name("VWK"), Some(FunctionalId::XC_VWK));
-        assert_eq!(FunctionalId::from_name("ldaerfc_jt"), Some(FunctionalId::XC_LDAERFC_JT));
+        assert_eq!(
+            FunctionalId::from_name("ldaerfc_jt"),
+            Some(FunctionalId::XC_LDAERFC_JT)
+        );
         // Plan 05-00 D-16: LB94 lookup must succeed in all three case forms.
         assert_eq!(FunctionalId::from_name("lb94"), Some(FunctionalId::XC_LB94));
         assert_eq!(FunctionalId::from_name("LB94"), Some(FunctionalId::XC_LB94));
-        assert_eq!(FunctionalId::from_name("XC_LB94"), Some(FunctionalId::XC_LB94));
+        assert_eq!(
+            FunctionalId::from_name("XC_LB94"),
+            Some(FunctionalId::XC_LB94)
+        );
         assert_eq!(FunctionalId::from_name("does_not_exist"), None);
     }
 }

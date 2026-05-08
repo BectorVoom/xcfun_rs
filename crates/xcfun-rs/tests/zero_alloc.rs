@@ -85,9 +85,8 @@ fn eval_facade_boundary_is_zero_alloc() {
     inner.order = 0;
 
     let inlen = xcfun_eval::Functional::input_length(inner.vars);
-    let outlen =
-        xcfun_eval::Functional::output_length(inner.vars, inner.mode, inner.order)
-            .expect("output_length(A_B, PartialDerivatives, 0) must succeed");
+    let outlen = xcfun_eval::Functional::output_length(inner.vars, inner.mode, inner.order)
+        .expect("output_length(A_B, PartialDerivatives, 0) must succeed");
     assert_eq!(inlen, 2);
     assert_eq!(outlen, 1);
 
@@ -123,10 +122,8 @@ fn eval_facade_boundary_is_zero_alloc() {
         per_call_counts.push(after - before);
     }
 
-    let head_mean: f64 =
-        per_call_counts[..10].iter().map(|&c| c as f64).sum::<f64>() / 10.0;
-    let tail_mean: f64 =
-        per_call_counts[90..].iter().map(|&c| c as f64).sum::<f64>() / 10.0;
+    let head_mean: f64 = per_call_counts[..10].iter().map(|&c| c as f64).sum::<f64>() / 10.0;
+    let tail_mean: f64 = per_call_counts[90..].iter().map(|&c| c as f64).sum::<f64>() / 10.0;
 
     // Slack: the wrapper itself must add 0 allocations on average.
     // Allow up to 1.0 alloc/call of substrate jitter — anything larger

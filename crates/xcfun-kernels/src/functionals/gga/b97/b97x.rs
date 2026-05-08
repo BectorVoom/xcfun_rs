@@ -34,12 +34,7 @@ use crate::functionals::gga::shared::constants::{B97_GAMMA_X_F64, B97_X_COEF};
 /// Op order matches `b97xc.hpp:22-26` verbatim (port of `abs(gaa)/a_43/a_43`).
 /// `abs(gaa)` is a no-op since `gaa = ∇ρ·∇ρ ≥ 0`.
 #[cube]
-fn s2_ab<F: Float>(
-    gaa: &Array<F>,
-    a_43: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn s2_ab<F: Float>(gaa: &Array<F>, a_43: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // inv_a43 = 1 / a_43.
@@ -97,11 +92,7 @@ fn energy_b97x_ab<F: Float>(
 
 /// XC_B97X kernel. 1:1 port of `b97xc.cpp:20-23`.
 #[cube]
-pub fn b97x_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn b97x_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     let gamma = F::cast_from(B97_GAMMA_X_F64);

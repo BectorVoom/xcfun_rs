@@ -25,9 +25,9 @@ Flags:
 </objective>
 
 <execution_context>
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/audit-fix.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/audit-fix.md
 </execution_context>
 
 <process>
-Execute the audit-fix workflow from @/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/audit-fix.md end-to-end.
+Execute the audit-fix workflow from @/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/audit-fix.md end-to-end.
 </process>

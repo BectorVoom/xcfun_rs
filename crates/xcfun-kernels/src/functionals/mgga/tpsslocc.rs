@@ -164,12 +164,7 @@ fn pbeloc_eps<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u
 /// `pbeloc_eps_pola(a, gaa)` — fully polarized PBEloc eps.
 /// Port of `tpsslocc.cpp:43-61`.
 #[cube]
-fn pbeloc_eps_pola<F: Float>(
-    a: &Array<F>,
-    gaa: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn pbeloc_eps_pola<F: Float>(a: &Array<F>, gaa: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     const BETA0: f64 = 0.0375_f64;

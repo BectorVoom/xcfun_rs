@@ -106,11 +106,7 @@ fn apbex_alpha<F: Float>(
 
 /// XC_APBEX kernel. 1:1 port of `apbex.cpp:18-38`.
 #[cube]
-pub fn apbex_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn apbex_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     let mut e_alpha = Array::<F>::new(size);

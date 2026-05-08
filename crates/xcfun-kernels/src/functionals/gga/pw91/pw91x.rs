@@ -32,12 +32,7 @@ const PW91X_A5: f64 = 100.0_f64;
 const PW91X_B: f64 = 0.004_f64;
 
 #[cube]
-fn pw91x_alpha<F: Float>(
-    rho: &Array<F>,
-    grad2: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn pw91x_alpha<F: Float>(rho: &Array<F>, grad2: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // pre = prefactor(rho) = NEG_C_SLATER · rho^(4/3).
@@ -68,11 +63,7 @@ fn pw91x_alpha<F: Float>(
 
 /// XC_PW91X kernel. 1:1 port of `pw91x.cpp:18-24`.
 #[cube]
-pub fn pw91x_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn pw91x_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     let mut e_alpha = Array::<F>::new(size);

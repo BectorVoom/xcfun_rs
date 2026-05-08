@@ -191,13 +191,11 @@ pub fn erf_precise<F: Float>(x: F) -> F {
         let z = x * x;
         let r = F::cast_from(PP0)
             + z * (F::cast_from(PP1)
-                + z * (F::cast_from(PP2)
-                    + z * (F::cast_from(PP3) + z * F::cast_from(PP4))));
+                + z * (F::cast_from(PP2) + z * (F::cast_from(PP3) + z * F::cast_from(PP4))));
         let s = F::new(1.0)
             + z * (F::cast_from(QQ1)
                 + z * (F::cast_from(QQ2)
-                    + z * (F::cast_from(QQ3)
-                        + z * (F::cast_from(QQ4) + z * F::cast_from(QQ5)))));
+                    + z * (F::cast_from(QQ3) + z * (F::cast_from(QQ4) + z * F::cast_from(QQ5)))));
         let y = r / s;
         x + x * y
     };
@@ -263,8 +261,7 @@ pub fn erf_precise<F: Float>(x: F) -> F {
                                 + inv_x2
                                     * (F::cast_from(RB4)
                                         + inv_x2
-                                            * (F::cast_from(RB5)
-                                                + inv_x2 * F::cast_from(RB6))))));
+                                            * (F::cast_from(RB5) + inv_x2 * F::cast_from(RB6))))));
     let s_d = F::new(1.0)
         + inv_x2
             * (F::cast_from(SB1)
@@ -280,8 +277,16 @@ pub fn erf_precise<F: Float>(x: F) -> F {
                                                     * (F::cast_from(SB6)
                                                         + inv_x2 * F::cast_from(SB7)))))));
 
-    let r_cd = if ax < F::cast_from(T_SEVEN_BY_OVER) { r_c } else { r_d };
-    let s_cd = if ax < F::cast_from(T_SEVEN_BY_OVER) { s_c } else { s_d };
+    let r_cd = if ax < F::cast_from(T_SEVEN_BY_OVER) {
+        r_c
+    } else {
+        r_d
+    };
+    let s_cd = if ax < F::cast_from(T_SEVEN_BY_OVER) {
+        s_c
+    } else {
+        s_d
+    };
 
     // erfc(|x|) = (1/|x|) * exp(-x² - 0.5625 + R/S);  erf_abs = 1 - erfc(|x|)
     let arg = -(ax * ax) - F::cast_from(0.5625_f64) + r_cd / s_cd;

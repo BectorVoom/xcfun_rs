@@ -32,13 +32,14 @@ use walkdir::WalkDir;
 /// Phase 6 Plan 06-01 (D-08) added `crates/xcfun-kernels/src/functionals/`
 /// when the 78 `#[cube]` kernel bodies moved there from `xcfun-eval`.
 const SCAN_DIRS: &[&str] = &[
-    "crates/xcfun-eval/src/functionals",      // host-side launchers (contracted.rs); legacy bodies path
-    "crates/xcfun-kernels/src/functionals",   // Phase 6 Plan 06-01: new home for the 78 #[cube] bodies
+    "crates/xcfun-eval/src/functionals", // host-side launchers (contracted.rs); legacy bodies path
+    "crates/xcfun-kernels/src/functionals", // Phase 6 Plan 06-01: new home for the 78 #[cube] bodies
 ];
 
 fn project_root() -> Result<PathBuf> {
-    let manifest = std::env::var("CARGO_MANIFEST_DIR")
-        .context("CARGO_MANIFEST_DIR not set — run via cargo run -p xtask --bin check-no-mul-add")?;
+    let manifest = std::env::var("CARGO_MANIFEST_DIR").context(
+        "CARGO_MANIFEST_DIR not set — run via cargo run -p xtask --bin check-no-mul-add",
+    )?;
     Ok(PathBuf::from(manifest)
         .parent()
         .context("xtask has no parent directory")?
@@ -48,8 +49,8 @@ fn project_root() -> Result<PathBuf> {
 /// Scan a single `.rs` file for `.mul_add(` occurrences outside `//` line
 /// comments. Returns `(line_number, line_text)` pairs for each hit.
 fn scan_file(path: &Path) -> Result<Vec<(usize, String)>> {
-    let contents = std::fs::read_to_string(path)
-        .with_context(|| format!("read {}", path.display()))?;
+    let contents =
+        std::fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
     let mut hits = Vec::new();
     for (i, line) in contents.lines().enumerate() {
         // Strip inline `//` line comment — anything after `//` is not code.
@@ -104,9 +105,7 @@ fn main() -> Result<()> {
 
     if violations.is_empty() {
         if dirs_present == 0 {
-            println!(
-                "check-no-mul-add: PASS (no scan target exists yet — gate vacuously clean)"
-            );
+            println!("check-no-mul-add: PASS (no scan target exists yet — gate vacuously clean)");
         } else {
             println!(
                 "check-no-mul-add: PASS ({} file(s) scanned across {} target directory(ies))",

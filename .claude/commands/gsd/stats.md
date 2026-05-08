@@ -10,9 +10,9 @@ Display comprehensive project statistics including phase progress, plan executio
 </objective>
 
 <execution_context>
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/stats.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/stats.md
 </execution_context>
 
 <process>
-Execute the stats workflow from @/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/stats.md end-to-end.
+Execute the stats workflow from @/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/stats.md end-to-end.
 </process>

@@ -73,12 +73,7 @@ fn kernel_atan<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     math::ctaylor_atan::<F>(x, out, n);
 }
 #[cube(launch_unchecked)]
-fn kernel_pow<F: Float>(
-    x: &Array<F>,
-    aa: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn kernel_pow<F: Float>(x: &Array<F>, aa: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     math::ctaylor_pow::<F>(x, aa[0], out, n);
 }
 
@@ -231,7 +226,10 @@ fn assert_record_close(got: &[f64], rec: &FixtureRecord) {
         got.len(),
         rec.coeffs.len(),
         "op={} n_var={} output length: got {}, expected {}",
-        rec.op, rec.n_var, got.len(), rec.coeffs.len()
+        rec.op,
+        rec.n_var,
+        got.len(),
+        rec.coeffs.len()
     );
     let relaxed = relaxed_tolerance_for(&rec.op);
     for (i, (g, e)) in got.iter().zip(rec.coeffs.iter()).enumerate() {
@@ -239,7 +237,13 @@ fn assert_record_close(got: &[f64], rec: &FixtureRecord) {
             assert!(
                 (g - e).abs() < DRIFT_T0_ABS_TOL,
                 "op={} n_var={} coeff {}: got {}, expected {}, abs_err {:.3e} (bound {:.0e})",
-                rec.op, rec.n_var, i, g, e, (g - e).abs(), DRIFT_T0_ABS_TOL
+                rec.op,
+                rec.n_var,
+                i,
+                g,
+                e,
+                (g - e).abs(),
+                DRIFT_T0_ABS_TOL
             );
         } else {
             let denom = e.abs().max(1.0);
@@ -248,7 +252,13 @@ fn assert_record_close(got: &[f64], rec: &FixtureRecord) {
             assert!(
                 rel < bound,
                 "op={} n_var={} coeff {}: got {}, expected {}, rel_err {:.3e} (bound {:.0e})",
-                rec.op, rec.n_var, i, g, e, rel, bound
+                rec.op,
+                rec.n_var,
+                i,
+                g,
+                e,
+                rel,
+                bound
             );
         }
     }
@@ -257,8 +267,8 @@ fn assert_record_close(got: &[f64], rec: &FixtureRecord) {
 #[test]
 fn composed_matches_cpp_reference() {
     let bytes: &[u8] = include_bytes!("fixtures/composed.bincode");
-    let records: Vec<FixtureRecord> = bincode::deserialize(bytes)
-        .expect("deserialize tests/fixtures/composed.bincode");
+    let records: Vec<FixtureRecord> =
+        bincode::deserialize(bytes).expect("deserialize tests/fixtures/composed.bincode");
 
     let mut count = 0_usize;
     let mut per_op: std::collections::BTreeMap<String, usize> = Default::default();
@@ -278,8 +288,8 @@ fn composed_matches_cpp_reference() {
 #[test]
 fn test_ctaylor_expm1() {
     let bytes: &[u8] = include_bytes!("fixtures/composed.bincode");
-    let records: Vec<FixtureRecord> = bincode::deserialize(bytes)
-        .expect("deserialize tests/fixtures/composed.bincode");
+    let records: Vec<FixtureRecord> =
+        bincode::deserialize(bytes).expect("deserialize tests/fixtures/composed.bincode");
 
     let mut count = 0_usize;
     for rec in records.iter().filter(|r| r.op == "ctaylor_expm1") {
@@ -287,7 +297,10 @@ fn test_ctaylor_expm1() {
         assert_record_close(&got, rec);
         count += 1;
     }
-    assert!(count >= 2000, "expected >= 2000 ctaylor_expm1 records, got {count}");
+    assert!(
+        count >= 2000,
+        "expected >= 2000 ctaylor_expm1 records, got {count}"
+    );
     eprintln!("[golden_composed::test_ctaylor_expm1] validated {count} records");
 }
 
@@ -300,15 +313,21 @@ fn test_ctaylor_expm1() {
 #[test]
 fn test_sqrtx_asinh_sqrtx() {
     let bytes: &[u8] = include_bytes!("fixtures/composed.bincode");
-    let records: Vec<FixtureRecord> = bincode::deserialize(bytes)
-        .expect("deserialize tests/fixtures/composed.bincode");
+    let records: Vec<FixtureRecord> =
+        bincode::deserialize(bytes).expect("deserialize tests/fixtures/composed.bincode");
 
     let mut count = 0_usize;
-    for rec in records.iter().filter(|r| r.op == "ctaylor_sqrtx_asinh_sqrtx") {
+    for rec in records
+        .iter()
+        .filter(|r| r.op == "ctaylor_sqrtx_asinh_sqrtx")
+    {
         let got = eval_record(rec);
         assert_record_close(&got, rec);
         count += 1;
     }
-    assert!(count >= 2000, "expected >= 2000 ctaylor_sqrtx_asinh_sqrtx records, got {count}");
+    assert!(
+        count >= 2000,
+        "expected >= 2000 ctaylor_sqrtx_asinh_sqrtx records, got {count}"
+    );
     eprintln!("[golden_composed::test_sqrtx_asinh_sqrtx] validated {count} records");
 }

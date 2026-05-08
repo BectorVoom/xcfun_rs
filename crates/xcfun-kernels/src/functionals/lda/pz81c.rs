@@ -112,14 +112,7 @@ fn fz<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
 // ---------------------------------------------------------------------------
 
 #[cube]
-fn eld<F: Float>(
-    x: &Array<F>,
-    gamma: F,
-    b1: F,
-    b2: F,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn eld<F: Float>(x: &Array<F>, gamma: F, b1: F, b2: F, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     let mut sqrt_x = Array::<F>::new(size);
@@ -158,15 +151,7 @@ fn eld<F: Float>(
 // ---------------------------------------------------------------------------
 
 #[cube]
-fn ehd<F: Float>(
-    x: &Array<F>,
-    c0: F,
-    c1: F,
-    c2: F,
-    c3: F,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn ehd<F: Float>(x: &Array<F>, c0: F, c1: F, c2: F, c3: F, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     let mut log_x = Array::<F>::new(size);
@@ -277,11 +262,7 @@ pub fn pz81_eps<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n:
 /// PZ81 correlation kernel. 1:1 port of `pz81c.cpp:18-20`:
 /// `return pz81eps::pz81eps(d) * d.n;`
 #[cube]
-pub fn pz81c_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn pz81c_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let mut eps = Array::<F>::new(comptime!((1_u32 << n) as usize));
     pz81_eps::<F>(d, &mut eps, n);
     ctaylor_mul::<F>(&eps, &d.n, out, n);

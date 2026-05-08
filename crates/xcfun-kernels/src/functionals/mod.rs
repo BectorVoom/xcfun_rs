@@ -20,7 +20,7 @@
 //! `xcfun_eval::functional::Functional` + `run_launch` — both of which
 //! belong with the per-point substrate per D-08.
 
-pub mod lda;
 pub mod gga;
+pub mod lda;
 pub mod mgga;
 pub mod potential;

@@ -28,11 +28,7 @@ const CF_F64: f64 = 2.871_234_000_188_192_f64;
 /// Thomas-Fermi kinetic kernel. 1:1 port of `tfk.cpp:20-22`:
 /// `return CF * pow(d.n, 5.0 / 3.0);`
 #[cube]
-pub fn tfk_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn tfk_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let mut n_53 = Array::<F>::new(comptime!((1_u32 << n) as usize));
     ctaylor_pow::<F>(&d.n, F::cast_from(5.0_f64 / 3.0_f64), &mut n_53, n);
     ctaylor_scalar_mul::<F>(&n_53, F::cast_from(CF_F64), out, n);

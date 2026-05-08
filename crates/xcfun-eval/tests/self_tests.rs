@@ -56,13 +56,21 @@ fn tier1_self_tests_pass() {
     let mut failures: Vec<String> = Vec::new();
 
     for desc in FUNCTIONAL_DESCRIPTORS.iter() {
-        let Some(test_in) = desc.test_in else { continue };
-        let Some(test_out) = desc.test_out else { continue };
+        let Some(test_in) = desc.test_in else {
+            continue;
+        };
+        let Some(test_out) = desc.test_out else {
+            continue;
+        };
         let Some(test_threshold) = desc.test_threshold else {
             continue;
         };
-        let Some(test_vars) = desc.test_vars else { continue };
-        let Some(_declared_order) = desc.test_order else { continue };
+        let Some(test_vars) = desc.test_vars else {
+            continue;
+        };
+        let Some(_declared_order) = desc.test_order else {
+            continue;
+        };
 
         // Prefer the observed order from test_out.len() (see infer_order_from_outlen
         // for the TFK reconciliation rationale).
@@ -198,12 +206,7 @@ fn tier1_self_tests_pass() {
         panic!(
             "tier-1 self-tests FAILED ({} functional(s) with issues; {} passed):\n{}",
             failures.iter().filter(|l| !l.starts_with("  ")).count(),
-            tested.saturating_sub(
-                failures
-                    .iter()
-                    .filter(|l| !l.starts_with("  "))
-                    .count()
-            ),
+            tested.saturating_sub(failures.iter().filter(|l| !l.starts_with("  ")).count()),
             failures.join("\n")
         );
     }

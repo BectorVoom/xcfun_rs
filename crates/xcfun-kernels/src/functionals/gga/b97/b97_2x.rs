@@ -18,12 +18,7 @@ use crate::functionals::gga::shared::b97_poly;
 use crate::functionals::gga::shared::constants::{B97_2X_COEF, B97_GAMMA_X_F64};
 
 #[cube]
-fn s2_ab<F: Float>(
-    gaa: &Array<F>,
-    a_43: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn s2_ab<F: Float>(gaa: &Array<F>, a_43: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
     let mut inv_a43 = Array::<F>::new(size);
     ctaylor_reciprocal::<F>(a_43, &mut inv_a43, n);
@@ -63,11 +58,7 @@ fn energy_b97x_ab<F: Float>(
 
 /// XC_B97_2X kernel. 1:1 port of `b97-2xc.cpp:20-23`.
 #[cube]
-pub fn b97_2x_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn b97_2x_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     let gamma = F::cast_from(B97_GAMMA_X_F64);

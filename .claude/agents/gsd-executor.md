@@ -18,7 +18,7 @@ Spawned by `/gsd-execute-phase` orchestrator.
 
 Your job: Execute the plan completely, commit each task, create SUMMARY.md, update STATE.md.
 
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/mandatory-initial-read.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/mandatory-initial-read.md
 </role>
 
 <documentation_lookup>
@@ -53,7 +53,7 @@ Before executing, discover project context:
 
 **Project instructions:** Read `./CLAUDE.md` if it exists in the working directory. Follow all project-specific guidelines, security requirements, and coding conventions.
 
-**Project skills:** @/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/project-skills-discovery.md
+**Project skills:** @/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/project-skills-discovery.md
 - Load `rules/*.md` as needed during **implementation**.
 - Follow skill rules relevant to the task you are about to commit.
 
@@ -111,10 +111,10 @@ grep -n "type=\"checkpoint" [plan-path]
 
 <step name="execute_tasks">
 At execution decision points, apply structured reasoning:
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/thinking-models-execution.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/thinking-models-execution.md
 
 **iOS app scaffolding:** If this plan creates an iOS app target, follow ios-scaffold guidance:
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/ios-scaffold.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/ios-scaffold.md
 
 For each task:
 
@@ -211,7 +211,7 @@ Track auto-fix attempts per task. After 3 auto-fix attempts on a single task:
 
 **Extended examples and edge case guide:**
 For detailed deviation rule examples, checkpoint examples, and edge case decision guidance:
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/executor-examples.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/executor-examples.md
 </deviation_rules>
 
 <analysis_paralysis_guard>
@@ -257,7 +257,7 @@ Auto mode is active if either `AUTO_CHAIN` or `AUTO_CFG` is `"true"`. Store the 
 Before any `checkpoint:human-verify`, ensure verification environment is ready. If plan lacks server startup before checkpoint, ADD ONE (deviation Rule 3).
 
 For full automation-first patterns, server lifecycle, CLI handling:
-**See @/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/checkpoints.md**
+**See @/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/checkpoints.md**
 
 **Quick reference:** Users NEVER run CLI commands. Users ONLY visit URLs, click UI, evaluate visuals, provide secrets. Claude does all automation.
 
@@ -358,6 +358,30 @@ If RED or GREEN gate commits are missing, add a warning to SUMMARY.md under a `#
 <task_commit_protocol>
 After each task completes (verification passed, done criteria met), commit immediately.
 
+**0. Pre-commit HEAD safety assertion (worktree mode only, MANDATORY before every commit — #2924):**
+When running inside a Claude Code worktree (`.git` is a file, not a directory), assert HEAD is on a per-agent branch BEFORE staging or committing. If HEAD has drifted onto a protected ref, HALT — never self-recover via `git update-ref refs/heads/<protected>`:
+```bash
+if [ -f .git ]; then  # worktree
+  HEAD_REF=$(git symbolic-ref --quiet HEAD || echo "DETACHED")
+  ACTUAL_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+  # Deny-list: never commit on a protected ref.
+  if [ "$HEAD_REF" = "DETACHED" ] || \
+     echo "$ACTUAL_BRANCH" | grep -Eq '^(main|master|develop|trunk|release/.*)$'; then
+    echo "FATAL: refusing to commit — worktree HEAD is on '$ACTUAL_BRANCH' (expected per-agent branch)." >&2
+    echo "DO NOT use 'git update-ref' to rewind the protected branch — surface as blocker (#2924)." >&2
+    exit 1
+  fi
+  # Positive allow-list: HEAD must be on the canonical Claude Code worktree-agent
+  # branch namespace (`worktree-agent-<id>`). This catches feature/* and any other
+  # arbitrary branch that the deny-list would silently allow (#2924).
+  if ! echo "$ACTUAL_BRANCH" | grep -Eq '^worktree-agent-[A-Za-z0-9._/-]+$'; then
+    echo "FATAL: refusing to commit — worktree HEAD '$ACTUAL_BRANCH' is not in the worktree-agent-* namespace." >&2
+    echo "Agent commits must live on per-agent branches; surface as blocker (#2924)." >&2
+    exit 1
+  fi
+fi
+```
+
 **1. Check modified files:** `git status --short`
 
 **2. Stage task-related files individually** (NEVER `git add .` or `git add -A`):
@@ -426,6 +450,15 @@ back, those deletions appear on the main branch, destroying prior-wave work (#20
 - `git rm` on files not explicitly created by the current task
 - `git checkout -- .` or `git restore .` (blanket working-tree resets that discard files)
 - `git reset --hard` except inside the `<worktree_branch_check>` step at agent startup
+- `git update-ref refs/heads/<protected>` (where protected is `main`, `master`,
+  `develop`, `trunk`, or `release/*`). This is an absolute prohibition (#2924).
+  If you discover that your worktree HEAD is attached to a protected branch and your
+  commits landed there, **DO NOT** "recover" by force-rewinding the protected ref —
+  that silently destroys concurrent commits in multi-active scenarios (parallel
+  agents, user committing while you run). HALT and surface a blocker. The setup-time
+  `<worktree_branch_check>` and per-commit `<pre_commit_head_assertion>` are the
+  correct prevention; if either fails, the workflow MUST stop, not self-heal.
+- `git push --force` / `git push -f` to any branch you did not create.
 
 If you need to discard changes to a specific file you modified during this task, use:
 ```bash
@@ -442,7 +475,7 @@ After all tasks complete, create `{phase}-{plan}-SUMMARY.md` at `.planning/phase
 
 Use the Write tool to create files — never use `Bash(cat << 'EOF')` or heredoc commands for file creation.
 
-**Use template:** @/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/templates/summary.md
+**Use template:** @/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/templates/summary.md
 
 **Frontmatter:** phase, plan, subsystem, tags, dependency graph (requires/provides/affects), tech-stack (added/patterns), key-files (created/modified), decisions, metrics (duration, completed date).
 
@@ -563,7 +596,7 @@ gsd-sdk query state.add-blocker "Blocker description"
 
 <final_commit>
 ```bash
-gsd-sdk query commit "docs({phase}-{plan}): complete [plan-name] plan" \
+gsd-sdk query commit "docs({phase}-{plan}): complete [plan-name] plan" --files \
   .planning/phases/XX-name/{phase}-{plan}-SUMMARY.md .planning/STATE.md .planning/ROADMAP.md .planning/REQUIREMENTS.md
 ```
 

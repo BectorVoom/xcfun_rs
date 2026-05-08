@@ -221,7 +221,12 @@ pub fn tpss_x<F: Float>(
     let mut q_b_sq = Array::<F>::new(size);
     ctaylor_powi_2::<F>(&q_b, &mut q_b_sq, n);
     let mut q_b_sq_coeff = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&q_b_sq, F::cast_from(146.0_f64 / 2025.0_f64), &mut q_b_sq_coeff, n);
+    ctaylor_scalar_mul::<F>(
+        &q_b_sq,
+        F::cast_from(146.0_f64 / 2025.0_f64),
+        &mut q_b_sq_coeff,
+        n,
+    );
     let mut x_a2 = Array::<F>::new(size);
     ctaylor_add::<F>(&x_a, &q_b_sq_coeff, &mut x_a2, n);
 
@@ -236,9 +241,19 @@ pub fn tpss_x<F: Float>(
 
     // (8*n*tau)^(-2)
     let mut eight_n_tau_m2_raw = Array::<F>::new(size);
-    ctaylor_pow::<F>(&eight_n_tau, F::cast_from(-2.0_f64), &mut eight_n_tau_m2_raw, n);
+    ctaylor_pow::<F>(
+        &eight_n_tau,
+        F::cast_from(-2.0_f64),
+        &mut eight_n_tau_m2_raw,
+        n,
+    );
     let mut eight_n_tau_m2 = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&eight_n_tau_m2_raw, F::cast_from(0.5_f64 * 0.36_f64), &mut eight_n_tau_m2, n);
+    ctaylor_scalar_mul::<F>(
+        &eight_n_tau_m2_raw,
+        F::cast_from(0.5_f64 * 0.36_f64),
+        &mut eight_n_tau_m2,
+        n,
+    );
 
     // p0^2
     let mut p0_sq_raw = Array::<F>::new(size);
@@ -259,7 +274,12 @@ pub fn tpss_x<F: Float>(
     let mut term3b_raw = Array::<F>::new(size);
     ctaylor_mul::<F>(&term3, &sq2, &mut term3b_raw, n);
     let mut term3b = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&term3b_raw, F::cast_from(73.0_f64 / 405.0_f64), &mut term3b, n);
+    ctaylor_scalar_mul::<F>(
+        &term3b_raw,
+        F::cast_from(73.0_f64 / 405.0_f64),
+        &mut term3b,
+        n,
+    );
     let mut x_a3 = Array::<F>::new(size);
     ctaylor_sub::<F>(&x_a2, &term3b, &mut x_a3, n);
 
@@ -269,7 +289,12 @@ pub fn tpss_x<F: Float>(
     let mut p_10_81_sq_raw = Array::<F>::new(size);
     ctaylor_powi_2::<F>(&p_10_81, &mut p_10_81_sq_raw, n);
     let mut p_10_81_sq = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&p_10_81_sq_raw, F::cast_from(1.0_f64 / TPSS_KAPPA_F64), &mut p_10_81_sq, n);
+    ctaylor_scalar_mul::<F>(
+        &p_10_81_sq_raw,
+        F::cast_from(1.0_f64 / TPSS_KAPPA_F64),
+        &mut p_10_81_sq,
+        n,
+    );
     let mut x_a4 = Array::<F>::new(size);
     ctaylor_add::<F>(&x_a3, &p_10_81_sq, &mut x_a4, n);
 
@@ -320,14 +345,24 @@ pub fn tpss_F_x<F: Float>(
 
     // 1 + x/kappa
     let mut x_over_k = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&xpz, F::cast_from(1.0_f64 / TPSS_KAPPA_F64), &mut x_over_k, n);
+    ctaylor_scalar_mul::<F>(
+        &xpz,
+        F::cast_from(1.0_f64 / TPSS_KAPPA_F64),
+        &mut x_over_k,
+        n,
+    );
     x_over_k[0] = x_over_k[0] + F::new(1.0);
 
     // kappa / (1 + x/kappa)
     let mut inv_denom = Array::<F>::new(size);
     ctaylor_reciprocal::<F>(&x_over_k, &mut inv_denom, n);
     let mut k_over_denom = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&inv_denom, F::cast_from(TPSS_KAPPA_F64), &mut k_over_denom, n);
+    ctaylor_scalar_mul::<F>(
+        &inv_denom,
+        F::cast_from(TPSS_KAPPA_F64),
+        &mut k_over_denom,
+        n,
+    );
 
     // out = 1 + kappa - kappa/(1 + x/kappa)
     // = (1 + kappa) - k_over_denom
@@ -512,7 +547,12 @@ pub fn revtpss_x<F: Float>(
     let mut q_b_sq = Array::<F>::new(size);
     ctaylor_powi_2::<F>(&q_b, &mut q_b_sq, n);
     let mut q_b_sq_coeff = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&q_b_sq, F::cast_from(146.0_f64 / 2025.0_f64), &mut q_b_sq_coeff, n);
+    ctaylor_scalar_mul::<F>(
+        &q_b_sq,
+        F::cast_from(146.0_f64 / 2025.0_f64),
+        &mut q_b_sq_coeff,
+        n,
+    );
     let mut x_a2 = Array::<F>::new(size);
     ctaylor_add::<F>(&x_a, &q_b_sq_coeff, &mut x_a2, n);
 
@@ -523,9 +563,19 @@ pub fn revtpss_x<F: Float>(
     let mut eight_n_tau = Array::<F>::new(size);
     ctaylor_scalar_mul::<F>(&eight_n_tau_raw, F::cast_from(8.0_f64), &mut eight_n_tau, n);
     let mut eight_n_tau_m2_raw = Array::<F>::new(size);
-    ctaylor_pow::<F>(&eight_n_tau, F::cast_from(-2.0_f64), &mut eight_n_tau_m2_raw, n);
+    ctaylor_pow::<F>(
+        &eight_n_tau,
+        F::cast_from(-2.0_f64),
+        &mut eight_n_tau_m2_raw,
+        n,
+    );
     let mut eight_n_tau_m2 = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&eight_n_tau_m2_raw, F::cast_from(0.5_f64 * 0.36_f64), &mut eight_n_tau_m2, n);
+    ctaylor_scalar_mul::<F>(
+        &eight_n_tau_m2_raw,
+        F::cast_from(0.5_f64 * 0.36_f64),
+        &mut eight_n_tau_m2,
+        n,
+    );
 
     let mut p_sq_raw = Array::<F>::new(size);
     ctaylor_powi_2::<F>(&p, &mut p_sq_raw, n);
@@ -543,7 +593,12 @@ pub fn revtpss_x<F: Float>(
     let mut term3b_raw = Array::<F>::new(size);
     ctaylor_mul::<F>(&term3, &sq2, &mut term3b_raw, n);
     let mut term3b = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&term3b_raw, F::cast_from(73.0_f64 / 405.0_f64), &mut term3b, n);
+    ctaylor_scalar_mul::<F>(
+        &term3b_raw,
+        F::cast_from(73.0_f64 / 405.0_f64),
+        &mut term3b,
+        n,
+    );
     let mut x_a3 = Array::<F>::new(size);
     ctaylor_sub::<F>(&x_a2, &term3b, &mut x_a3, n);
 
@@ -553,7 +608,12 @@ pub fn revtpss_x<F: Float>(
     let mut p_10_81_sq_raw = Array::<F>::new(size);
     ctaylor_powi_2::<F>(&p_10_81, &mut p_10_81_sq_raw, n);
     let mut p_10_81_sq = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&p_10_81_sq_raw, F::cast_from(1.0_f64 / REVTPSS_KAPPA_F64), &mut p_10_81_sq, n);
+    ctaylor_scalar_mul::<F>(
+        &p_10_81_sq_raw,
+        F::cast_from(1.0_f64 / REVTPSS_KAPPA_F64),
+        &mut p_10_81_sq,
+        n,
+    );
     let mut x_a4 = Array::<F>::new(size);
     ctaylor_add::<F>(&x_a3, &p_10_81_sq, &mut x_a4, n);
 
@@ -604,13 +664,23 @@ pub fn revtpss_fx<F: Float>(
     revtpss_x::<F>(d_n, d_gnn, d_tau, &mut xpz, n);
 
     let mut x_over_k = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&xpz, F::cast_from(1.0_f64 / REVTPSS_KAPPA_F64), &mut x_over_k, n);
+    ctaylor_scalar_mul::<F>(
+        &xpz,
+        F::cast_from(1.0_f64 / REVTPSS_KAPPA_F64),
+        &mut x_over_k,
+        n,
+    );
     x_over_k[0] = x_over_k[0] + F::new(1.0);
 
     let mut inv_denom = Array::<F>::new(size);
     ctaylor_reciprocal::<F>(&x_over_k, &mut inv_denom, n);
     let mut k_over_denom = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&inv_denom, F::cast_from(REVTPSS_KAPPA_F64), &mut k_over_denom, n);
+    ctaylor_scalar_mul::<F>(
+        &inv_denom,
+        F::cast_from(REVTPSS_KAPPA_F64),
+        &mut k_over_denom,
+        n,
+    );
 
     let one_plus_k = 1.0_f64 + REVTPSS_KAPPA_F64;
     let neg_one = F::new(0.0) - F::new(1.0);
@@ -816,12 +886,7 @@ fn tpss_pbec_eps_polarized<F: Float>(
 /// with greater value. Since both are scalar CTaylor, we branch on CNST slot.
 /// Per T-04-01-01 threat: abs() on CNST only is safe here.
 #[cube]
-pub fn ctaylor_max<F: Float>(
-    a: &Array<F>,
-    b: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_max<F: Float>(a: &Array<F>, b: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
     // Select whichever has larger CNST slot.
     if a[0] >= b[0] {
@@ -1135,7 +1200,12 @@ fn revtpss_A<F: Float>(
 
     // beta_gamma = beta_tpss / param_gamma
     let mut beta_gamma = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(beta_tpss, F::cast_from(1.0_f64 / PBEC_GAMMA_F64), &mut beta_gamma, n);
+    ctaylor_scalar_mul::<F>(
+        beta_tpss,
+        F::cast_from(1.0_f64 / PBEC_GAMMA_F64),
+        &mut beta_gamma,
+        n,
+    );
 
     // expm1(-eps / (gamma * u3))
     let mut gu3 = Array::<F>::new(size);
@@ -1171,7 +1241,12 @@ fn revtpss_H<F: Float>(
 
     // beta_gamma = beta_tpss / gamma
     let mut beta_gamma = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(beta_tpss, F::cast_from(1.0_f64 / PBEC_GAMMA_F64), &mut beta_gamma, n);
+    ctaylor_scalar_mul::<F>(
+        beta_tpss,
+        F::cast_from(1.0_f64 / PBEC_GAMMA_F64),
+        &mut beta_gamma,
+        n,
+    );
 
     // A = revtpss_A
     let mut A = Array::<F>::new(size);

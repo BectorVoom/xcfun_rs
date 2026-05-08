@@ -53,8 +53,9 @@ use std::process::Command;
 
 /// Locate the repo root (xtask's parent). Mirrors `regen_registry.rs`.
 fn project_root() -> Result<PathBuf> {
-    let manifest = std::env::var("CARGO_MANIFEST_DIR")
-        .context("CARGO_MANIFEST_DIR not set — run via `cargo run -p xtask --bin regen-mpmath-fixtures`")?;
+    let manifest = std::env::var("CARGO_MANIFEST_DIR").context(
+        "CARGO_MANIFEST_DIR not set — run via `cargo run -p xtask --bin regen-mpmath-fixtures`",
+    )?;
     let xtask_dir = PathBuf::from(manifest);
     let root = xtask_dir
         .parent()
@@ -80,16 +81,11 @@ fn vars_for(fn_name: &str) -> (&'static str, usize) {
         "ldaerfx" | "ldaerfc" | "ldaerfc_jt" => ("A_B", 2),
         "tpssc" | "tpsslocc" | "revtpssc" => ("A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB", 9),
         // excluded_by_upstream_spec set (Plan 06-N2):
-        "brx" | "brc" | "brxc" => (
-            "A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB",
-            11,
-        ),
+        "brx" | "brc" | "brxc" => ("A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB", 11),
         "csc" => ("A_B_GAA_GAB_GBB_LAPA_LAPB_TAUA_TAUB_JPAA_JPBB", 11),
         "blocx" => ("A_B_GAA_GAB_GBB_TAUA_TAUB", 7),
-        "scanx" | "scanc" | "rscanx" | "rscanc" | "rppscanx" | "rppscanc"
-        | "r2scanx" | "r2scanc" | "r4scanx" | "r4scanc" => {
-            ("A_B_GAA_GAB_GBB_TAUA_TAUB", 7)
-        }
+        "scanx" | "scanc" | "rscanx" | "rscanc" | "rppscanx" | "rppscanc" | "r2scanx"
+        | "r2scanc" | "r4scanx" | "r4scanc" => ("A_B_GAA_GAB_GBB_TAUA_TAUB", 7),
         "tw" | "vwk" => ("A_B_GAA_GAB_GBB", 5),
         "pbelocc" | "zvpbesolc" | "zvpbeintc" => ("A_B_GAA_GAB_GBB", 5),
         _ => panic!(
@@ -183,16 +179,36 @@ fn smoke_functionals() -> &'static [&'static str] {
 fn full_functionals() -> &'static [&'static str] {
     &[
         // Plan 06-00 ACC-04 amendment set:
-        "ldaerfx", "ldaerfc", "ldaerfc_jt", "tpssc", "tpsslocc", "revtpssc",
+        "ldaerfx",
+        "ldaerfc",
+        "ldaerfc_jt",
+        "tpssc",
+        "tpsslocc",
+        "revtpssc",
         // Plan 06-N2 excluded_by_upstream_spec set (BR family):
-        "brx", "brc", "brxc",
+        "brx",
+        "brc",
+        "brxc",
         // misc + CSC + BLOCX:
-        "csc", "blocx",
+        "csc",
+        "blocx",
         // SCAN family ×10:
-        "scanx", "scanc", "rscanx", "rscanc", "rppscanx", "rppscanc",
-        "r2scanx", "r2scanc", "r4scanx", "r4scanc",
+        "scanx",
+        "scanc",
+        "rscanx",
+        "rscanc",
+        "rppscanx",
+        "rppscanc",
+        "r2scanx",
+        "r2scanc",
+        "r4scanx",
+        "r4scanc",
         // kinetic-GGA + PBE-correlation variants:
-        "tw", "vwk", "pbelocc", "zvpbesolc", "zvpbeintc",
+        "tw",
+        "vwk",
+        "pbelocc",
+        "zvpbesolc",
+        "zvpbeintc",
     ]
 }
 
@@ -240,8 +256,8 @@ fn main() -> Result<()> {
     // where `python3 -m xtask.mpmath_eval` works directly). Override via
     // `XCFUN_MPMATH_PYTHON` env var to point at a venv or a version-pinned
     // install (e.g., a specific minor-version binary) with `mpmath` installed.
-    let mpmath_python = std::env::var("XCFUN_MPMATH_PYTHON")
-        .unwrap_or_else(|_| "python3".to_string());
+    let mpmath_python =
+        std::env::var("XCFUN_MPMATH_PYTHON").unwrap_or_else(|_| "python3".to_string());
 
     for fn_name in functionals {
         let grid = stratified_grid(fn_name, smoke_mode);
@@ -259,9 +275,7 @@ fn main() -> Result<()> {
                 .args(["--prec", "200"])
                 .current_dir(&workspace_root)
                 .output()
-                .with_context(|| {
-                    format!("python3 -m xtask.mpmath_eval failed for {}", fn_name)
-                })?;
+                .with_context(|| format!("python3 -m xtask.mpmath_eval failed for {}", fn_name))?;
             if !output.status.success() {
                 bail!(
                     "mpmath sidecar failed for {}: {}",
@@ -285,9 +299,8 @@ fn main() -> Result<()> {
 
         if check_mode {
             // --check mode: stamp file must already exist and match.
-            let existing = std::fs::read_to_string(&stamp).with_context(|| {
-                format!("missing committed sha256 stamp at {:?}", stamp)
-            })?;
+            let existing = std::fs::read_to_string(&stamp)
+                .with_context(|| format!("missing committed sha256 stamp at {:?}", stamp))?;
             if existing.trim() != hex {
                 bail!(
                     "mpmath fixture drift detected for {}: expected {}, got {}",

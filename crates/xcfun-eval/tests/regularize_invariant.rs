@@ -12,8 +12,8 @@ use cubecl::prelude::*;
 use cubecl_cpu::CpuRuntime;
 // Phase 6 Plan 06-01 (D-08): density_vars migrated to xcfun-kernels;
 // cpu_client substrate stays in xcfun-eval.
-use xcfun_kernels::density_vars::regularize::regularize;
 use xcfun_eval::for_tests::cpu_client;
+use xcfun_kernels::density_vars::regularize::regularize;
 
 /// Thin `#[cube(launch_unchecked)]` wrapper over `regularize` so we can
 /// invoke the public `#[cube] fn` from a host-side test via launch_unchecked.
@@ -66,7 +66,10 @@ fn regularize_no_op_when_cnst_above_tiny() {
     // x = [1.0, 0.5, 0.7, 0.25] — c[CNST] = 1.0 is well above 1e-14; should be no-op.
     let input = [1.0_f64, 0.5, 0.7, 0.25];
     let output = run_regularize(&input);
-    assert_eq!(output[0], 1.0_f64, "c[CNST] preserved when above TINY_DENSITY");
+    assert_eq!(
+        output[0], 1.0_f64,
+        "c[CNST] preserved when above TINY_DENSITY"
+    );
     assert_eq!(output[1], 0.5_f64);
     assert_eq!(output[2], 0.7_f64);
     assert_eq!(output[3], 0.25_f64);

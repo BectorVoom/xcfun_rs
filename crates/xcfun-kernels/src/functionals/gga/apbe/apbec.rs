@@ -26,9 +26,7 @@
 use cubecl::prelude::*;
 use xcfun_ad::ctaylor::{ctaylor_add, ctaylor_scalar_mul};
 use xcfun_ad::ctaylor_rec::mul::ctaylor_mul;
-use xcfun_ad::math::{
-    ctaylor_expm1, ctaylor_log, ctaylor_pow, ctaylor_powi_3, ctaylor_reciprocal,
-};
+use xcfun_ad::math::{ctaylor_expm1, ctaylor_log, ctaylor_pow, ctaylor_powi_3, ctaylor_reciprocal};
 
 use crate::density_vars::DensVarsDev;
 use crate::functionals::gga::shared::constants::{PBEC_D2_PREFACTOR_F64, PBEC_GAMMA_F64};
@@ -42,11 +40,7 @@ const APBE_BETA_GAMMA: f64 = APBE_BETA / PBEC_GAMMA_F64;
 
 /// XC_APBEC kernel. 1:1 port of `apbec.cpp:18-38`.
 #[cube]
-pub fn apbec_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn apbec_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // eps = pw92_eps(d).

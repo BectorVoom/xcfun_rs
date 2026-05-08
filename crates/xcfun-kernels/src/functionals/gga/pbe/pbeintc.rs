@@ -26,11 +26,7 @@ const PBEINTC_BETA_F64: f64 = 0.052_f64;
 const PBEINTC_BG_F64: f64 = 1.672_526_359_031_570_2_f64;
 
 #[cube]
-pub fn pbeintc_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn pbeintc_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
     let _ = PBEINTC_BETA_F64;
     let bg = F::cast_from(PBEINTC_BG_F64);

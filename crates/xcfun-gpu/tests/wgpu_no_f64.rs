@@ -68,8 +68,8 @@ fn wgpu_no_f64_with_metal_tag() {
 fn batch_open_returns_wgpu_no_f64_when_probe_fails() {
     use cubecl_wgpu::WgpuRuntime;
     use xcfun_core::{FunctionalId, Mode, Vars};
-    use xcfun_eval::functional::DEFAULT_SETTINGS;
     use xcfun_eval::Functional;
+    use xcfun_eval::functional::DEFAULT_SETTINGS;
     use xcfun_gpu::Batch;
 
     // Direct-struct construction (Functional::set does not mutate
@@ -127,8 +127,8 @@ fn batch_open_returns_wgpu_no_f64_when_probe_fails() {
 fn open_wgpu_with_request_metal_returns_metal_tag_on_no_f64() {
     use cubecl_wgpu::WgpuRuntime;
     use xcfun_core::{FunctionalId, Mode, Vars};
-    use xcfun_eval::functional::DEFAULT_SETTINGS;
     use xcfun_eval::Functional;
+    use xcfun_eval::functional::DEFAULT_SETTINGS;
     use xcfun_gpu::{Backend, Batch};
 
     let fun = Functional {

@@ -198,10 +198,9 @@ const DAMP_DENOM_C: f64 = D_DAMP2_C_F64 * D_DAMP2_C_F64 * D_DAMP2_C_F64 * D_DAMP
 const ETA_VAL: f64 = 1.0e-3;
 const ETA_TERM: f64 = ETA_VAL * 3.0 / 4.0 + 2.0 / 3.0;
 const C_AA: f64 = 73.0 / 5000.0 - 0.5 * DEL_F4_X * (H0X_VAL - 1.0);
-const C_PA: f64 = 511.0 / 13500.0 - 73.0 / 1500.0 * ETA_VAL
-    - DEL_F2_X * (ALPHA_GE_F64 * C2_X + MU_F64);
-const C_PP: f64 = 146.0 / 2025.0 * ETA_TERM * ETA_TERM
-    - 73.0 / 405.0 * ETA_TERM
+const C_PA: f64 =
+    511.0 / 13500.0 - 73.0 / 1500.0 * ETA_VAL - DEL_F2_X * (ALPHA_GE_F64 * C2_X + MU_F64);
+const C_PP: f64 = 146.0 / 2025.0 * ETA_TERM * ETA_TERM - 73.0 / 405.0 * ETA_TERM
     + (ALPHA_GE_F64 * C2_X + MU_F64) * (ALPHA_GE_F64 * C2_X + MU_F64) / K1_F64;
 const DAMP4_A_SQ: f64 = DX_DAMP4_A_F64 * DX_DAMP4_A_F64;
 const DAMP4_P4: f64 = DX_DAMP4_P_F64 * DX_DAMP4_P_F64 * DX_DAMP4_P_F64 * DX_DAMP4_P_F64;
@@ -521,7 +520,12 @@ pub fn get_lsda1<F: Float>(
     let mut alfm_f_1mz4 = Array::<F>::new(size);
     ctaylor_mul::<F>(&alfm, &f_one_m_z4, &mut alfm_f_1mz4, n);
     let mut alfm_f_1mz4_fzz = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&alfm_f_1mz4, F::cast_from(1.0 / FZZ_F64), &mut alfm_f_1mz4_fzz, n);
+    ctaylor_scalar_mul::<F>(
+        &alfm_f_1mz4,
+        F::cast_from(1.0 / FZZ_F64),
+        &mut alfm_f_1mz4_fzz,
+        n,
+    );
     ctaylor_sub::<F>(&term12, &alfm_f_1mz4_fzz, eps, n);
 
     // d_eclda1_drs = (1-z4*f)*deudrs + z4*f*depdrs - (1-z4)*f*dalfmdrs/FZZ
@@ -534,7 +538,12 @@ pub fn get_lsda1<F: Float>(
     let mut dalfm_fzz = Array::<F>::new(size);
     ctaylor_mul::<F>(&f_one_m_z4, &dalfmdrs, &mut dalfm_fzz, n);
     let mut dalfm_fzz_scaled = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&dalfm_fzz, F::cast_from(1.0 / FZZ_F64), &mut dalfm_fzz_scaled, n);
+    ctaylor_scalar_mul::<F>(
+        &dalfm_fzz,
+        F::cast_from(1.0 / FZZ_F64),
+        &mut dalfm_fzz_scaled,
+        n,
+    );
     ctaylor_sub::<F>(&dterm12, &dalfm_fzz_scaled, eps_rs, n);
 }
 
@@ -826,7 +835,12 @@ pub fn scan_ec1<F: Float>(
         let mut inv_sqrtrs_2 = Array::<F>::new(size);
         ctaylor_pow::<F>(sqrtrs, F::cast_from(-1.0_f64), &mut inv_sqrtrs_2, n);
         let mut b2c_over_2sqrtrs = Array::<F>::new(size);
-        ctaylor_scalar_mul::<F>(&inv_sqrtrs_2, F::cast_from(B2C_F64 * 0.5), &mut b2c_over_2sqrtrs, n);
+        ctaylor_scalar_mul::<F>(
+            &inv_sqrtrs_2,
+            F::cast_from(B2C_F64 * 0.5),
+            &mut b2c_over_2sqrtrs,
+            n,
+        );
         let mut b3c_plus = Array::<F>::new(size);
         #[unroll]
         for i in 0..size {
@@ -851,7 +865,12 @@ pub fn scan_ec1<F: Float>(
         ctaylor_mul::<F>(&ds_phi3, &w1, &mut ds_phi3_w1, n);
         // 27 * GAMMA * ds_z * phi3 * w1
         let mut denom_t1 = Array::<F>::new(size);
-        ctaylor_scalar_mul::<F>(&ds_phi3_w1, F::cast_from(27.0 * GAMMA_F64), &mut denom_t1, n);
+        ctaylor_scalar_mul::<F>(
+            &ds_phi3_w1,
+            F::cast_from(27.0 * GAMMA_F64),
+            &mut denom_t1,
+            n,
+        );
         let mut inv_denom_t1 = Array::<F>::new(size);
         ctaylor_reciprocal::<F>(&denom_t1, &mut inv_denom_t1, n);
         let mut t1 = Array::<F>::new(size);
@@ -881,7 +900,12 @@ pub fn scan_ec1<F: Float>(
         let mut p2 = Array::<F>::new(size);
         ctaylor_powi_2::<F>(&p_corr, &mut p2, n);
         let mut neg_p2_over = Array::<F>::new(size);
-        ctaylor_scalar_mul::<F>(&p2, F::cast_from(-1.0_f64 / DAMP_DENOM_C), &mut neg_p2_over, n);
+        ctaylor_scalar_mul::<F>(
+            &p2,
+            F::cast_from(-1.0_f64 / DAMP_DENOM_C),
+            &mut neg_p2_over,
+            n,
+        );
         let mut damp = Array::<F>::new(size);
         ctaylor_exp::<F>(&neg_p2_over, &mut damp, n);
 
@@ -966,7 +990,12 @@ fn SCAN_X_Fx<F: Float>(
             ctaylor_reciprocal::<F>(&oma, &mut inv_oma, n);
             ctaylor_mul::<F>(alpha, &inv_oma, &mut alpha_over_oma, n);
             let mut neg_cfx1_aoo = Array::<F>::new(size);
-            ctaylor_scalar_mul::<F>(&alpha_over_oma, F::cast_from(-CFX1_F64), &mut neg_cfx1_aoo, n);
+            ctaylor_scalar_mul::<F>(
+                &alpha_over_oma,
+                F::cast_from(-CFX1_F64),
+                &mut neg_cfx1_aoo,
+                n,
+            );
             ctaylor_exp::<F>(&neg_cfx1_aoo, &mut ief, n);
         } else {
             // -CFDX1 * exp(CFX2/oma)
@@ -1010,52 +1039,68 @@ fn SCAN_X_Fx<F: Float>(
             let mut ief_raw = Array::<F>::new(size);
             ctaylor_add::<F>(&ief, &term, &mut ief_raw, n);
             #[unroll]
-            for i in 0..size { ief[i] = ief_raw[i]; }
+            for i in 0..size {
+                ief[i] = ief_raw[i];
+            }
             // alpha^2
             let mut alpha2 = Array::<F>::new(size);
             ctaylor_powi_2::<F>(alpha, &mut alpha2, n);
             ctaylor_scalar_mul::<F>(&alpha2, F::cast_from(IE_PARAMS_X[2]), &mut term, n);
             ctaylor_add::<F>(&ief, &term, &mut ief_raw, n);
             #[unroll]
-            for i in 0..size { ief[i] = ief_raw[i]; }
+            for i in 0..size {
+                ief[i] = ief_raw[i];
+            }
             // alpha^3
             let mut alpha3 = Array::<F>::new(size);
             ctaylor_powi_3::<F>(alpha, &mut alpha3, n);
             ctaylor_scalar_mul::<F>(&alpha3, F::cast_from(IE_PARAMS_X[3]), &mut term, n);
             ctaylor_add::<F>(&ief, &term, &mut ief_raw, n);
             #[unroll]
-            for i in 0..size { ief[i] = ief_raw[i]; }
+            for i in 0..size {
+                ief[i] = ief_raw[i];
+            }
             // alpha^4
             let mut alpha4 = Array::<F>::new(size);
             ctaylor_powi_4::<F>(alpha, &mut alpha4, n);
             ctaylor_scalar_mul::<F>(&alpha4, F::cast_from(IE_PARAMS_X[4]), &mut term, n);
             ctaylor_add::<F>(&ief, &term, &mut ief_raw, n);
             #[unroll]
-            for i in 0..size { ief[i] = ief_raw[i]; }
+            for i in 0..size {
+                ief[i] = ief_raw[i];
+            }
             // alpha^5
             let mut alpha5 = Array::<F>::new(size);
             let mut alpha5_raw = Array::<F>::new(size);
             ctaylor_mul::<F>(&alpha4, alpha, &mut alpha5_raw, n);
             #[unroll]
-            for i in 0..size { alpha5[i] = alpha5_raw[i]; }
+            for i in 0..size {
+                alpha5[i] = alpha5_raw[i];
+            }
             ctaylor_scalar_mul::<F>(&alpha5, F::cast_from(IE_PARAMS_X[5]), &mut term, n);
             ctaylor_add::<F>(&ief, &term, &mut ief_raw, n);
             #[unroll]
-            for i in 0..size { ief[i] = ief_raw[i]; }
+            for i in 0..size {
+                ief[i] = ief_raw[i];
+            }
             // alpha^6
             let mut alpha6 = Array::<F>::new(size);
             ctaylor_mul::<F>(&alpha5, alpha, &mut alpha6, n);
             ctaylor_scalar_mul::<F>(&alpha6, F::cast_from(IE_PARAMS_X[6]), &mut term, n);
             ctaylor_add::<F>(&ief, &term, &mut ief_raw, n);
             #[unroll]
-            for i in 0..size { ief[i] = ief_raw[i]; }
+            for i in 0..size {
+                ief[i] = ief_raw[i];
+            }
             // alpha^7
             let mut alpha7 = Array::<F>::new(size);
             ctaylor_mul::<F>(&alpha6, alpha, &mut alpha7, n);
             ctaylor_scalar_mul::<F>(&alpha7, F::cast_from(IE_PARAMS_X[7]), &mut term, n);
             ctaylor_add::<F>(&ief, &term, &mut ief_raw, n);
             #[unroll]
-            for i in 0..size { ief[i] = ief_raw[i]; }
+            for i in 0..size {
+                ief[i] = ief_raw[i];
+            }
         } else {
             // -CFDX1 * exp(CFX2/oma)
             let mut inv_oma = Array::<F>::new(size);
@@ -1129,12 +1174,22 @@ fn SCAN_X_Fx<F: Float>(
         let mut p2_h = Array::<F>::new(size);
         ctaylor_powi_2::<F>(p, &mut p2_h, n);
         let mut neg_p2_over = Array::<F>::new(size);
-        ctaylor_scalar_mul::<F>(&p2_h, F::cast_from(-1.0_f64 / DAMP_DENOM_X), &mut neg_p2_over, n);
+        ctaylor_scalar_mul::<F>(
+            &p2_h,
+            F::cast_from(-1.0_f64 / DAMP_DENOM_X),
+            &mut neg_p2_over,
+            n,
+        );
         let mut damp = Array::<F>::new(size);
         ctaylor_exp::<F>(&neg_p2_over, &mut damp, n);
         // h1x = 1 + K1 - K1/(1 + p*(MU + ALPHA_GE*C2_X*damp)/K1)
         let mut alpha_ge_c2_damp = Array::<F>::new(size);
-        ctaylor_scalar_mul::<F>(&damp, F::cast_from(ALPHA_GE_F64 * C2_X), &mut alpha_ge_c2_damp, n);
+        ctaylor_scalar_mul::<F>(
+            &damp,
+            F::cast_from(ALPHA_GE_F64 * C2_X),
+            &mut alpha_ge_c2_damp,
+            n,
+        );
         let mut mu_plus = Array::<F>::new(size);
         #[unroll]
         for i in 0..size {
@@ -1236,7 +1291,12 @@ fn SCAN_X_Fx<F: Float>(
 
         // damp_4_t2 = exp(-oma^2/DAMP4_A_SQ - p^2/DAMP4_P4)
         let mut oma2_over = Array::<F>::new(size);
-        ctaylor_scalar_mul::<F>(&oma2, F::cast_from(-1.0_f64 / DAMP4_A_SQ), &mut oma2_over, n);
+        ctaylor_scalar_mul::<F>(
+            &oma2,
+            F::cast_from(-1.0_f64 / DAMP4_A_SQ),
+            &mut oma2_over,
+            n,
+        );
         let mut p2_over = Array::<F>::new(size);
         ctaylor_scalar_mul::<F>(&p2, F::cast_from(-1.0_f64 / DAMP4_P4), &mut p2_over, n);
         let mut sum_exp = Array::<F>::new(size);
@@ -1330,7 +1390,9 @@ pub fn get_SCAN_Fx<F: Float>(
                 ctaylor_mul::<F>(&tau_m_tauw, &inv_tu, &mut alpha, n);
             } else {
                 #[unroll]
-                for i in 0..size { alpha[i] = F::new(0.0); }
+                for i in 0..size {
+                    alpha[i] = F::new(0.0);
+                }
             }
         } else if diff_cnst > F::new(1.0e-14) {
             let mut inv_tu = Array::<F>::new(size);
@@ -1338,7 +1400,9 @@ pub fn get_SCAN_Fx<F: Float>(
             ctaylor_mul::<F>(&tau_m_tauw, &inv_tu, &mut alpha, n);
         } else {
             #[unroll]
-            for i in 0..size { alpha[i] = F::new(0.0); }
+            for i in 0..size {
+                alpha[i] = F::new(0.0);
+            }
         }
     } else if comptime!(ialpha == 1) {
         // rSCAN: alpha' = (tau-tauw)/tauUnif, then alpha'^3/(alpha'^2 + A_REG)
@@ -1355,7 +1419,9 @@ pub fn get_SCAN_Fx<F: Float>(
         ctaylor_powi_2::<F>(&alpha_raw, &mut a2, n);
         let mut a2_plus = Array::<F>::new(size);
         #[unroll]
-        for i in 0..size { a2_plus[i] = a2[i]; }
+        for i in 0..size {
+            a2_plus[i] = a2[i];
+        }
         a2_plus[0] = a2_plus[0] + F::cast_from(1.0e-3_f64); // A_REG
         let mut inv_a2_plus = Array::<F>::new(size);
         ctaylor_reciprocal::<F>(&a2_plus, &mut inv_a2_plus, n);
@@ -1378,7 +1444,9 @@ pub fn get_SCAN_Fx<F: Float>(
                 ctaylor_mul::<F>(&tau_m_tauw, &inv_da, &mut alpha, n);
             } else {
                 #[unroll]
-                for i in 0..size { alpha[i] = F::new(0.0); }
+                for i in 0..size {
+                    alpha[i] = F::new(0.0);
+                }
             }
         } else if diff_cnst > F::new(1.0e-14) {
             let mut inv_da = Array::<F>::new(size);
@@ -1386,7 +1454,9 @@ pub fn get_SCAN_Fx<F: Float>(
             ctaylor_mul::<F>(&tau_m_tauw, &inv_da, &mut alpha, n);
         } else {
             #[unroll]
-            for i in 0..size { alpha[i] = F::new(0.0); }
+            for i in 0..size {
+                alpha[i] = F::new(0.0);
+            }
         }
     }
 
@@ -1464,7 +1534,9 @@ pub fn r2SCAN_C<F: Float>(
         ctaylor_sqrt::<F>(&rs, &mut sqrtrs, n);
     } else {
         #[unroll]
-        for i in 0..size { sqrtrs[i] = F::new(0.0); }
+        for i in 0..size {
+            sqrtrs[i] = F::new(0.0);
+        }
     }
 
     // ds_z = ufunc(zeta, 5/3) / 2
@@ -1525,7 +1597,9 @@ pub fn r2SCAN_C<F: Float>(
                 ctaylor_mul::<F>(&tau_m_tauw, &inv_tueg, &mut alpha, n);
             } else {
                 #[unroll]
-                for i in 0..size { alpha[i] = F::new(0.0); }
+                for i in 0..size {
+                    alpha[i] = F::new(0.0);
+                }
             }
         } else if diff_cnst > F::new(1.0e-14) {
             let mut inv_tueg = Array::<F>::new(size);
@@ -1533,7 +1607,9 @@ pub fn r2SCAN_C<F: Float>(
             ctaylor_mul::<F>(&tau_m_tauw, &inv_tueg, &mut alpha, n);
         } else {
             #[unroll]
-            for i in 0..size { alpha[i] = F::new(0.0); }
+            for i in 0..size {
+                alpha[i] = F::new(0.0);
+            }
         }
     } else if comptime!(ialpha == 1) {
         let mut tau_m_tauw = Array::<F>::new(size);
@@ -1548,7 +1624,9 @@ pub fn r2SCAN_C<F: Float>(
         ctaylor_powi_2::<F>(&alpha_raw, &mut a2, n);
         let mut a2_reg = Array::<F>::new(size);
         #[unroll]
-        for i in 0..size { a2_reg[i] = a2[i]; }
+        for i in 0..size {
+            a2_reg[i] = a2[i];
+        }
         a2_reg[0] = a2_reg[0] + F::cast_from(1.0e-3_f64);
         let mut inv_a2_reg = Array::<F>::new(size);
         ctaylor_reciprocal::<F>(&a2_reg, &mut inv_a2_reg, n);
@@ -1570,7 +1648,9 @@ pub fn r2SCAN_C<F: Float>(
                 ctaylor_mul::<F>(&tau_m_tauw, &inv_da, &mut alpha, n);
             } else {
                 #[unroll]
-                for i in 0..size { alpha[i] = F::new(0.0); }
+                for i in 0..size {
+                    alpha[i] = F::new(0.0);
+                }
             }
         } else if diff_cnst > F::new(1.0e-14) {
             let mut inv_da = Array::<F>::new(size);
@@ -1578,7 +1658,9 @@ pub fn r2SCAN_C<F: Float>(
             ctaylor_mul::<F>(&tau_m_tauw, &inv_da, &mut alpha, n);
         } else {
             #[unroll]
-            for i in 0..size { alpha[i] = F::new(0.0); }
+            for i in 0..size {
+                alpha[i] = F::new(0.0);
+            }
         }
     }
 
@@ -1621,56 +1703,72 @@ pub fn r2SCAN_C<F: Float>(
         } else if alpha_cnst < F::new(2.5) {
             ief[0] = F::cast_from(IE_PARAMS_C[0]);
             #[unroll]
-            for i in 1..size { ief[i] = F::new(0.0); }
+            for i in 1..size {
+                ief[i] = F::new(0.0);
+            }
             // alpha^1
             let mut term = Array::<F>::new(size);
             let mut ief_tmp = Array::<F>::new(size);
             ctaylor_scalar_mul::<F>(&alpha, F::cast_from(IE_PARAMS_C[1]), &mut term, n);
             ctaylor_add::<F>(&ief, &term, &mut ief_tmp, n);
             #[unroll]
-            for i in 0..size { ief[i] = ief_tmp[i]; }
+            for i in 0..size {
+                ief[i] = ief_tmp[i];
+            }
             // alpha^2
             let mut a2 = Array::<F>::new(size);
             ctaylor_powi_2::<F>(&alpha, &mut a2, n);
             ctaylor_scalar_mul::<F>(&a2, F::cast_from(IE_PARAMS_C[2]), &mut term, n);
             ctaylor_add::<F>(&ief, &term, &mut ief_tmp, n);
             #[unroll]
-            for i in 0..size { ief[i] = ief_tmp[i]; }
+            for i in 0..size {
+                ief[i] = ief_tmp[i];
+            }
             // alpha^3
             let mut a3 = Array::<F>::new(size);
             ctaylor_powi_3::<F>(&alpha, &mut a3, n);
             ctaylor_scalar_mul::<F>(&a3, F::cast_from(IE_PARAMS_C[3]), &mut term, n);
             ctaylor_add::<F>(&ief, &term, &mut ief_tmp, n);
             #[unroll]
-            for i in 0..size { ief[i] = ief_tmp[i]; }
+            for i in 0..size {
+                ief[i] = ief_tmp[i];
+            }
             // alpha^4
             let mut a4 = Array::<F>::new(size);
             ctaylor_powi_4::<F>(&alpha, &mut a4, n);
             ctaylor_scalar_mul::<F>(&a4, F::cast_from(IE_PARAMS_C[4]), &mut term, n);
             ctaylor_add::<F>(&ief, &term, &mut ief_tmp, n);
             #[unroll]
-            for i in 0..size { ief[i] = ief_tmp[i]; }
+            for i in 0..size {
+                ief[i] = ief_tmp[i];
+            }
             // alpha^5
             let mut a5 = Array::<F>::new(size);
             ctaylor_mul::<F>(&a4, &alpha, &mut a5, n);
             ctaylor_scalar_mul::<F>(&a5, F::cast_from(IE_PARAMS_C[5]), &mut term, n);
             ctaylor_add::<F>(&ief, &term, &mut ief_tmp, n);
             #[unroll]
-            for i in 0..size { ief[i] = ief_tmp[i]; }
+            for i in 0..size {
+                ief[i] = ief_tmp[i];
+            }
             // alpha^6
             let mut a6 = Array::<F>::new(size);
             ctaylor_mul::<F>(&a5, &alpha, &mut a6, n);
             ctaylor_scalar_mul::<F>(&a6, F::cast_from(IE_PARAMS_C[6]), &mut term, n);
             ctaylor_add::<F>(&ief, &term, &mut ief_tmp, n);
             #[unroll]
-            for i in 0..size { ief[i] = ief_tmp[i]; }
+            for i in 0..size {
+                ief[i] = ief_tmp[i];
+            }
             // alpha^7
             let mut a7 = Array::<F>::new(size);
             ctaylor_mul::<F>(&a6, &alpha, &mut a7, n);
             ctaylor_scalar_mul::<F>(&a7, F::cast_from(IE_PARAMS_C[7]), &mut term, n);
             ctaylor_add::<F>(&ief, &term, &mut ief_tmp, n);
             #[unroll]
-            for i in 0..size { ief[i] = ief_tmp[i]; }
+            for i in 0..size {
+                ief[i] = ief_tmp[i];
+            }
         } else {
             let mut inv_oma = Array::<F>::new(size);
             ctaylor_reciprocal::<F>(&oma, &mut inv_oma, n);

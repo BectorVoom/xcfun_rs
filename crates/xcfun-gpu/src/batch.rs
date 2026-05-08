@@ -93,14 +93,9 @@ impl<'fun, R: cubecl::Runtime> Batch<'fun, R> {
         // Output length is a `Result` because `Mode::Unset` is rejected;
         // the public `Batch` API requires the caller to have configured
         // a mode before reserve, so unwrap here is contract-correct.
-        let outlen = xcfun_eval::Functional::output_length(
-            self.fun.vars,
-            self.fun.mode,
-            self.fun.order,
-        )
-        .expect(
-            "xcfun-gpu Batch::reserve called on Functional with unset mode/order",
-        );
+        let outlen =
+            xcfun_eval::Functional::output_length(self.fun.vars, self.fun.mode, self.fun.order)
+                .expect("xcfun-gpu Batch::reserve called on Functional with unset mode/order");
         let f64_size = core::mem::size_of::<f64>();
         self.bufs.density_buf = self.client.empty(new_cap * inlen * f64_size);
         self.bufs.result_buf = self.client.empty(new_cap * outlen * f64_size);
@@ -187,9 +182,7 @@ impl<'fun> Batch<'fun, cubecl_cpu::CpuRuntime> {
     /// invariant: fixed-size weights / active-ids allocated once;
     /// density / result start at 64 points and double on overflow
     /// (handled by `Batch::reserve`).
-    pub fn open_cpu(
-        fun: &'fun xcfun_eval::Functional,
-    ) -> Result<Self, XcError> {
+    pub fn open_cpu(fun: &'fun xcfun_eval::Functional) -> Result<Self, XcError> {
         let client = xcfun_eval::for_tests::cpu_client().clone();
         let f64_size = core::mem::size_of::<f64>();
         let u32_size = core::mem::size_of::<u32>();
@@ -208,10 +201,8 @@ impl<'fun> Batch<'fun, cubecl_cpu::CpuRuntime> {
         // Mode::Unset; default to 0-byte allocations in that case so
         // open_cpu() succeeds and the caller can still configure modes
         // afterwards (test harnesses use this path).
-        let outlen = xcfun_eval::Functional::output_length(
-            fun.vars, fun.mode, fun.order,
-        )
-        .unwrap_or(0);
+        let outlen =
+            xcfun_eval::Functional::output_length(fun.vars, fun.mode, fun.order).unwrap_or(0);
 
         let density_buf = client.empty(initial_capacity * inlen.max(1) * f64_size);
         let result_buf = client.empty(initial_capacity * outlen.max(1) * f64_size);
@@ -267,9 +258,7 @@ impl<'fun> Batch<'fun, cubecl_cpu::CpuRuntime> {
         nr_points: usize,
     ) -> Result<(), XcError> {
         let inlen = xcfun_eval::Functional::input_length(fun.vars);
-        let outlen = xcfun_eval::Functional::output_length(
-            fun.vars, fun.mode, fun.order,
-        )?;
+        let outlen = xcfun_eval::Functional::output_length(fun.vars, fun.mode, fun.order)?;
 
         if density_pitch < inlen {
             return Err(XcError::InputLengthMismatch {
@@ -342,9 +331,7 @@ impl<'fun> Batch<'fun, cubecl_hip::HipRuntime> {
     /// call `auto_backend()` first and only invoke `open_rocm` on
     /// `Backend::Rocm`; bypassing the priority chain is supported but
     /// the typed error will reach you instead of a panic.
-    pub fn open_rocm(
-        fun: &'fun xcfun_eval::Functional,
-    ) -> Result<Self, XcError> {
+    pub fn open_rocm(fun: &'fun xcfun_eval::Functional) -> Result<Self, XcError> {
         if !crate::runtime::hip::rocm_available() {
             return Err(XcError::Runtime);
         }
@@ -361,10 +348,8 @@ impl<'fun> Batch<'fun, cubecl_hip::HipRuntime> {
         // reserve(<= 64) is a no-op (parity with the CPU arm).
         let initial_capacity = 64_usize;
         let inlen = xcfun_eval::Functional::input_length(fun.vars);
-        let outlen = xcfun_eval::Functional::output_length(
-            fun.vars, fun.mode, fun.order,
-        )
-        .unwrap_or(0);
+        let outlen =
+            xcfun_eval::Functional::output_length(fun.vars, fun.mode, fun.order).unwrap_or(0);
 
         let density_buf = client.empty(initial_capacity * inlen.max(1) * f64_size);
         let result_buf = client.empty(initial_capacity * outlen.max(1) * f64_size);
@@ -420,9 +405,7 @@ impl<'fun> Batch<'fun, cubecl_hip::HipRuntime> {
         }
 
         let inlen = xcfun_eval::Functional::input_length(fun.vars);
-        let outlen = xcfun_eval::Functional::output_length(
-            fun.vars, fun.mode, fun.order,
-        )?;
+        let outlen = xcfun_eval::Functional::output_length(fun.vars, fun.mode, fun.order)?;
 
         if density_pitch < inlen {
             return Err(XcError::InputLengthMismatch {
@@ -500,15 +483,15 @@ impl<'fun> Batch<'fun, cubecl_cuda::CudaRuntime> {
     /// failed" (no CUDA toolkit, no GPU, driver mismatch). The probe
     /// outcome is cached, so the f64-gate check is effectively free
     /// after the first call.
-    pub fn open_cuda(
-        fun: &'fun xcfun_eval::Functional,
-    ) -> Result<Self, XcError> {
+    pub fn open_cuda(fun: &'fun xcfun_eval::Functional) -> Result<Self, XcError> {
         // Probe gate. The cuda_no_f64_error helper handles both
         // sub-cases: f64-gate-failed (real adapter name) and
         // init-failed (sentinel adapter name). One typed error variant
         // is enough; downstream callers don't need to distinguish.
         if !crate::runtime::cuda::cuda_available() {
-            return Err(crate::runtime::cuda::cuda_no_f64_error(crate::Backend::Cuda));
+            return Err(crate::runtime::cuda::cuda_no_f64_error(
+                crate::Backend::Cuda,
+            ));
         }
         let client = crate::runtime::cuda::cuda_client().clone();
         let f64_size = core::mem::size_of::<f64>();
@@ -521,10 +504,8 @@ impl<'fun> Batch<'fun, cubecl_cuda::CudaRuntime> {
         // Initial 64-point capacity (CONTEXT D-14 default).
         let initial_capacity = 64_usize;
         let inlen = xcfun_eval::Functional::input_length(fun.vars);
-        let outlen = xcfun_eval::Functional::output_length(
-            fun.vars, fun.mode, fun.order,
-        )
-        .unwrap_or(0);
+        let outlen =
+            xcfun_eval::Functional::output_length(fun.vars, fun.mode, fun.order).unwrap_or(0);
 
         let density_buf = client.empty(initial_capacity * inlen.max(1) * f64_size);
         let result_buf = client.empty(initial_capacity * outlen.max(1) * f64_size);
@@ -564,13 +545,13 @@ impl<'fun> Batch<'fun, cubecl_cuda::CudaRuntime> {
         nr_points: usize,
     ) -> Result<(), XcError> {
         if !crate::runtime::cuda::cuda_available() {
-            return Err(crate::runtime::cuda::cuda_no_f64_error(crate::Backend::Cuda));
+            return Err(crate::runtime::cuda::cuda_no_f64_error(
+                crate::Backend::Cuda,
+            ));
         }
 
         let inlen = xcfun_eval::Functional::input_length(fun.vars);
-        let outlen = xcfun_eval::Functional::output_length(
-            fun.vars, fun.mode, fun.order,
-        )?;
+        let outlen = xcfun_eval::Functional::output_length(fun.vars, fun.mode, fun.order)?;
 
         if density_pitch < inlen {
             return Err(XcError::InputLengthMismatch {
@@ -651,9 +632,7 @@ impl<'fun> Batch<'fun, cubecl_wgpu::WgpuRuntime> {
     /// who pre-selected `Backend::Metal` should call
     /// [`Batch::open_wgpu_with_request`] instead so the typed error
     /// reflects the actual user request.
-    pub fn open_wgpu(
-        fun: &'fun xcfun_eval::Functional,
-    ) -> Result<Self, XcError> {
+    pub fn open_wgpu(fun: &'fun xcfun_eval::Functional) -> Result<Self, XcError> {
         Self::open_wgpu_with_request(fun, crate::Backend::Wgpu)
     }
 
@@ -677,10 +656,8 @@ impl<'fun> Batch<'fun, cubecl_wgpu::WgpuRuntime> {
 
         let initial_capacity = 64_usize;
         let inlen = xcfun_eval::Functional::input_length(fun.vars);
-        let outlen = xcfun_eval::Functional::output_length(
-            fun.vars, fun.mode, fun.order,
-        )
-        .unwrap_or(0);
+        let outlen =
+            xcfun_eval::Functional::output_length(fun.vars, fun.mode, fun.order).unwrap_or(0);
 
         let density_buf = client.empty(initial_capacity * inlen.max(1) * f64_size);
         let result_buf = client.empty(initial_capacity * outlen.max(1) * f64_size);
@@ -727,7 +704,12 @@ impl<'fun> Batch<'fun, cubecl_wgpu::WgpuRuntime> {
         nr_points: usize,
     ) -> Result<(), XcError> {
         Self::eval_vec_host_wgpu_with_request(
-            fun, density, density_pitch, out, out_pitch, nr_points,
+            fun,
+            density,
+            density_pitch,
+            out,
+            out_pitch,
+            nr_points,
             crate::Backend::Wgpu,
         )
     }
@@ -754,7 +736,12 @@ impl<'fun> Batch<'fun, cubecl_wgpu::WgpuRuntime> {
             #[cfg(feature = "cpu")]
             {
                 return Batch::<cubecl_cpu::CpuRuntime>::eval_vec_host_cpu(
-                    fun, density, density_pitch, out, out_pitch, nr_points,
+                    fun,
+                    density,
+                    density_pitch,
+                    out,
+                    out_pitch,
+                    nr_points,
                 );
             }
             // No `cpu` feature compiled — surface XcError::Runtime so
@@ -774,9 +761,7 @@ impl<'fun> Batch<'fun, cubecl_wgpu::WgpuRuntime> {
         }
 
         let inlen = xcfun_eval::Functional::input_length(fun.vars);
-        let outlen = xcfun_eval::Functional::output_length(
-            fun.vars, fun.mode, fun.order,
-        )?;
+        let outlen = xcfun_eval::Functional::output_length(fun.vars, fun.mode, fun.order)?;
 
         if density_pitch < inlen {
             return Err(XcError::InputLengthMismatch {

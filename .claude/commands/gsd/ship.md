@@ -17,7 +17,7 @@ Closes the plan → execute → verify → ship loop.
 </objective>
 
 <execution_context>
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/ship.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/ship.md
 </execution_context>
 
-Execute the ship workflow from @/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/ship.md end-to-end.
+Execute the ship workflow from @/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/ship.md end-to-end.

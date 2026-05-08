@@ -56,9 +56,7 @@
 use cubecl::prelude::*;
 use xcfun_ad::ctaylor::{ctaylor_add, ctaylor_scalar_mul, ctaylor_sub, ctaylor_zero};
 use xcfun_ad::ctaylor_rec::mul::ctaylor_mul;
-use xcfun_ad::math::{
-    ctaylor_erf, ctaylor_exp, ctaylor_pow, ctaylor_powi_3, ctaylor_reciprocal,
-};
+use xcfun_ad::math::{ctaylor_erf, ctaylor_exp, ctaylor_pow, ctaylor_powi_3, ctaylor_reciprocal};
 
 use crate::density_vars::DensVarsDev;
 
@@ -92,11 +90,7 @@ const NEG_THREE_EIGHTHS: f32 = -0.375_f32;
 // ---------------------------------------------------------------------------
 
 #[cube]
-fn esrx_ldaerfspin<F: Float>(
-    na: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn esrx_ldaerfspin<F: Float>(na: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // rhoa = 2 * na
@@ -310,11 +304,7 @@ fn _force_powi_3_import<F: Float>(x: &Array<F>, out: &mut Array<F>, n: u32) {
 /// Short-range LDA exchange kernel. 1:1 port of `ldaerfx.cpp:49-52`:
 /// `return 0.5 * (esrx_ldaerfspin(d.a, mu) + esrx_ldaerfspin(d.b, mu));`
 #[cube]
-pub fn ldaerfx_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ldaerfx_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
     let mut esrx_a = Array::<F>::new(size);
     let mut esrx_b = Array::<F>::new(size);

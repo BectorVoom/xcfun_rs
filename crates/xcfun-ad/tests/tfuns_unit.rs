@@ -15,8 +15,8 @@ use cubecl::prelude::*;
 use cubecl_cpu::CpuRuntime;
 use xcfun_ad::for_tests::cpu_client;
 use xcfun_ad::tfuns::{
-    tfuns_compose, tfuns_differentiate, tfuns_integrate, tfuns_mul,
-    tfuns_multo, tfuns_shift, tfuns_stretch,
+    tfuns_compose, tfuns_differentiate, tfuns_integrate, tfuns_mul, tfuns_multo, tfuns_shift,
+    tfuns_stretch,
 };
 
 // ---------------------------------------------------------------------------
@@ -24,21 +24,12 @@ use xcfun_ad::tfuns::{
 // ---------------------------------------------------------------------------
 
 #[cube(launch_unchecked)]
-fn kernel_mul<F: Float>(
-    x: &Array<F>,
-    y: &Array<F>,
-    z: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn kernel_mul<F: Float>(x: &Array<F>, y: &Array<F>, z: &mut Array<F>, #[comptime] n: u32) {
     tfuns_mul::<F>(z, x, y, n);
 }
 
 #[cube(launch_unchecked)]
-fn kernel_multo<F: Float>(
-    x: &Array<F>,
-    z: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn kernel_multo<F: Float>(x: &Array<F>, z: &mut Array<F>, #[comptime] n: u32) {
     tfuns_multo::<F>(z, x, n);
 }
 
@@ -53,31 +44,19 @@ fn kernel_differentiate<F: Float>(x: &mut Array<F>, #[comptime] n: u32) {
 }
 
 #[cube(launch_unchecked)]
-fn kernel_stretch<F: Float>(
-    scalars: &Array<F>,
-    t: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn kernel_stretch<F: Float>(scalars: &Array<F>, t: &mut Array<F>, #[comptime] n: u32) {
     // scalars[0] = a
     tfuns_stretch::<F>(t, scalars[0], n);
 }
 
 #[cube(launch_unchecked)]
-fn kernel_shift<F: Float>(
-    scalars: &Array<F>,
-    x: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn kernel_shift<F: Float>(scalars: &Array<F>, x: &mut Array<F>, #[comptime] n: u32) {
     // scalars[0] = d
     tfuns_shift::<F>(x, scalars[0], n);
 }
 
 #[cube(launch_unchecked)]
-fn kernel_compose<F: Float>(
-    x: &Array<F>,
-    f: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn kernel_compose<F: Float>(x: &Array<F>, f: &mut Array<F>, #[comptime] n: u32) {
     tfuns_compose::<F>(f, x, n);
 }
 

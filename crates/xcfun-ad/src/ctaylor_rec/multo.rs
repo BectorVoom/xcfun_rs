@@ -234,10 +234,7 @@ pub(crate) fn ctaylor_multo_n3<F: Float>(dst: &mut Array<F>, y: &Array<F>) {
 
 /// N=0 multo_skipconst. Port of `ctaylor.hpp:89` — `dst[0] = 0`.
 #[cube]
-pub(crate) fn ctaylor_multo_skipconst_n0<F: Float>(
-    dst: &mut Array<F>,
-    _y: &Array<F>,
-) {
+pub(crate) fn ctaylor_multo_skipconst_n0<F: Float>(dst: &mut Array<F>, _y: &Array<F>) {
     dst[0] = F::new(0.0);
 }
 
@@ -250,10 +247,7 @@ pub(crate) fn ctaylor_multo_skipconst_n0<F: Float>(
 /// }
 /// ```
 #[cube]
-pub(crate) fn ctaylor_multo_skipconst_n1<F: Float>(
-    dst: &mut Array<F>,
-    y: &Array<F>,
-) {
+pub(crate) fn ctaylor_multo_skipconst_n1<F: Float>(dst: &mut Array<F>, y: &Array<F>) {
     let d0 = dst[0];
     dst[1] = d0 * y[1];
     dst[0] = F::new(0.0);
@@ -270,10 +264,7 @@ pub(crate) fn ctaylor_multo_skipconst_n1<F: Float>(
 /// }
 /// ```
 #[cube]
-pub(crate) fn ctaylor_multo_skipconst_n2<F: Float>(
-    dst: &mut Array<F>,
-    y: &Array<F>,
-) {
+pub(crate) fn ctaylor_multo_skipconst_n2<F: Float>(dst: &mut Array<F>, y: &Array<F>) {
     let d0 = dst[0];
     let d1 = dst[1];
     let d2 = dst[2];
@@ -304,10 +295,7 @@ pub(crate) fn ctaylor_multo_skipconst_n2<F: Float>(
 ///
 /// Descending order, using pre-captured d0..d7.
 #[cube]
-pub(crate) fn ctaylor_multo_skipconst_n3<F: Float>(
-    dst: &mut Array<F>,
-    y: &Array<F>,
-) {
+pub(crate) fn ctaylor_multo_skipconst_n3<F: Float>(dst: &mut Array<F>, y: &Array<F>) {
     let d0 = dst[0];
     let d1 = dst[1];
     let d2 = dst[2];
@@ -888,11 +876,7 @@ pub fn ctaylor_multo_skipconst_n4<F: Float>(dst: &mut Array<F>, y: &Array<F>) {
 /// which Mode::Contracted exceeds via `inlen × (1 << order)` packing).
 /// A follow-up plan in Phase 6 will land N=5/6 once the demand is concrete.
 #[cube]
-pub fn ctaylor_multo<F: Float>(
-    dst: &mut Array<F>,
-    y: &Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_multo<F: Float>(dst: &mut Array<F>, y: &Array<F>, #[comptime] n: u32) {
     if comptime!(n == 0) {
         ctaylor_multo_n0::<F>(dst, y);
     } else if comptime!(n == 1) {
@@ -908,11 +892,7 @@ pub fn ctaylor_multo<F: Float>(
 
 /// Outer dispatch for `dst *= (y - y[0])` across N ∈ {0, 1, 2, 3, 4}.
 #[cube]
-pub fn ctaylor_multo_skipconst<F: Float>(
-    dst: &mut Array<F>,
-    y: &Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_multo_skipconst<F: Float>(dst: &mut Array<F>, y: &Array<F>, #[comptime] n: u32) {
     if comptime!(n == 0) {
         ctaylor_multo_skipconst_n0::<F>(dst, y);
     } else if comptime!(n == 1) {

@@ -18,9 +18,9 @@
 //! `b97_enhancement` preserves operator precedence `c₀ + c₁·u + c₂·(u·u)` —
 //! NO Horner form. B97-2C is the conditioning-stress canary (`c₂ = -7.44060`).
 
-pub mod b97x;
-pub mod b97c;
-pub mod b97_1x;
 pub mod b97_1c;
-pub mod b97_2x;
+pub mod b97_1x;
 pub mod b97_2c;
+pub mod b97_2x;
+pub mod b97c;
+pub mod b97x;

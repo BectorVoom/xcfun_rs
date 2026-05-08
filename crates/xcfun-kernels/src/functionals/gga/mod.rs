@@ -18,15 +18,15 @@
 pub mod shared;
 
 // Family modules — Wave 2 (03-02) ships PBE family (12), Becke (4), LYP (1).
-pub mod pbe;
 pub mod becke;
 pub mod lyp;
+pub mod pbe;
 
 // Wave 3 (03-03) ships OPTX (2), PW91 family (4), P86 (2), APBE (2).
-pub mod optx;
-pub mod pw91;
-pub mod p86;
 pub mod apbe;
+pub mod optx;
+pub mod p86;
+pub mod pw91;
 
 // Wave 4 (03-04) ships B97 family (6) + KT (2: KTX + BTK; CSC deferred per D-01-A).
 pub mod b97;

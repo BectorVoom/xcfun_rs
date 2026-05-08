@@ -57,7 +57,14 @@ fn m06lx_spin<F: Float>(
     m0x_like::m0x_zet::<F>(rho, tau, &mut zet_arr, n);
 
     let mut pbex_part = Array::<F>::new(size);
-    pbex::energy_pbe_ab::<F>(F::cast_from(R_PBE_F64), rho_43, rho, grad2, &mut pbex_part, n);
+    pbex::energy_pbe_ab::<F>(
+        F::cast_from(R_PBE_F64),
+        rho_43,
+        rho,
+        grad2,
+        &mut pbex_part,
+        n,
+    );
 
     let mut fw_part = Array::<F>::new(size);
     m0x_like::m0x_fw::<F>(

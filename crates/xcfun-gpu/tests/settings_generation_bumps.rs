@@ -23,10 +23,7 @@ fn functional_set_bumps_generation() {
     let g0 = fun.settings_generation();
     fun.set("slaterx", 1.0).expect("set slaterx");
     let g1 = fun.settings_generation();
-    assert!(
-        g1 > g0,
-        "expected strict bump: g0={g0} g1={g1}"
-    );
+    assert!(g1 > g0, "expected strict bump: g0={g0} g1={g1}");
 }
 
 #[test]

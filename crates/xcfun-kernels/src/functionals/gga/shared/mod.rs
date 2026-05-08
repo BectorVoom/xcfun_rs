@@ -6,9 +6,9 @@
 //! `constants` as `pub const <NAME>_F64: f64` — kernel bodies cast via
 //! `F::cast_from(<NAME>_F64)` per S2 (PATTERNS §D6).
 
-pub mod constants;
-pub mod pbex;
-pub mod pbec_eps;
-pub mod pw91_like;
 pub mod b97_poly;
+pub mod constants;
 pub mod optx;
+pub mod pbec_eps;
+pub mod pbex;
+pub mod pw91_like;

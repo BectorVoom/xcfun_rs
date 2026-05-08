@@ -26,8 +26,9 @@ use std::path::PathBuf;
 use std::process::Command;
 
 fn project_root() -> Result<PathBuf> {
-    let manifest = std::env::var("CARGO_MANIFEST_DIR")
-        .context("CARGO_MANIFEST_DIR not set — run via cargo run -p xtask --bin check-boundaries")?;
+    let manifest = std::env::var("CARGO_MANIFEST_DIR").context(
+        "CARGO_MANIFEST_DIR not set — run via cargo run -p xtask --bin check-boundaries",
+    )?;
     Ok(PathBuf::from(manifest)
         .parent()
         .context("xtask has no parent directory")?

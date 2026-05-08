@@ -15,11 +15,7 @@ use crate::density_vars::DensVarsDev;
 
 /// VWN5 correlation kernel. 1:1 port of `vwn5c.cpp:18-20`.
 #[cube]
-pub fn vwn5c_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn vwn5c_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     // C++: return d.n * vwn::vwn5_eps(d);
     let mut eps = Array::<F>::new(comptime!((1_u32 << n) as usize));
     vwn5_eps::<F>(d, &mut eps, n);

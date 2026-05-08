@@ -65,8 +65,7 @@ pub fn br_z(x: f64) -> f64 {
 /// ```
 #[inline]
 fn nr_step(x: f64, z: f64) -> f64 {
-    (x * (3.0 * x * ((-2.0_f64 / 3.0_f64 * x).exp() * z - 1.0) + 6.0))
-        / (x * (2.0 * x - 4.0) + 6.0)
+    (x * (3.0 * x * ((-2.0_f64 / 3.0_f64 * x).exp() * z - 1.0) + 6.0)) / (x * (2.0 * x - 4.0) + 6.0)
 }
 
 /// Port of `brx.cpp:29-48` — host-side scalar Newton-Raphson root finder

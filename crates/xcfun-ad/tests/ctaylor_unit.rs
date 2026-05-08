@@ -22,38 +22,29 @@
 
 use cubecl::prelude::*;
 use cubecl_cpu::CpuRuntime;
+use xcfun_ad::VAR1;
 use xcfun_ad::ctaylor::{
-    ctaylor_add, ctaylor_from_scalar, ctaylor_from_variable, ctaylor_neg,
-    ctaylor_scalar_mul, ctaylor_sub,
+    ctaylor_add, ctaylor_from_scalar, ctaylor_from_variable, ctaylor_neg, ctaylor_scalar_mul,
+    ctaylor_sub,
 };
 use xcfun_ad::ctaylor_rec::{
-    compose::ctaylor_compose, mul::ctaylor_mul,
+    compose::ctaylor_compose,
+    mul::ctaylor_mul,
     multo::{ctaylor_multo, ctaylor_multo_skipconst},
 };
 use xcfun_ad::for_tests::cpu_client;
-use xcfun_ad::VAR1;
 
 // ---------------------------------------------------------------------------
 //  Kernel adapters — one per operation, comptime n supplied at launch.
 // ---------------------------------------------------------------------------
 
 #[cube(launch_unchecked)]
-fn kernel_add<F: Float>(
-    a: &Array<F>,
-    b: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn kernel_add<F: Float>(a: &Array<F>, b: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_add::<F>(a, b, out, n);
 }
 
 #[cube(launch_unchecked)]
-fn kernel_sub<F: Float>(
-    a: &Array<F>,
-    b: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn kernel_sub<F: Float>(a: &Array<F>, b: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_sub::<F>(a, b, out, n);
 }
 
@@ -63,21 +54,12 @@ fn kernel_neg<F: Float>(a: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
 }
 
 #[cube(launch_unchecked)]
-fn kernel_scalar_mul<F: Float>(
-    a: &Array<F>,
-    s: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn kernel_scalar_mul<F: Float>(a: &Array<F>, s: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_scalar_mul::<F>(a, s[0], out, n);
 }
 
 #[cube(launch_unchecked)]
-fn kernel_from_scalar<F: Float>(
-    c0: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn kernel_from_scalar<F: Float>(c0: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_from_scalar::<F>(c0[0], out, n);
 }
 
@@ -93,40 +75,22 @@ fn kernel_from_variable<F: Float>(
 }
 
 #[cube(launch_unchecked)]
-fn kernel_mul<F: Float>(
-    a: &Array<F>,
-    b: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn kernel_mul<F: Float>(a: &Array<F>, b: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_mul::<F>(a, b, out, n);
 }
 
 #[cube(launch_unchecked)]
-fn kernel_multo<F: Float>(
-    dst: &mut Array<F>,
-    y: &Array<F>,
-    #[comptime] n: u32,
-) {
+fn kernel_multo<F: Float>(dst: &mut Array<F>, y: &Array<F>, #[comptime] n: u32) {
     ctaylor_multo::<F>(dst, y, n);
 }
 
 #[cube(launch_unchecked)]
-fn kernel_multo_skipconst<F: Float>(
-    dst: &mut Array<F>,
-    y: &Array<F>,
-    #[comptime] n: u32,
-) {
+fn kernel_multo_skipconst<F: Float>(dst: &mut Array<F>, y: &Array<F>, #[comptime] n: u32) {
     ctaylor_multo_skipconst::<F>(dst, y, n);
 }
 
 #[cube(launch_unchecked)]
-fn kernel_compose<F: Float>(
-    out: &mut Array<F>,
-    x: &Array<F>,
-    f: &Array<F>,
-    #[comptime] n: u32,
-) {
+fn kernel_compose<F: Float>(out: &mut Array<F>, x: &Array<F>, f: &Array<F>, #[comptime] n: u32) {
     ctaylor_compose::<F>(out, x, f, n);
 }
 
@@ -134,14 +98,14 @@ fn kernel_compose<F: Float>(
 //  Launch helpers. Each returns Vec<f64> read back from the output handle.
 // ---------------------------------------------------------------------------
 
-fn run_binary_op<L>(
-    a: &[f64],
-    b: &[f64],
-    out_len: usize,
-    launcher: L,
-) -> Vec<f64>
+fn run_binary_op<L>(a: &[f64], b: &[f64], out_len: usize, launcher: L) -> Vec<f64>
 where
-    L: FnOnce(&cubecl::prelude::ComputeClient<CpuRuntime>, cubecl::server::Handle, cubecl::server::Handle, cubecl::server::Handle),
+    L: FnOnce(
+        &cubecl::prelude::ComputeClient<CpuRuntime>,
+        cubecl::server::Handle,
+        cubecl::server::Handle,
+        cubecl::server::Handle,
+    ),
 {
     let client = cpu_client();
     let a_h = client.create_from_slice(f64::as_bytes(a));
@@ -155,7 +119,11 @@ where
 
 fn run_unary_op<L>(a: &[f64], out_len: usize, launcher: L) -> Vec<f64>
 where
-    L: FnOnce(&cubecl::prelude::ComputeClient<CpuRuntime>, cubecl::server::Handle, cubecl::server::Handle),
+    L: FnOnce(
+        &cubecl::prelude::ComputeClient<CpuRuntime>,
+        cubecl::server::Handle,
+        cubecl::server::Handle,
+    ),
 {
     let client = cpu_client();
     let a_h = client.create_from_slice(f64::as_bytes(a));
@@ -170,7 +138,11 @@ where
 /// the `dst` handle, reads `dst` back.
 fn run_inplace_op<L>(dst: &[f64], y: &[f64], launcher: L) -> Vec<f64>
 where
-    L: FnOnce(&cubecl::prelude::ComputeClient<CpuRuntime>, cubecl::server::Handle, cubecl::server::Handle),
+    L: FnOnce(
+        &cubecl::prelude::ComputeClient<CpuRuntime>,
+        cubecl::server::Handle,
+        cubecl::server::Handle,
+    ),
 {
     let client = cpu_client();
     let dst_h = client.create_from_slice(f64::as_bytes(dst));
@@ -182,14 +154,14 @@ where
 }
 
 /// Ternary op helper (x, f, out_len + 3 handles).
-fn run_ternary_out<L>(
-    x: &[f64],
-    f: &[f64],
-    out_len: usize,
-    launcher: L,
-) -> Vec<f64>
+fn run_ternary_out<L>(x: &[f64], f: &[f64], out_len: usize, launcher: L) -> Vec<f64>
 where
-    L: FnOnce(&cubecl::prelude::ComputeClient<CpuRuntime>, cubecl::server::Handle, cubecl::server::Handle, cubecl::server::Handle),
+    L: FnOnce(
+        &cubecl::prelude::ComputeClient<CpuRuntime>,
+        cubecl::server::Handle,
+        cubecl::server::Handle,
+        cubecl::server::Handle,
+    ),
 {
     let client = cpu_client();
     let x_h = client.create_from_slice(f64::as_bytes(x));

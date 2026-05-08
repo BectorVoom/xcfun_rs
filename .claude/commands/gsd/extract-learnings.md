@@ -16,7 +16,7 @@ Extract structured learnings from completed phase artifacts (PLAN.md, SUMMARY.md
 </objective>
 
 <execution_context>
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/extract_learnings.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/extract_learnings.md
 </execution_context>
 
-Execute the extract-learnings workflow from @/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/extract_learnings.md end-to-end.
+Execute the extract-learnings workflow from @/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/extract_learnings.md end-to-end.

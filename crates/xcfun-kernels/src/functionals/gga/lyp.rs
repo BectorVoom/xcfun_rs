@@ -30,18 +30,14 @@ use xcfun_ad::math::{ctaylor_exp, ctaylor_pow, ctaylor_powi_2, ctaylor_reciproca
 
 use crate::density_vars::DensVarsDev;
 use crate::functionals::gga::shared::constants::{
-    LYP_A_F64, LYP_B_F64, LYP_CF_F64, LYP_C_F64, LYP_D_F64,
+    LYP_A_F64, LYP_B_F64, LYP_C_F64, LYP_CF_F64, LYP_D_F64,
 };
 
 /// `2^(11/3)` precomputed in f64.
 const TWO_11_3_F64: f64 = 12.699_208_415_745_595_f64;
 
 #[cube]
-pub fn lypc_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn lypc_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // icbrtn = ρ^(-1/3).
@@ -238,10 +234,5 @@ pub fn lypc_kernel<F: Float>(
     ctaylor_add::<F>(&four_ab_p_n, &b_omega_outer, &mut bracket_total, n);
 
     // out = -A · bracket_total.
-    ctaylor_scalar_mul::<F>(
-        &bracket_total,
-        neg_one * F::cast_from(LYP_A_F64),
-        out,
-        n,
-    );
+    ctaylor_scalar_mul::<F>(&bracket_total, neg_one * F::cast_from(LYP_A_F64), out, n);
 }

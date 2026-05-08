@@ -19,8 +19,9 @@ use std::fs;
 use std::path::PathBuf;
 
 fn project_root() -> Result<PathBuf> {
-    let manifest = std::env::var("CARGO_MANIFEST_DIR")
-        .context("CARGO_MANIFEST_DIR not set — run via cargo run -p xtask --bin regen-capi-header")?;
+    let manifest = std::env::var("CARGO_MANIFEST_DIR").context(
+        "CARGO_MANIFEST_DIR not set — run via cargo run -p xtask --bin regen-capi-header",
+    )?;
     let xtask_dir = PathBuf::from(manifest);
     let root = xtask_dir
         .parent()

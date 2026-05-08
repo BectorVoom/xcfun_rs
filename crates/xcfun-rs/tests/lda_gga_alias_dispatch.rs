@@ -29,10 +29,15 @@ fn b3lyp_dispatches_in_process() {
     f.eval_setup(Vars::A_B_GAA_GAB_GBB, Mode::PartialDerivatives, 1)
         .expect("b3lyp eval_setup at A_B_GAA_GAB_GBB / PartialDerivatives / order 1 must succeed");
     let inlen = f.input_length();
-    let outlen = f.output_length().expect("output_length must succeed for b3lyp");
+    let outlen = f
+        .output_length()
+        .expect("output_length must succeed for b3lyp");
     assert_eq!(inlen, 5, "Vars::A_B_GAA_GAB_GBB has 5 input doubles");
     // taylorlen(5, 1) = 6 (energy + 5 first derivatives)
-    assert_eq!(outlen, 6, "PartialDerivatives order 1 with inlen=5 emits 6 outputs");
+    assert_eq!(
+        outlen, 6,
+        "PartialDerivatives order 1 with inlen=5 emits 6 outputs"
+    );
 
     // Density point: positive ρα, ρβ, gradient invariants.
     let input: Vec<f64> = vec![0.5, 0.5, 0.1, 0.1, 0.1];
@@ -41,8 +46,15 @@ fn b3lyp_dispatches_in_process() {
     assert!(r.is_ok(), "b3lyp Functional::eval failed: {:?}", r);
     // Energy must be finite + nonzero (b3lyp at this point yields a small
     // negative XC energy density).
-    assert!(output[0].is_finite(), "b3lyp energy is not finite: {}", output[0]);
-    assert!(output[0] != 0.0, "b3lyp energy is exactly zero — likely zeroed by mis-dispatch");
+    assert!(
+        output[0].is_finite(),
+        "b3lyp energy is not finite: {}",
+        output[0]
+    );
+    assert!(
+        output[0] != 0.0,
+        "b3lyp energy is exactly zero — likely zeroed by mis-dispatch"
+    );
 }
 
 #[test]
@@ -61,7 +73,11 @@ fn camb3lyp_dispatches_in_process() {
     let mut output: Vec<f64> = vec![0.0; outlen];
     let r = f.eval(&input, &mut output);
     assert!(r.is_ok(), "camb3lyp Functional::eval failed: {:?}", r);
-    assert!(output[0].is_finite(), "camb3lyp energy is not finite: {}", output[0]);
+    assert!(
+        output[0].is_finite(),
+        "camb3lyp energy is not finite: {}",
+        output[0]
+    );
 }
 
 #[test]
@@ -80,6 +96,13 @@ fn bp86_dispatches_in_process() {
     let mut output: Vec<f64> = vec![0.0; outlen];
     let r = f.eval(&input, &mut output);
     assert!(r.is_ok(), "bp86 Functional::eval failed: {:?}", r);
-    assert!(output[0].is_finite(), "bp86 energy is not finite: {}", output[0]);
-    assert!(output[0] != 0.0, "bp86 energy is exactly zero — likely zeroed by mis-dispatch");
+    assert!(
+        output[0].is_finite(),
+        "bp86 energy is not finite: {}",
+        output[0]
+    );
+    assert!(
+        output[0] != 0.0,
+        "bp86 energy is exactly zero — likely zeroed by mis-dispatch"
+    );
 }

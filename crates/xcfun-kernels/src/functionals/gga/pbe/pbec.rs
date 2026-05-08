@@ -22,11 +22,7 @@ use crate::functionals::gga::shared::pbec_eps;
 use crate::functionals::lda::pw92eps;
 
 #[cube]
-pub fn pbec_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn pbec_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // eps = pw92_eps(d).

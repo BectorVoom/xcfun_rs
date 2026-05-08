@@ -16,7 +16,9 @@
 use cubecl::prelude::*;
 use xcfun_ad::ctaylor::{ctaylor_add, ctaylor_scalar_mul};
 use xcfun_ad::ctaylor_rec::mul::ctaylor_mul;
-use xcfun_ad::math::{ctaylor_expm1, ctaylor_log, ctaylor_powi_2, ctaylor_powi_3, ctaylor_reciprocal};
+use xcfun_ad::math::{
+    ctaylor_expm1, ctaylor_log, ctaylor_powi_2, ctaylor_powi_3, ctaylor_reciprocal,
+};
 
 use crate::density_vars::DensVarsDev;
 use crate::functionals::gga::shared::constants::PBEC_D2_PREFACTOR_F64;
@@ -144,11 +146,7 @@ mod tests {
 }
 
 #[cube]
-pub fn spbec_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn spbec_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // eps = vwn5_eps(d).

@@ -7,16 +7,16 @@
 //!   tw, vwk
 
 // Modules added by Plans 02-04 and 02-05.
-pub mod slaterx; // 02-04
-pub mod vwn3c; // 02-04
-pub mod vwn5c; // 02-04
-pub mod vwn_eps; // 02-04 (shared vwn3_eps/vwn5_eps helpers)
+pub mod ldaerfc; // 02-04
+pub mod ldaerfc_jt; // 02-04
+pub mod ldaerfx; // 02-04
 pub mod pw92c; // 02-04
 pub mod pw92eps; // 02-04 (shared pw92_eps helper)
 pub mod pz81c; // 02-04
-pub mod ldaerfx; // 02-04
-pub mod ldaerfc; // 02-04
-pub mod ldaerfc_jt; // 02-04
+pub mod slaterx; // 02-04
 pub mod tfk; // 02-04
 pub mod tw; // 02-05
-pub mod vwk; // 02-05
+pub mod vwk;
+pub mod vwn3c; // 02-04
+pub mod vwn5c; // 02-04
+pub mod vwn_eps; // 02-04 (shared vwn3_eps/vwn5_eps helpers) // 02-05

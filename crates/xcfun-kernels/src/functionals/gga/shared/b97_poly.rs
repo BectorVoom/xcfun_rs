@@ -36,12 +36,7 @@ use xcfun_ad::math::ctaylor_reciprocal;
 ///   3. `inv_denom = 1 / denom`            (ctaylor_reciprocal)
 ///   4. `out      = num_term · inv_denom`  (ctaylor_mul)
 #[cube]
-pub fn ux_ab<F: Float>(
-    gamma: F,
-    s2: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ux_ab<F: Float>(gamma: F, s2: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // Step 1: num_term = γ · s².

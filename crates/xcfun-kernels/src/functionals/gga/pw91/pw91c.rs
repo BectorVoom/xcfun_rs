@@ -202,16 +202,19 @@ fn gc<F: Float>(
 
 /// XC_PW91C kernel. 1:1 port of `pw91c.cpp:39-87`.
 #[cube]
-pub fn pw91c_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn pw91c_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // fz = (uf(d, 4/3) - 2) / (2·2^(1/3) - 2).
     let mut uf43 = Array::<F>::new(size);
-    uf::<F>(&d.a, &d.b, &d.n, F::cast_from(4.0_f64 / 3.0_f64), &mut uf43, n);
+    uf::<F>(
+        &d.a,
+        &d.b,
+        &d.n,
+        F::cast_from(4.0_f64 / 3.0_f64),
+        &mut uf43,
+        n,
+    );
     let mut fz_num = Array::<F>::new(size);
     #[unroll]
     for i in 0..size {
@@ -324,7 +327,14 @@ pub fn pw91c_kernel<F: Float>(
 
     // gs = 0.5 · uf(d, 2/3).
     let mut uf23 = Array::<F>::new(size);
-    uf::<F>(&d.a, &d.b, &d.n, F::cast_from(2.0_f64 / 3.0_f64), &mut uf23, n);
+    uf::<F>(
+        &d.a,
+        &d.b,
+        &d.n,
+        F::cast_from(2.0_f64 / 3.0_f64),
+        &mut uf23,
+        n,
+    );
     let mut gs = Array::<F>::new(size);
     ctaylor_scalar_mul::<F>(&uf23, F::new(0.5), &mut gs, n);
 
@@ -551,4 +561,3 @@ mod tests {
         assert_eq!(super::PW91C_FZ_DENOM, truth);
     }
 }
-

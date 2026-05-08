@@ -8,7 +8,7 @@
 ## Dispatch
 
 ```
-Read @/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/discuss-phase-power.md
+Read @/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/discuss-phase-power.md
 ```
 
 Execute it end-to-end. Do not continue with the standard interactive steps.

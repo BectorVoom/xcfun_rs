@@ -20,9 +20,9 @@ Three modes:
 </objective>
 
 <execution_context>
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/undo.md
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/ui-brand.md
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/gate-prompts.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/undo.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/ui-brand.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/gate-prompts.md
 </execution_context>
 
 <context>
@@ -30,5 +30,5 @@ $ARGUMENTS
 </context>
 
 <process>
-Execute the undo workflow from @/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/undo.md end-to-end.
+Execute the undo workflow from @/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/undo.md end-to-end.
 </process>

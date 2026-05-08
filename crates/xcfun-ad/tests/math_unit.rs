@@ -35,8 +35,8 @@ use cubecl_cpu::CpuRuntime;
 use xcfun_ad::for_tests::cpu_client;
 use xcfun_ad::math::{
     ctaylor_asinh, ctaylor_atan, ctaylor_erf, ctaylor_exp, ctaylor_log, ctaylor_pow,
-    ctaylor_powi_0, ctaylor_powi_2, ctaylor_powi_3, ctaylor_powi_neg1,
-    ctaylor_reciprocal, ctaylor_sqrt,
+    ctaylor_powi_0, ctaylor_powi_2, ctaylor_powi_3, ctaylor_powi_neg1, ctaylor_reciprocal,
+    ctaylor_sqrt,
 };
 
 // ---------------------------------------------------------------------------
@@ -64,12 +64,7 @@ fn kernel_log<F: Float>(x: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
 }
 
 #[cube(launch_unchecked)]
-fn kernel_pow<F: Float>(
-    x: &Array<F>,
-    aa: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn kernel_pow<F: Float>(x: &Array<F>, aa: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_pow::<F>(x, aa[0], out, n);
 }
 
@@ -364,7 +359,9 @@ fn erf_n1() {
     assert!(
         rel1 < 1e-15,
         "erf_n1 t[1]: got {}, expected {}, rel_err {:e}",
-        got[1], expected_t1, rel1
+        got[1],
+        expected_t1,
+        rel1
     );
 }
 

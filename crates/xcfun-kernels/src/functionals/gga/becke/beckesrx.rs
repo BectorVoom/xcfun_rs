@@ -106,7 +106,12 @@ fn becke_sr<F: Float>(
 
     // denom_a = 6 · sqrt(π) · ρ^(1/3).
     let mut denom_a = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&rho_13, F::new(6.0) * F::cast_from(SQRT_PI_F64), &mut denom_a, n);
+    ctaylor_scalar_mul::<F>(
+        &rho_13,
+        F::new(6.0) * F::cast_from(SQRT_PI_F64),
+        &mut denom_a,
+        n,
+    );
     let mut inv_denom_a = Array::<F>::new(size);
     ctaylor_reciprocal::<F>(&denom_a, &mut inv_denom_a, n);
 
@@ -203,11 +208,7 @@ fn becke_sr<F: Float>(
 }
 
 #[cube]
-pub fn beckesrx_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn beckesrx_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
     let mu = F::cast_from(DEFAULT_MU_F64);
     let mut e_alpha = Array::<F>::new(size);

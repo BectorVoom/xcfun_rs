@@ -39,17 +39,41 @@ fn parameter_id_discriminants_match_cpp() {
 fn parameter_id_from_name_case_insensitive() {
     // D-04-B: case-insensitive lookup. C++ `xcint_lookup_parameter` uses
     // `strcasecmp` against the symbol minus its `XC_` prefix.
-    assert_eq!(ParameterId::from_name("rangesep_mu"), Some(ParameterId::XC_RANGESEP_MU));
-    assert_eq!(ParameterId::from_name("RANGESEP_MU"), Some(ParameterId::XC_RANGESEP_MU));
-    assert_eq!(ParameterId::from_name("XC_RANGESEP_MU"), Some(ParameterId::XC_RANGESEP_MU));
+    assert_eq!(
+        ParameterId::from_name("rangesep_mu"),
+        Some(ParameterId::XC_RANGESEP_MU)
+    );
+    assert_eq!(
+        ParameterId::from_name("RANGESEP_MU"),
+        Some(ParameterId::XC_RANGESEP_MU)
+    );
+    assert_eq!(
+        ParameterId::from_name("XC_RANGESEP_MU"),
+        Some(ParameterId::XC_RANGESEP_MU)
+    );
     assert_eq!(ParameterId::from_name("exx"), Some(ParameterId::XC_EXX));
     assert_eq!(ParameterId::from_name("EXX"), Some(ParameterId::XC_EXX));
     assert_eq!(ParameterId::from_name("XC_EXX"), Some(ParameterId::XC_EXX));
-    assert_eq!(ParameterId::from_name("cam_alpha"), Some(ParameterId::XC_CAM_ALPHA));
-    assert_eq!(ParameterId::from_name("Cam_Alpha"), Some(ParameterId::XC_CAM_ALPHA));
-    assert_eq!(ParameterId::from_name("XC_CAM_ALPHA"), Some(ParameterId::XC_CAM_ALPHA));
-    assert_eq!(ParameterId::from_name("cam_beta"), Some(ParameterId::XC_CAM_BETA));
-    assert_eq!(ParameterId::from_name("XC_CAM_BETA"), Some(ParameterId::XC_CAM_BETA));
+    assert_eq!(
+        ParameterId::from_name("cam_alpha"),
+        Some(ParameterId::XC_CAM_ALPHA)
+    );
+    assert_eq!(
+        ParameterId::from_name("Cam_Alpha"),
+        Some(ParameterId::XC_CAM_ALPHA)
+    );
+    assert_eq!(
+        ParameterId::from_name("XC_CAM_ALPHA"),
+        Some(ParameterId::XC_CAM_ALPHA)
+    );
+    assert_eq!(
+        ParameterId::from_name("cam_beta"),
+        Some(ParameterId::XC_CAM_BETA)
+    );
+    assert_eq!(
+        ParameterId::from_name("XC_CAM_BETA"),
+        Some(ParameterId::XC_CAM_BETA)
+    );
     assert_eq!(ParameterId::from_name("not_a_parameter"), None);
 }
 
@@ -111,7 +135,12 @@ fn parameter_names_match_cpp_strip_xc_prefix() {
 #[test]
 fn aliases_registry_has_46_entries() {
     // aliases.cpp:17-138 — exactly 46 alias entries.
-    assert_eq!(ALIASES.len(), 46, "expected 46 aliases, got {}", ALIASES.len());
+    assert_eq!(
+        ALIASES.len(),
+        46,
+        "expected 46 aliases, got {}",
+        ALIASES.len()
+    );
 }
 
 #[test]
@@ -126,7 +155,10 @@ fn aliases_contains_camcompx_with_negative_beckecamx() {
         .iter()
         .find(|(n, _)| n.eq_ignore_ascii_case("beckecamx"))
         .expect("camcompx must contain a beckecamx term");
-    assert_eq!(neg.1, -1.0, "beckecamx term in camcompx must have weight -1.0");
+    assert_eq!(
+        neg.1, -1.0,
+        "beckecamx term in camcompx must have weight -1.0"
+    );
 }
 
 #[test]

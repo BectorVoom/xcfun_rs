@@ -1,6 +1,6 @@
 ---
 name: gsd:ultraplan-phase
-description: "[BETA] Offload plan phase to Claude Code's ultraplan cloud — drafts remotely while terminal stays free, review in browser with inline comments, import back via /gsd-import. Claude Code only."
+description: "[BETA] Offload plan phase to Claude Code's ultraplan cloud; review in browser and import back."
 argument-hint: "[phase-number]"
 allowed-tools:
   - Read
@@ -20,8 +20,8 @@ Requirements: Claude Code v2.1.91+, claude.ai account, GitHub repository.
 </objective>
 
 <execution_context>
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/ultraplan-phase.md
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/ui-brand.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/ultraplan-phase.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/ui-brand.md
 </execution_context>
 
 <context>

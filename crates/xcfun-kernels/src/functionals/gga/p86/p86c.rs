@@ -156,11 +156,7 @@ fn dz<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
 
 // gga_correction(d) = exp(-Pg(d)) · Cg(r_s) · gnn / (n^(4/3) · dz(d))
 #[cube]
-fn p86_gga_correction<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn p86_gga_correction<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // Cg(r_s).
@@ -204,11 +200,7 @@ fn p86_gga_correction<F: Float>(
 /// XC_P86C kernel. 1:1 port of `p86c.cpp:45-48`.
 /// `p86c(d) = n · pz81eps(d) + gga_correction(d)`.
 #[cube]
-pub fn p86c_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn p86c_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // eps_lda = pz81_eps(d).

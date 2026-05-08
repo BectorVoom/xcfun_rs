@@ -6,6 +6,6 @@
 //! - `pw91k` — XC_PW91K (id=27): Perdew-Wang 1991 kinetic-energy GGA.
 
 pub mod pw86x;
-pub mod pw91x;
 pub mod pw91c;
 pub mod pw91k;
+pub mod pw91x;

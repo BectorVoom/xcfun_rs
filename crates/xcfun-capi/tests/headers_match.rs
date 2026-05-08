@@ -97,7 +97,10 @@ fn is_dropped_line(trimmed: &str) -> bool {
     // cbindgen always emits stdarg/stdint/stdlib includes; upstream uses
     // only stdbool + stddef. They are header-internal and don't affect the
     // C-callable interface.
-    if lower == "#include <stdarg.h>" || lower == "#include <stdint.h>" || lower == "#include <stdlib.h>" {
+    if lower == "#include <stdarg.h>"
+        || lower == "#include <stdint.h>"
+        || lower == "#include <stdlib.h>"
+    {
         return true;
     }
     // stdbool + stddef — keep them filtered too (both sides emit them but
@@ -150,15 +153,22 @@ fn tokenize(s: &str) -> Vec<String> {
             i += 1;
             continue;
         }
-        if matches!(c, b'(' | b')' | b',' | b';' | b'{' | b'}' | b'*' | b'[' | b']' | b'=') {
+        if matches!(
+            c,
+            b'(' | b')' | b',' | b';' | b'{' | b'}' | b'*' | b'[' | b']' | b'='
+        ) {
             toks.push((c as char).to_string());
             i += 1;
             continue;
         }
         // Identifier / number / keyword run.
         let start = i;
-        while i < bytes.len() && !bytes[i].is_ascii_whitespace()
-            && !matches!(bytes[i], b'(' | b')' | b',' | b';' | b'{' | b'}' | b'*' | b'[' | b']' | b'=')
+        while i < bytes.len()
+            && !bytes[i].is_ascii_whitespace()
+            && !matches!(
+                bytes[i],
+                b'(' | b')' | b',' | b';' | b'{' | b'}' | b'*' | b'[' | b']' | b'='
+            )
         {
             i += 1;
         }
@@ -174,9 +184,14 @@ fn canonicalize_tokens(toks: &mut Vec<String>) {
     // `const unsigned int func_type` while cbindgen emits `unsigned int func_type`.
     // Equivalent at the C ABI.
     let drop_const_after = |i: usize, toks: &Vec<String>| -> bool {
-        if i + 1 >= toks.len() { return false; }
+        if i + 1 >= toks.len() {
+            return false;
+        }
         // Followed by `unsigned`, `int`, `double`, ... — i.e. a value type.
-        matches!(toks[i + 1].as_str(), "unsigned" | "int" | "double" | "bool" | "char" | "long" | "short" | "float")
+        matches!(
+            toks[i + 1].as_str(),
+            "unsigned" | "int" | "double" | "bool" | "char" | "long" | "short" | "float"
+        )
     };
     let mut i = 0;
     while i < toks.len() {
@@ -286,7 +301,11 @@ fn render(toks: &[String]) -> String {
 }
 
 fn is_punct(t: &str) -> bool {
-    t.len() == 1 && matches!(t.as_bytes()[0], b'(' | b')' | b',' | b';' | b'{' | b'}' | b'*' | b'[' | b']' | b'=')
+    t.len() == 1
+        && matches!(
+            t.as_bytes()[0],
+            b'(' | b')' | b',' | b';' | b'{' | b'}' | b'*' | b'[' | b']' | b'='
+        )
 }
 
 /// Top-level normalization: returns a list of canonical statements.
@@ -380,9 +399,8 @@ fn capi_header_matches_xcfun_master() {
             generated_path.display()
         )
     });
-    let reference = fs::read_to_string(&reference_path).unwrap_or_else(|e| {
-        panic!("missing {}: {e}", reference_path.display())
-    });
+    let reference = fs::read_to_string(&reference_path)
+        .unwrap_or_else(|e| panic!("missing {}: {e}", reference_path.display()));
 
     // Compare as multisets of canonical statements, not as ordered
     // sequences: cbindgen and the upstream header place the

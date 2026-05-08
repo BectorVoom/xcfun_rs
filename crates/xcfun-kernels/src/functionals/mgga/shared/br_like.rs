@@ -278,7 +278,12 @@ pub fn polarized<F: Float>(
     ctaylor_mul::<F>(&x3_expnx, &inv_eight_pi_na, &mut x3_expnx_div_denom, n);
 
     let mut b = Array::<F>::new(size);
-    ctaylor_pow::<F>(&x3_expnx_div_denom, F::cast_from(1.0_f64 / 3.0_f64), &mut b, n);
+    ctaylor_pow::<F>(
+        &x3_expnx_div_denom,
+        F::cast_from(1.0_f64 / 3.0_f64),
+        &mut b,
+        n,
+    );
 
     // --- return -(1 - (1 + 0.5*x) * exp(-x)) / b ---
     // = -numer / b   where numer = 1 - (1 + 0.5*x) * exp(-x)

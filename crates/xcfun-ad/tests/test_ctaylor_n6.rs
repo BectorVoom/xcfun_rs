@@ -29,12 +29,7 @@ use xcfun_ad::for_tests::cpu_client;
 /// allocate the 1<<6 = 64-element array and execute a `#[cube] fn`
 /// without crashing. Any size-agnostic primitive proves that.
 #[cube(launch_unchecked)]
-fn ctaylor_n6_smoke<F: Float>(
-    a: &Array<F>,
-    b: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn ctaylor_n6_smoke<F: Float>(a: &Array<F>, b: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     // Step 1: tmp = a + b   (element-wise, all 64 slots).
     let mut tmp = Array::<F>::new(comptime!((1_u32 << n) as usize));
     ctaylor_add::<F>(a, b, &mut tmp, n);

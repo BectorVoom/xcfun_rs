@@ -12,7 +12,10 @@ fn version_returns_crate_version_starting_with_digit() {
     let v = version();
     assert!(!v.is_empty(), "version must be non-empty");
     assert!(
-        v.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false),
+        v.chars()
+            .next()
+            .map(|c| c.is_ascii_digit())
+            .unwrap_or(false),
         "expected version to start with a digit, got {v:?}",
     );
 }
@@ -80,10 +83,7 @@ fn which_vars_lda_n_s() {
 
 #[test]
 fn which_vars_gga_squared_a_b() {
-    assert_eq!(
-        which_vars(1, 2, 0, 0, 0, 0),
-        Some(Vars::A_B_GAA_GAB_GBB)
-    );
+    assert_eq!(which_vars(1, 2, 0, 0, 0, 0), Some(Vars::A_B_GAA_GAB_GBB));
 }
 
 #[test]
@@ -105,10 +105,7 @@ fn which_vars_metagga_kinetic_a_b() {
 
 #[test]
 fn which_vars_2nd_taylor_a_b() {
-    assert_eq!(
-        which_vars(3, 2, 0, 0, 0, 0),
-        Some(Vars::A_B_2ND_TAYLOR)
-    );
+    assert_eq!(which_vars(3, 2, 0, 0, 0, 0), Some(Vars::A_B_2ND_TAYLOR));
 }
 
 #[test]
@@ -264,8 +261,7 @@ fn describe_short_unknown_returns_none() {
 
 #[test]
 fn describe_long_slaterx_returns_long_description() {
-    let long = describe_long("SLATERX")
-        .expect("describe_long(SLATERX) should be Some");
+    let long = describe_long("SLATERX").expect("describe_long(SLATERX) should be Some");
     // Long description starts with "LDA Exchange functional" per the
     // generated descriptor.
     assert!(

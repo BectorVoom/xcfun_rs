@@ -58,7 +58,10 @@ fn add_two_numbers_on_cpu() {
 fn client_singleton_is_shared() {
     let c1 = cpu_client() as *const _;
     let c2 = cpu_client() as *const _;
-    assert_eq!(c1, c2, "cpu_client() must return the same &CpuClient pointer");
+    assert_eq!(
+        c1, c2,
+        "cpu_client() must return the same &CpuClient pointer"
+    );
 }
 
 // ---- Kernel 2: copy input to output (exercises raw_eval_scalar) ----
@@ -77,17 +80,15 @@ fn copy_kernel<F: Float>(inp: &Array<F>, out: &mut Array<F>, #[comptime] n: u32)
 fn raw_eval_scalar_roundtrip() {
     let inputs = vec![1.0_f64, 2.0, 3.0, 4.0];
     let inputs_len = inputs.len();
-    let out = raw_eval_scalar(&inputs, inputs_len, |client, in_h, out_h| {
-        unsafe {
-            copy_kernel::launch_unchecked::<f64, CpuRuntime>(
-                client,
-                CubeCount::Static(1, 1, 1),
-                CubeDim::new_3d(1, 1, 1),
-                ArrayArg::from_raw_parts(in_h, inputs_len),
-                ArrayArg::from_raw_parts(out_h, inputs_len),
-                4_u32,
-            );
-        }
+    let out = raw_eval_scalar(&inputs, inputs_len, |client, in_h, out_h| unsafe {
+        copy_kernel::launch_unchecked::<f64, CpuRuntime>(
+            client,
+            CubeCount::Static(1, 1, 1),
+            CubeDim::new_3d(1, 1, 1),
+            ArrayArg::from_raw_parts(in_h, inputs_len),
+            ArrayArg::from_raw_parts(out_h, inputs_len),
+            4_u32,
+        );
     });
     assert_eq!(out, inputs, "round-trip must be identity");
 }

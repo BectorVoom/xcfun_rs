@@ -56,12 +56,7 @@ const PW86X_D: f64 = 0.20_f64;
 const PW86X_AX: f64 = -0.738_558_766_382_022_3_f64;
 
 #[cube]
-fn pw86x_alpha<F: Float>(
-    na: &Array<F>,
-    gaa: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn pw86x_alpha<F: Float>(na: &Array<F>, gaa: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // ρ = 2·na (CTaylor).
@@ -134,11 +129,7 @@ fn pw86x_alpha<F: Float>(
 /// XC_PW86X kernel. 1:1 port of `pw86x.cpp:30-32`.
 /// `pw86xtot(d) = 0.5 · (pw86x(d.a, d.gaa) + pw86x(d.b, d.gbb))`.
 #[cube]
-pub fn pw86x_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn pw86x_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     let mut e_alpha = Array::<F>::new(size);

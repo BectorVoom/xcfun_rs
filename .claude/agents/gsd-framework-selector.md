@@ -11,7 +11,7 @@ Run a ≤6-question interview, score frameworks, return a ranked recommendation 
 </role>
 
 <required_reading>
-Read `/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/ai-frameworks.md` before asking questions. This is your decision matrix.
+Read `/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/ai-frameworks.md` before asking questions. This is your decision matrix.
 </required_reading>
 
 <project_context>

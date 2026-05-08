@@ -16,11 +16,7 @@ const ZVPBEINTC_ALPHA_F64: f64 = 1.0_f64;
 const ZVPBEINTC_BG_F64: f64 = 1.672_524_726_145_254_4_f64;
 
 #[cube]
-pub fn zvpbeintc_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn zvpbeintc_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let _ = ZVPBEINTC_BETA_F64;
     zvpbe_common::<F>(
         d,

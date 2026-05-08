@@ -7,9 +7,7 @@
 use std::cell::UnsafeCell;
 use std::sync::OnceLock;
 
-use xcfun_core::{
-    Dependency, Mode, Vars, XcError, registry::FUNCTIONAL_DESCRIPTORS,
-};
+use xcfun_core::{Dependency, Mode, Vars, XcError, registry::FUNCTIONAL_DESCRIPTORS};
 use xcfun_gpu::{Backend, auto_backend, error_routing::must_fall_back_to_cpu};
 // `Batch` is only referenced inside `#[cfg(feature = ...)]` arms below, so the
 // import is feature-gated to avoid `unused_imports` under `--no-default-features`.
@@ -167,7 +165,10 @@ impl Functional {
     /// RS-01 — fresh handle: no active functionals, parameters at
     /// their defaults (XCFunctional.cpp:350-355).
     pub const fn new() -> Self {
-        Self { inner: xcfun_eval::Functional::new(), eval_handle: UnsafeCell::new(EvalHandle::new()) }
+        Self {
+            inner: xcfun_eval::Functional::new(),
+            eval_handle: UnsafeCell::new(EvalHandle::new()),
+        }
     }
 
     /// RS-02 — case-insensitive name set. Three-case dispatch
@@ -217,12 +218,7 @@ impl Functional {
     /// `xcfun_eval::Functional::eval_setup` is read-only; the field
     /// write happens here at the facade boundary so xcfun-eval's
     /// hot path stays untouched.
-    pub fn eval_setup(
-        &mut self,
-        vars: Vars,
-        mode: Mode,
-        order: u32,
-    ) -> Result<(), XcError> {
+    pub fn eval_setup(&mut self, vars: Vars, mode: Mode, order: u32) -> Result<(), XcError> {
         // XCFunctional.cpp:438-441 — validate first; mutate only on success.
         self.inner.eval_setup(vars, mode, order)?;
         self.inner.vars = vars;
@@ -395,7 +391,13 @@ impl Functional {
         // ----- Step 2: threshold dispatch per D-14.
         if nr_points < min_batch_size() {
             return self.eval_loop_fallback(
-                density, density_pitch, out, out_pitch, nr_points, inlen, outlen,
+                density,
+                density_pitch,
+                out,
+                out_pitch,
+                nr_points,
+                inlen,
+                outlen,
             );
         }
 
@@ -435,7 +437,13 @@ impl Functional {
                 #[cfg(not(feature = "cpu"))]
                 {
                     self.eval_loop_fallback(
-                        density, density_pitch, out, out_pitch, nr_points, inlen, outlen,
+                        density,
+                        density_pitch,
+                        out,
+                        out_pitch,
+                        nr_points,
+                        inlen,
+                        outlen,
                     )
                 }
             }
@@ -487,19 +495,43 @@ impl Functional {
             // all five `Backend` variants in every feature configuration.
             #[cfg(not(feature = "hip"))]
             Backend::Rocm => self.eval_loop_fallback(
-                density, density_pitch, out, out_pitch, nr_points, inlen, outlen,
+                density,
+                density_pitch,
+                out,
+                out_pitch,
+                nr_points,
+                inlen,
+                outlen,
             ),
             #[cfg(not(feature = "cuda"))]
             Backend::Cuda => self.eval_loop_fallback(
-                density, density_pitch, out, out_pitch, nr_points, inlen, outlen,
+                density,
+                density_pitch,
+                out,
+                out_pitch,
+                nr_points,
+                inlen,
+                outlen,
             ),
             #[cfg(not(feature = "wgpu"))]
             Backend::Wgpu => self.eval_loop_fallback(
-                density, density_pitch, out, out_pitch, nr_points, inlen, outlen,
+                density,
+                density_pitch,
+                out,
+                out_pitch,
+                nr_points,
+                inlen,
+                outlen,
             ),
             #[cfg(not(feature = "wgpu"))]
             Backend::Metal => self.eval_loop_fallback(
-                density, density_pitch, out, out_pitch, nr_points, inlen, outlen,
+                density,
+                density_pitch,
+                out,
+                out_pitch,
+                nr_points,
+                inlen,
+                outlen,
             ),
         }
     }
@@ -673,7 +705,8 @@ mod tests {
     fn eval_setup_mutates_inner_state() {
         static W: &[(FunctionalId, f64)] = &[(FunctionalId::XC_SLATERX, 1.0)];
         let mut f = Functional::with_weights_for_test(W);
-        f.eval_setup(Vars::A_B, Mode::PartialDerivatives, 0).unwrap();
+        f.eval_setup(Vars::A_B, Mode::PartialDerivatives, 0)
+            .unwrap();
         // input_length should now reflect Vars::A_B.
         assert_eq!(f.input_length(), 2);
         // output_length should now reflect (Vars::A_B, PartialDerivatives, 0)
@@ -719,7 +752,8 @@ mod tests {
     fn eval_writes_nonzero_for_slaterx() {
         static W: &[(FunctionalId, f64)] = &[(FunctionalId::XC_SLATERX, 1.0)];
         let mut f = Functional::with_weights_for_test(W);
-        f.eval_setup(Vars::A_B, Mode::PartialDerivatives, 0).unwrap();
+        f.eval_setup(Vars::A_B, Mode::PartialDerivatives, 0)
+            .unwrap();
         let mut out = vec![0.0_f64; f.output_length().unwrap()];
         f.eval(&[0.5, 0.5], &mut out).unwrap();
         assert_ne!(out[0], 0.0, "expected non-zero SLATERX energy at (0.5,0.5)");
@@ -739,7 +773,8 @@ mod tests {
     fn output_length_reflects_mode_order() {
         static W: &[(FunctionalId, f64)] = &[(FunctionalId::XC_SLATERX, 1.0)];
         let mut f = Functional::with_weights_for_test(W);
-        f.eval_setup(Vars::A_B, Mode::PartialDerivatives, 1).unwrap();
+        f.eval_setup(Vars::A_B, Mode::PartialDerivatives, 1)
+            .unwrap();
         // taylorlen(2, 1) = 3
         assert_eq!(f.output_length().unwrap(), 3);
     }

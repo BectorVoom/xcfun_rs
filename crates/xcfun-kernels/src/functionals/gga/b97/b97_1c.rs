@@ -21,12 +21,7 @@ use crate::functionals::gga::shared::constants::{
 use crate::functionals::lda::pw92eps;
 
 #[cube]
-fn s2_ab2<F: Float>(
-    gaa: &Array<F>,
-    a_43: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn s2_ab2<F: Float>(gaa: &Array<F>, a_43: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
     let mut inv_a43 = Array::<F>::new(size);
     ctaylor_reciprocal::<F>(a_43, &mut inv_a43, n);
@@ -115,11 +110,7 @@ fn energy_b97c_antipar<F: Float>(
 
 /// XC_B97_1C kernel. 1:1 port of `b97-1xc.cpp:25-34`.
 #[cube]
-pub fn b97_1c_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn b97_1c_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     let mut e_lsda_a = Array::<F>::new(size);

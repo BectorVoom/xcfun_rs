@@ -82,7 +82,10 @@ fn main() -> std::io::Result<()> {
         .file(format!("{}/src/XCFunctional.cpp", xcfun_root))
         .file(format!("{}/src/xcint.cpp", xcfun_root))
         .file(format!("{}/src/functionals/aliases.cpp", xcfun_root))
-        .file(format!("{}/src/functionals/common_parameters.cpp", xcfun_root));
+        .file(format!(
+            "{}/src/functionals/common_parameters.cpp",
+            xcfun_root
+        ));
 
     // 11 Phase-2 LDA functional .cpp files. File stems match the xcfun-master
     // layout (vwn3.cpp contains XC_VWN3C; vonw.cpp contains XC_VWK).

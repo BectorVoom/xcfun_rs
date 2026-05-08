@@ -76,14 +76,7 @@ struct Fixture {
     expected: Vec<f64>,
 }
 
-fn run(
-    id: u32,
-    name: &str,
-    vars: Vars,
-    mode: Mode,
-    order: u32,
-    density: &[f64],
-) -> Fixture {
+fn run(id: u32, name: &str, vars: Vars, mode: Mode, order: u32, density: &[f64]) -> Fixture {
     let mut f = Functional::new();
     f.set(name, 1.0)
         .unwrap_or_else(|e| panic!("fixture {id}: set({name}) failed: {e:?}"));
@@ -110,7 +103,14 @@ fn main() -> std::io::Result<()> {
     let mut fxs: Vec<Fixture> = Vec::new();
 
     // Fixture 1 — LDA / XC_A_B / PartialDerivatives / 0
-    fxs.push(run(1, "lda", Vars::A_B, Mode::PartialDerivatives, 0, &[0.5, 0.5]));
+    fxs.push(run(
+        1,
+        "lda",
+        Vars::A_B,
+        Mode::PartialDerivatives,
+        0,
+        &[0.5, 0.5],
+    ));
 
     // Fixture 2 — PBE / XC_A_B_GAA_GAB_GBB (substitute, see header) / PartialDerivatives / 1
     fxs.push(run(
@@ -221,8 +221,7 @@ fn main() -> std::io::Result<()> {
     // caveat in 05-VERIFICATION.md.
     fxs.push(run(10, "lda", Vars::A_B, Mode::Potential, 0, &[0.5, 0.5]));
 
-    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/expected.json");
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/expected.json");
     fs::create_dir_all(path.parent().unwrap())?;
     let json = serde_json::to_string_pretty(&fxs).expect("serde_json serialize");
     fs::write(&path, json)?;

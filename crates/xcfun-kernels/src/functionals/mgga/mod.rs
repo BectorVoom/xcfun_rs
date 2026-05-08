@@ -24,40 +24,40 @@
 pub mod shared;
 
 // Wave 1 (04-01): TPSS family + BR + CSC
-pub mod tpssx;
-pub mod tpssc;
-pub mod revtpssx;
 pub mod revtpssc;
+pub mod revtpssx;
+pub mod tpssc;
 pub mod tpsslocc;
+pub mod tpssx;
 // Wave 1 (04-01): BR family (brx.rs contains BRX/BRC/BRXC kernels) + CSC.
-pub mod brx;   // contains brx_kernel, brc_kernel, brxc_kernel
-pub mod brc;   // thin re-export of brc_kernel from brx
-pub mod brxc;  // thin re-export of brxc_kernel from brx
+pub mod brc; // thin re-export of brc_kernel from brx
+pub mod brx; // contains brx_kernel, brc_kernel, brxc_kernel
+pub mod brxc; // thin re-export of brxc_kernel from brx
 pub mod csc;
 
 // Wave 2 (04-02): SCAN family (10 kernels — 5 exchange + 5 correlation).
-pub mod scanx;
-pub mod scanc;
-pub mod rscanx;
-pub mod rscanc;
-pub mod rppscanx;
-pub mod rppscanc;
-pub mod r2scanx;
 pub mod r2scanc;
-pub mod r4scanx;
+pub mod r2scanx;
 pub mod r4scanc;
+pub mod r4scanx;
+pub mod rppscanc;
+pub mod rppscanx;
+pub mod rscanc;
+pub mod rscanx;
+pub mod scanc;
+pub mod scanx;
 
 // Wave 3 (04-03): M0x family (12) + BLOCX (1).
-pub mod m05x;
-pub mod m05c;
-pub mod m05x2x;
-pub mod m05x2c;
-pub mod m06x;
-pub mod m06c;
-pub mod m06lx;
-pub mod m06lc;
-pub mod m06hfx;
-pub mod m06hfc;
-pub mod m06x2x;
-pub mod m06x2c;
 pub mod blocx;
+pub mod m05c;
+pub mod m05x;
+pub mod m05x2c;
+pub mod m05x2x;
+pub mod m06c;
+pub mod m06hfc;
+pub mod m06hfx;
+pub mod m06lc;
+pub mod m06lx;
+pub mod m06x;
+pub mod m06x2c;
+pub mod m06x2x;

@@ -39,12 +39,7 @@ struct FixtureRecord {
 // threads the comptime `n` through. Matches the pattern from
 // `tests/ctaylor_unit.rs`.
 #[cube(launch_unchecked)]
-fn kernel_mul<F: Float>(
-    a: &Array<F>,
-    b: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn kernel_mul<F: Float>(a: &Array<F>, b: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     ctaylor_mul::<F>(a, b, out, n);
 }
 
@@ -165,10 +160,15 @@ fn ctaylor_mul_matches_cpp_reference() {
 
     eprintln!(
         "[golden_mul] per-n pass: n=0 {}/{}, n=1 {}/{}, n=2 {}/{}, n=3 {}/{}, n=4 {}/{}",
-        per_n_pass[0], per_n_total[0],
-        per_n_pass[1], per_n_total[1],
-        per_n_pass[2], per_n_total[2],
-        per_n_pass[3], per_n_total[3],
-        per_n_pass[4], per_n_total[4],
+        per_n_pass[0],
+        per_n_total[0],
+        per_n_pass[1],
+        per_n_total[1],
+        per_n_pass[2],
+        per_n_total[2],
+        per_n_pass[3],
+        per_n_total[3],
+        per_n_pass[4],
+        per_n_total[4],
     );
 }

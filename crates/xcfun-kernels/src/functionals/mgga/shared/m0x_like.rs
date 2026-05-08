@@ -32,8 +32,7 @@ use xcfun_ad::ctaylor_rec::mul::ctaylor_mul;
 use xcfun_ad::math::{ctaylor_pow, ctaylor_reciprocal};
 
 use super::constants::{
-    M0X_ALPHA_C_ANTIPARALLEL_F64, M0X_ALPHA_C_PARALLEL_F64, M0X_ALPHA_X_F64,
-    M0X_SCALEFACTOR_TF_F64,
+    M0X_ALPHA_C_ANTIPARALLEL_F64, M0X_ALPHA_C_PARALLEL_F64, M0X_ALPHA_X_F64, M0X_SCALEFACTOR_TF_F64,
 };
 use crate::density_vars::DensVarsDev;
 use crate::functionals::gga::shared::pw91_like;
@@ -56,12 +55,7 @@ const M0X_CF_TIMES_SCALEFACTOR_TF: f64 = 9.115_599_744_691_195_f64;
 
 /// `zet(rho, tau) = 2·tau / ρ^(5/3) - CF · scalefactor_TF`.
 #[cube]
-pub fn m0x_zet<F: Float>(
-    rho: &Array<F>,
-    tau: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn m0x_zet<F: Float>(rho: &Array<F>, tau: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // Step 1: rho_m53 = rho^(-5/3).
@@ -495,7 +489,12 @@ pub fn m06_c_anti<F: Float>(
 
     // gamma_chi2 = γ_anti · chi_ab2
     let mut gamma_chi2 = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&chi_ab2, F::cast_from(M06_GAMMA_C_ANTI_F64), &mut gamma_chi2, n);
+    ctaylor_scalar_mul::<F>(
+        &chi_ab2,
+        F::cast_from(M06_GAMMA_C_ANTI_F64),
+        &mut gamma_chi2,
+        n,
+    );
 
     // g_term = g(c, gamma_chi2)
     let mut g_term = Array::<F>::new(size);
@@ -504,9 +503,17 @@ pub fn m06_c_anti<F: Float>(
     // h_term = h(d, α_anti, chi_ab2, zet_ab)
     let mut h_term = Array::<F>::new(size);
     m0x_h::<F>(
-        d0, d1, d2, d3, d4, d5,
+        d0,
+        d1,
+        d2,
+        d3,
+        d4,
+        d5,
         F::cast_from(M0X_ALPHA_C_ANTIPARALLEL_F64),
-        &chi_ab2, &zet_ab, &mut h_term, n,
+        &chi_ab2,
+        &zet_ab,
+        &mut h_term,
+        n,
     );
 
     // out = g_term + h_term
@@ -546,9 +553,17 @@ pub fn m06_c_para<F: Float>(
     // h_term = h(d, α_para, chi2, zet)
     let mut h_term = Array::<F>::new(size);
     m0x_h::<F>(
-        d0, d1, d2, d3, d4, d5,
+        d0,
+        d1,
+        d2,
+        d3,
+        d4,
+        d5,
         F::cast_from(M0X_ALPHA_C_PARALLEL_F64),
-        chi2, zet, &mut h_term, n,
+        chi2,
+        zet,
+        &mut h_term,
+        n,
     );
 
     // sum = g_term + h_term
@@ -594,7 +609,12 @@ pub fn m05_c_anti<F: Float>(
 
     // gamma_chi2 = γ_anti · chi_ab2
     let mut gamma_chi2 = Array::<F>::new(size);
-    ctaylor_scalar_mul::<F>(&chi_ab2, F::cast_from(M06_GAMMA_C_ANTI_F64), &mut gamma_chi2, n);
+    ctaylor_scalar_mul::<F>(
+        &chi_ab2,
+        F::cast_from(M06_GAMMA_C_ANTI_F64),
+        &mut gamma_chi2,
+        n,
+    );
 
     // out = g(c, gamma_chi2)
     m0x_g::<F>(c0, c1, c2, c3, c4, &gamma_chi2, out, n);
@@ -647,11 +667,7 @@ pub fn ueg_c_para<F: Float>(rho: &Array<F>, out: &mut Array<F>, #[comptime] n: u
 
 /// UEG correlation antiparallel: `pw92eps(d)·d.n - ueg_c_para(d.a) - ueg_c_para(d.b)`.
 #[cube]
-pub fn ueg_c_anti<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ueg_c_anti<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // eps = pw92_eps(d)

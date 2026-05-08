@@ -31,7 +31,16 @@ fn rppscan_exchange_spin<F: Float>(
     ctaylor_scalar_mul::<F>(tau, F::cast_from(2.0_f64), &mut two_tau, n);
 
     let mut fx = Array::<F>::new(size);
-    scan_like::get_SCAN_Fx::<F>(&two_rho, &four_grad2, &two_tau, &mut fx, 2_u32, 1_u32, 0_u32, n);
+    scan_like::get_SCAN_Fx::<F>(
+        &two_rho,
+        &four_grad2,
+        &two_tau,
+        &mut fx,
+        2_u32,
+        1_u32,
+        0_u32,
+        n,
+    );
 
     let mut eps_unif = Array::<F>::new(size);
     scan_like::scan_fx_unif::<F>(&two_rho, &mut eps_unif, n);

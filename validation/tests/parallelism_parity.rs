@@ -11,9 +11,7 @@
 use std::collections::HashSet;
 use std::num::NonZeroUsize;
 
-use validation::driver::{
-    HarnessMode, ReportRecord, RunConfig, run_with_mode_cfg,
-};
+use validation::driver::{HarnessMode, ReportRecord, RunConfig, run_with_mode_cfg};
 use validation::fixtures::generate_grid;
 use validation::report::{JsonlSink, TupleKey};
 

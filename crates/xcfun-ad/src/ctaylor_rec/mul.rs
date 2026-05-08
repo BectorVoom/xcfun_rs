@@ -49,11 +49,7 @@ use cubecl::prelude::*;
 
 /// N=0 mul_acc. Port of `ctaylor.hpp:86` — `dst[0] += x[0] * y[0]`.
 #[cube]
-pub(crate) fn ctaylor_mul_acc_n0<F: Float>(
-    dst: &mut Array<F>,
-    x: &Array<F>,
-    y: &Array<F>,
-) {
+pub(crate) fn ctaylor_mul_acc_n0<F: Float>(dst: &mut Array<F>, x: &Array<F>, y: &Array<F>) {
     let d0 = x[0] * y[0];
     dst[0] = dst[0] + d0;
 }
@@ -67,11 +63,7 @@ pub(crate) fn ctaylor_mul_acc_n0<F: Float>(
 /// }
 /// ```
 #[cube]
-pub(crate) fn ctaylor_mul_acc_n1<F: Float>(
-    dst: &mut Array<F>,
-    x: &Array<F>,
-    y: &Array<F>,
-) {
+pub(crate) fn ctaylor_mul_acc_n1<F: Float>(dst: &mut Array<F>, x: &Array<F>, y: &Array<F>) {
     let d0 = x[0] * y[0];
     dst[0] = dst[0] + d0;
 
@@ -92,11 +84,7 @@ pub(crate) fn ctaylor_mul_acc_n1<F: Float>(
 /// }
 /// ```
 #[cube]
-pub(crate) fn ctaylor_mul_acc_n2<F: Float>(
-    dst: &mut Array<F>,
-    x: &Array<F>,
-    y: &Array<F>,
-) {
+pub(crate) fn ctaylor_mul_acc_n2<F: Float>(dst: &mut Array<F>, x: &Array<F>, y: &Array<F>) {
     // dst[0]
     let d0 = x[0] * y[0];
     dst[0] = dst[0] + d0;
@@ -148,11 +136,7 @@ pub(crate) fn ctaylor_mul_acc_n2<F: Float>(
 /// (b) added, which C++-side is exactly two passes of `dst[i] += ...`
 /// statements in the same left-to-right order.
 #[cube]
-pub(crate) fn ctaylor_mul_acc_n3<F: Float>(
-    dst: &mut Array<F>,
-    x: &Array<F>,
-    y: &Array<F>,
-) {
+pub(crate) fn ctaylor_mul_acc_n3<F: Float>(dst: &mut Array<F>, x: &Array<F>, y: &Array<F>) {
     // First call: mul_acc_n2(dst[0..4], x[0..4], y[0..4]) — coeffs dst[0..=3]
     // dst[0] += x[0]*y[0]
     let a0 = x[0] * y[0];
@@ -234,21 +218,13 @@ pub(crate) fn ctaylor_mul_acc_n3<F: Float>(
 
 /// N=0 mul_set. Port of `ctaylor.hpp:87` — `dst[0] = x[0] * y[0]`.
 #[cube]
-pub(crate) fn ctaylor_mul_set_n0<F: Float>(
-    dst: &mut Array<F>,
-    x: &Array<F>,
-    y: &Array<F>,
-) {
+pub(crate) fn ctaylor_mul_set_n0<F: Float>(dst: &mut Array<F>, x: &Array<F>, y: &Array<F>) {
     dst[0] = x[0] * y[0];
 }
 
 /// N=1 mul_set. Port of `ctaylor.hpp:99-102`.
 #[cube]
-pub(crate) fn ctaylor_mul_set_n1<F: Float>(
-    dst: &mut Array<F>,
-    x: &Array<F>,
-    y: &Array<F>,
-) {
+pub(crate) fn ctaylor_mul_set_n1<F: Float>(dst: &mut Array<F>, x: &Array<F>, y: &Array<F>) {
     dst[0] = x[0] * y[0];
     let t10 = x[0] * y[1];
     let t11 = x[1] * y[0];
@@ -257,11 +233,7 @@ pub(crate) fn ctaylor_mul_set_n1<F: Float>(
 
 /// N=2 mul_set. Port of `ctaylor.hpp:125-130`.
 #[cube]
-pub(crate) fn ctaylor_mul_set_n2<F: Float>(
-    dst: &mut Array<F>,
-    x: &Array<F>,
-    y: &Array<F>,
-) {
+pub(crate) fn ctaylor_mul_set_n2<F: Float>(dst: &mut Array<F>, x: &Array<F>, y: &Array<F>) {
     dst[0] = x[0] * y[0];
 
     let t10 = x[0] * y[1];
@@ -286,11 +258,7 @@ pub(crate) fn ctaylor_mul_set_n2<F: Float>(
 ///   mul_set_n2(dst[4..8], x[4..8], y[0..4])
 ///   mul_acc_n2(dst[4..8], x[0..4], y[4..8])
 #[cube]
-pub(crate) fn ctaylor_mul_set_n3<F: Float>(
-    dst: &mut Array<F>,
-    x: &Array<F>,
-    y: &Array<F>,
-) {
+pub(crate) fn ctaylor_mul_set_n3<F: Float>(dst: &mut Array<F>, x: &Array<F>, y: &Array<F>) {
     // mul_set_n2 on lower half (x[0..4] * y[0..4]) → dst[0..=3]
     dst[0] = x[0] * y[0];
 
@@ -367,11 +335,7 @@ pub(crate) fn ctaylor_mul_set_n3<F: Float>(
 /// 01-05 to unblock the n_var=4 golden-fixture gate (relative-error
 /// tolerance 1e-13, not bit-exact).
 #[cube]
-pub(crate) fn ctaylor_mul_set_n4<F: Float>(
-    dst: &mut Array<F>,
-    x: &Array<F>,
-    y: &Array<F>,
-) {
+pub(crate) fn ctaylor_mul_set_n4<F: Float>(dst: &mut Array<F>, x: &Array<F>, y: &Array<F>) {
     // =========================================================================
     //  Part 1: mul_set_n3(dst[0..8], x[0..8], y[0..8]) — coeffs dst[0..=7]
     //    (verbatim copy of ctaylor_mul_set_n3 body)
@@ -591,12 +555,7 @@ pub(crate) fn ctaylor_mul_set_n4<F: Float>(
 /// tolerance 1e-13, not bit-exact) so the mul golden-fixture gate covers
 /// the full range emitted by the fixture driver. N ∈ 5..=7 still deferred.
 #[cube]
-pub fn ctaylor_mul<F: Float>(
-    a: &Array<F>,
-    b: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ctaylor_mul<F: Float>(a: &Array<F>, b: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     if comptime!(n == 0) {
         ctaylor_mul_set_n0::<F>(out, a, b);
     } else if comptime!(n == 1) {

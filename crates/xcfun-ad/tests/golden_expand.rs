@@ -125,16 +125,16 @@ fn eval_record(rec: &FixtureRecord) -> Vec<f64> {
         }};
     }
     match rec.op.as_str() {
-        "inv_expand"   => launch_unary!(kernel_inv),
-        "exp_expand"   => launch_unary!(kernel_exp),
+        "inv_expand" => launch_unary!(kernel_inv),
+        "exp_expand" => launch_unary!(kernel_exp),
         "expm1_expand" => launch_unary!(kernel_expm1),
-        "log_expand"   => launch_unary!(kernel_log),
-        "pow_expand"   => launch_unary!(kernel_pow),
-        "sqrt_expand"  => launch_unary!(kernel_sqrt),
-        "cbrt_expand"  => launch_unary!(kernel_cbrt),
+        "log_expand" => launch_unary!(kernel_log),
+        "pow_expand" => launch_unary!(kernel_pow),
+        "sqrt_expand" => launch_unary!(kernel_sqrt),
+        "cbrt_expand" => launch_unary!(kernel_cbrt),
         "gauss_expand" => launch_unary!(kernel_gauss),
-        "erf_expand"   => launch_unary!(kernel_erf),
-        "atan_expand"  => launch_unary!(kernel_atan),
+        "erf_expand" => launch_unary!(kernel_erf),
+        "atan_expand" => launch_unary!(kernel_atan),
         "asinh_expand" => launch_unary!(kernel_asinh),
         op => panic!("unknown op in expand.bincode: {op}"),
     }
@@ -182,7 +182,10 @@ fn assert_record_close(got: &[f64], rec: &FixtureRecord) {
         got.len(),
         rec.coeffs.len(),
         "op={} n_var={} output length: got {}, expected {}",
-        rec.op, rec.n_var, got.len(), rec.coeffs.len()
+        rec.op,
+        rec.n_var,
+        got.len(),
+        rec.coeffs.len()
     );
     let relaxed = relaxed_tolerance_for(&rec.op);
     for (i, (g, e)) in got.iter().zip(rec.coeffs.iter()).enumerate() {
@@ -192,7 +195,13 @@ fn assert_record_close(got: &[f64], rec: &FixtureRecord) {
             assert!(
                 (g - e).abs() < DRIFT_T0_ABS_TOL,
                 "op={} n_var={} coeff {}: got {}, expected {}, abs_err {:.3e} (bound {:.0e})",
-                rec.op, rec.n_var, i, g, e, (g - e).abs(), DRIFT_T0_ABS_TOL
+                rec.op,
+                rec.n_var,
+                i,
+                g,
+                e,
+                (g - e).abs(),
+                DRIFT_T0_ABS_TOL
             );
         } else {
             let denom = e.abs().max(1.0);
@@ -201,7 +210,13 @@ fn assert_record_close(got: &[f64], rec: &FixtureRecord) {
             assert!(
                 rel < bound,
                 "op={} n_var={} coeff {}: got {}, expected {}, rel_err {:.3e} (bound {:.0e})",
-                rec.op, rec.n_var, i, g, e, rel, bound
+                rec.op,
+                rec.n_var,
+                i,
+                g,
+                e,
+                rel,
+                bound
             );
         }
     }
@@ -210,8 +225,8 @@ fn assert_record_close(got: &[f64], rec: &FixtureRecord) {
 #[test]
 fn expand_matches_cpp_reference() {
     let bytes: &[u8] = include_bytes!("fixtures/expand.bincode");
-    let records: Vec<FixtureRecord> = bincode::deserialize(bytes)
-        .expect("deserialize tests/fixtures/expand.bincode");
+    let records: Vec<FixtureRecord> =
+        bincode::deserialize(bytes).expect("deserialize tests/fixtures/expand.bincode");
 
     let mut count = 0_usize;
     let mut per_op: std::collections::BTreeMap<String, usize> = Default::default();
@@ -241,8 +256,8 @@ fn expand_matches_cpp_reference() {
 #[test]
 fn test_expm1() {
     let bytes: &[u8] = include_bytes!("fixtures/expand.bincode");
-    let records: Vec<FixtureRecord> = bincode::deserialize(bytes)
-        .expect("deserialize tests/fixtures/expand.bincode");
+    let records: Vec<FixtureRecord> =
+        bincode::deserialize(bytes).expect("deserialize tests/fixtures/expand.bincode");
 
     let mut count = 0_usize;
     for rec in records.iter().filter(|r| r.op == "expm1_expand") {
@@ -250,6 +265,9 @@ fn test_expm1() {
         assert_record_close(&got, rec);
         count += 1;
     }
-    assert!(count >= 2500, "expected >= 2500 expm1_expand records, got {count}");
+    assert!(
+        count >= 2500,
+        "expected >= 2500 expm1_expand records, got {count}"
+    );
     eprintln!("[golden_expand::test_expm1] validated {count} records");
 }

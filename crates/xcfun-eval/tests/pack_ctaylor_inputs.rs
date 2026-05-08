@@ -108,7 +108,12 @@ fn pack_ctaylor_inputs_order4_all_same_slot() {
     assert_eq!(flat[0 * size_n4 + 8 /* VAR3 */], 1.0);
     // Cross-terms at index 3, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15 all zero.
     for idx in [3_usize, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15] {
-        assert_eq!(flat[0 * size_n4 + idx], 0.0, "cross-term at idx {} must be 0", idx);
+        assert_eq!(
+            flat[0 * size_n4 + idx],
+            0.0,
+            "cross-term at idx {} must be 0",
+            idx
+        );
     }
     // Slot 1 untouched.
     assert_eq!(flat[1 * size_n4 + 0], 2.0); // CNST

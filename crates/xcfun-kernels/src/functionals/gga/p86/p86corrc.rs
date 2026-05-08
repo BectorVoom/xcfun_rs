@@ -135,11 +135,7 @@ fn dz<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
 
 /// XC_P86CORRC kernel. 1:1 port of `p86c.cpp:50-52`.
 #[cube]
-pub fn p86corrc_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn p86corrc_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     let mut cg_rs = Array::<F>::new(size);

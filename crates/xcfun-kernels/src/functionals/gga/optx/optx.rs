@@ -68,11 +68,7 @@ fn optx_alpha<F: Float>(
 
 /// XC_OPTX kernel. 1:1 port of `optx.cpp:18-26`.
 #[cube]
-pub fn optx_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn optx_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     let mut e_alpha = Array::<F>::new(size);

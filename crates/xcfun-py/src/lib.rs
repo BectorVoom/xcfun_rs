@@ -35,17 +35,17 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("XcfunError", m.py().get_type::<errors::XcfunError>())?;
 
     // ----- PY-04 — 11 module-level free functions.
-    m.add_function(wrap_pyfunction!(version,                 m)?)?;
-    m.add_function(wrap_pyfunction!(splash,                  m)?)?;
-    m.add_function(wrap_pyfunction!(authors,                 m)?)?;
-    m.add_function(wrap_pyfunction!(self_test,               m)?)?;
-    m.add_function(wrap_pyfunction!(is_compatible_library,   m)?)?;
-    m.add_function(wrap_pyfunction!(which_vars,              m)?)?;
-    m.add_function(wrap_pyfunction!(which_mode,              m)?)?;
-    m.add_function(wrap_pyfunction!(enumerate_parameters,    m)?)?;
-    m.add_function(wrap_pyfunction!(enumerate_aliases,       m)?)?;
-    m.add_function(wrap_pyfunction!(describe_short,          m)?)?;
-    m.add_function(wrap_pyfunction!(describe_long,           m)?)?;
+    m.add_function(wrap_pyfunction!(version, m)?)?;
+    m.add_function(wrap_pyfunction!(splash, m)?)?;
+    m.add_function(wrap_pyfunction!(authors, m)?)?;
+    m.add_function(wrap_pyfunction!(self_test, m)?)?;
+    m.add_function(wrap_pyfunction!(is_compatible_library, m)?)?;
+    m.add_function(wrap_pyfunction!(which_vars, m)?)?;
+    m.add_function(wrap_pyfunction!(which_mode, m)?)?;
+    m.add_function(wrap_pyfunction!(enumerate_parameters, m)?)?;
+    m.add_function(wrap_pyfunction!(enumerate_aliases, m)?)?;
+    m.add_function(wrap_pyfunction!(describe_short, m)?)?;
+    m.add_function(wrap_pyfunction!(describe_long, m)?)?;
 
     Ok(())
 }

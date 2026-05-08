@@ -21,10 +21,10 @@
 //! - `blocx` — `blocx.cpp:18-46` (independent of BRX per RESEARCH).
 //! - `cs` — `cs.cpp:17-27` CSC inline body.
 
-pub mod constants;
-pub mod tpss_like;
-pub mod scan_like;
-pub mod m0x_like;
-pub mod br_like;
 pub mod blocx;
+pub mod br_like;
+pub mod constants;
 pub mod cs;
+pub mod m0x_like;
+pub mod scan_like;
+pub mod tpss_like;

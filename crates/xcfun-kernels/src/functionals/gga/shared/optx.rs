@@ -35,12 +35,7 @@ use super::constants::OPTX_GAMMA_F64;
 ///   2. `prod    = grad2 · rho_m83`           (ctaylor_mul)
 ///   3. `out     = γ · prod`                  (scalar_mul)
 #[cube]
-pub fn g_xa2<F: Float>(
-    rho: &Array<F>,
-    grad2: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn g_xa2<F: Float>(rho: &Array<F>, grad2: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     // Step 1: rho_m83 = pow(rho, -8/3).

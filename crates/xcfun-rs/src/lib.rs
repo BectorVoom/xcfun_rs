@@ -18,13 +18,12 @@
 // SAFETY comment documenting the invariants.
 #![deny(unsafe_code)]
 
-mod functional;
 mod free_fns;
+mod functional;
 
-pub use functional::{Functional, XCFUN_MIN_BATCH_SIZE, min_batch_size};
 pub use free_fns::{
-    authors, describe_long, describe_short, enumerate_aliases,
-    enumerate_parameters, is_compatible_library, self_test, splash,
-    version, which_mode, which_vars,
+    authors, describe_long, describe_short, enumerate_aliases, enumerate_parameters,
+    is_compatible_library, self_test, splash, version, which_mode, which_vars,
 };
+pub use functional::{Functional, XCFUN_MIN_BATCH_SIZE, min_batch_size};
 pub use xcfun_core::{Dependency, FunctionalId, Mode, ParameterId, Vars, XcError};

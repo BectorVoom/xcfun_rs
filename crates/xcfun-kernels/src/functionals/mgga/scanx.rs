@@ -39,7 +39,16 @@ fn scan_exchange_spin<F: Float>(
 
     // Fx = get_SCAN_Fx(2*rho, 4*grad2, 2*tau, ialpha, iinterp, idelfx)
     let mut fx = Array::<F>::new(size);
-    scan_like::get_SCAN_Fx::<F>(&two_rho, &four_grad2, &two_tau, &mut fx, ialpha, iinterp, idelfx, n);
+    scan_like::get_SCAN_Fx::<F>(
+        &two_rho,
+        &four_grad2,
+        &two_tau,
+        &mut fx,
+        ialpha,
+        iinterp,
+        idelfx,
+        n,
+    );
 
     // eps_unif = fx_unif(2*rho)
     let mut eps_unif = Array::<F>::new(size);

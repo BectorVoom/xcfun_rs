@@ -27,11 +27,7 @@ const NEG_C_SLATER_F64: f64 = -0.9305257363491002_f64;
 
 /// Slater LDA exchange kernel. 1:1 port of `slater.hpp:19-21`.
 #[cube]
-pub fn slaterx_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn slaterx_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     // C++: return (-c_slater) * (d.a_43 + d.b_43);
     //
     // Operation order (matches C++ left-to-right; ACC-06 forbids mul_add):

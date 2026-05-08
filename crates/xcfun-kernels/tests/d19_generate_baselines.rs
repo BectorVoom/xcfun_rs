@@ -123,9 +123,30 @@ macro_rules! launch_helper {
             let array_len = arr_cnt * std::mem::size_of::<f64>();
             let mk = || client.empty(array_len);
             let h: [_; 24] = [
-                mk(), mk(), mk(), mk(), mk(), mk(), mk(), mk(),
-                mk(), mk(), mk(), mk(), mk(), mk(), mk(), mk(),
-                mk(), mk(), mk(), mk(), mk(), mk(), mk(), mk(),
+                mk(),
+                mk(),
+                mk(),
+                mk(),
+                mk(),
+                mk(),
+                mk(),
+                mk(),
+                mk(),
+                mk(),
+                mk(),
+                mk(),
+                mk(),
+                mk(),
+                mk(),
+                mk(),
+                mk(),
+                mk(),
+                mk(),
+                mk(),
+                mk(),
+                mk(),
+                mk(),
+                mk(),
             ];
             let out_h = client.empty(std::mem::size_of::<f64>());
             let read_h = out_h.clone();

@@ -45,8 +45,8 @@ fn fid_from_name(name: &str) -> Option<FunctionalId> {
 #[test]
 fn potential_parity_100() {
     let json_str = include_str!("data/potential_reference_100.json");
-    let records: Vec<PotentialRecord> = serde_json::from_str(json_str)
-        .expect("potential_reference_100.json must parse");
+    let records: Vec<PotentialRecord> =
+        serde_json::from_str(json_str).expect("potential_reference_100.json must parse");
     assert!(
         records.len() >= 100,
         "expected ≥ 100 records, got {}",
@@ -57,9 +57,8 @@ fn potential_parity_100() {
     let mut failed: Vec<String> = Vec::new();
 
     for rec in &records {
-        let id = fid_from_name(&rec.functional_name).unwrap_or_else(|| {
-            panic!("unknown functional {} in fixture", rec.functional_name)
-        });
+        let id = fid_from_name(&rec.functional_name)
+            .unwrap_or_else(|| panic!("unknown functional {} in fixture", rec.functional_name));
         // Vars::A_B_2ND_TAYLOR is the only vars used by the fixture grid
         // (5 GGA functionals).
         assert_eq!(
@@ -79,11 +78,7 @@ fn potential_parity_100() {
         f.eval(&rec.input, &mut out)
             .expect("Mode::Potential eval should succeed");
 
-        for (i, (&got, &want)) in out
-            .iter()
-            .zip(rec.expected_output.iter())
-            .enumerate()
-        {
+        for (i, (&got, &want)) in out.iter().zip(rec.expected_output.iter()).enumerate() {
             // Strict 1e-12 per D-14. Use approx style: rel_err =
             // |got - want| / max(|want|, 1.0); assert_relative_eq! uses
             // |got - want| / max(|want|, |got|) which is slightly stricter

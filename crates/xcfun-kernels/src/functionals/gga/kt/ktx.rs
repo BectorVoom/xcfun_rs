@@ -56,11 +56,7 @@ fn ktx_alpha<F: Float>(
 
 /// XC_KTX kernel. 1:1 port of `ktx.cpp:18-24`.
 #[cube]
-pub fn ktx_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn ktx_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let size = comptime!((1_u32 << n) as usize);
 
     let mut ea = Array::<F>::new(size);

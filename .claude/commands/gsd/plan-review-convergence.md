@@ -1,6 +1,6 @@
 ---
 name: gsd:plan-review-convergence
-description: "Cross-AI plan convergence loop — replan with review feedback until no HIGH concerns remain (max 3 cycles)"
+description: "Cross-AI plan convergence loop — replan with review feedback until no HIGH concerns remain."
 argument-hint: "<phase> [--codex] [--gemini] [--claude] [--opencode] [--ollama] [--lm-studio] [--llama-cpp] [--text] [--ws <name>] [--all] [--max-cycles N]"
 allowed-tools:
   - Read
@@ -24,10 +24,10 @@ Replaces gsd-plan-phase's internal gsd-plan-checker with external AI reviewers (
 </objective>
 
 <execution_context>
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/plan-review-convergence.md
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/revision-loop.md
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/gates.md
-@/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/references/agent-contracts.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/plan-review-convergence.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/revision-loop.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/gates.md
+@/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/references/agent-contracts.md
 </execution_context>
 
 <runtime_note>
@@ -53,6 +53,6 @@ Phase number: extracted from $ARGUMENTS (required)
 </context>
 
 <process>
-Execute the plan-review-convergence workflow from @/home/chemtech/workspace/xcfun_rs/.claude/get-shit-done/workflows/plan-review-convergence.md end-to-end.
+Execute the plan-review-convergence workflow from @/home/user/Documents/workspace/xcfun_rs/.claude/get-shit-done/workflows/plan-review-convergence.md end-to-end.
 Preserve all workflow gates (pre-flight, revision loop, stall detection, escalation).
 </process>

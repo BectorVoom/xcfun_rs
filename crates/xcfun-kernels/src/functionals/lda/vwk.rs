@@ -36,12 +36,7 @@ use crate::density_vars::DensVarsDev;
 ///   2. tmp = gaa * inv_na              (ctaylor_mul)
 ///   3. out = 0.125 * tmp               (ctaylor_scalar_mul; 1/8 = 0.125)
 #[cube]
-fn vw_alpha<F: Float>(
-    na: &Array<F>,
-    gaa: &Array<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+fn vw_alpha<F: Float>(na: &Array<F>, gaa: &Array<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let mut inv_na = Array::<F>::new(comptime!((1_u32 << n) as usize));
     let mut tmp = Array::<F>::new(comptime!((1_u32 << n) as usize));
     ctaylor_reciprocal::<F>(na, &mut inv_na, n);
@@ -57,11 +52,7 @@ fn vw_alpha<F: Float>(
 /// }
 /// ```
 #[cube]
-pub fn vwk_kernel<F: Float>(
-    d: &DensVarsDev<F>,
-    out: &mut Array<F>,
-    #[comptime] n: u32,
-) {
+pub fn vwk_kernel<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime] n: u32) {
     let mut va = Array::<F>::new(comptime!((1_u32 << n) as usize));
     let mut vb = Array::<F>::new(comptime!((1_u32 << n) as usize));
     vw_alpha::<F>(&d.a, &d.gaa, &mut va, n);
