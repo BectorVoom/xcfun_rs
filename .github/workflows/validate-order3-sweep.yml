@@ -73,38 +73,42 @@ jobs:
       fail-fast: false
       max-parallel: 29
       matrix:
+        # Names lowercased to match the harness's `--filter` target
+        # (`FunctionalId` enum name minus `XC_` prefix, lowercased — see
+        # `validation/src/driver.rs::cpp_name`). Uppercase regexes match 0
+        # records and produce a vacuous PASS.
         functional:
           # Plan 06-N1 inherited Phase-3 D-19 forwards (11):
-          - PBEINTC
-          - BECKESRX
-          - P86C
-          - P86CORRC
-          - PW91C
-          - SPBEC
-          - APBEC
-          - B97C
-          - B97_1C
-          - B97_2C
-          - PW91K
+          - pbeintc
+          - beckesrx
+          - p86c
+          - p86corrc
+          - pw91c
+          - spbec
+          - apbec
+          - b97c
+          - b97_1c
+          - b97_2c
+          - pw91k
           # Plan 06-N3 small-magnitude AD-residual forwards (18):
-          - M05X
-          - M05C
-          - M05X2C
-          - M06X
-          - M06C
-          - M06LX
-          - M06LC
-          - M06HFX
-          - M06HFC
-          - M06X2C
-          - B97X
-          - B97_1X
-          - B97_2X
-          - LYPC
-          - VWN_PBEC
-          - PW92C
-          - PBEC
-          - OPTX
+          - m05x
+          - m05c
+          - m05x2c
+          - m06x
+          - m06c
+          - m06lx
+          - m06lc
+          - m06hfx
+          - m06hfc
+          - m06x2c
+          - b97x
+          - b97_1x
+          - b97_2x
+          - lypc
+          - vwn_pbec
+          - pw92c
+          - pbec
+          - optx
     steps:
       - uses: actions/checkout@v4
 
@@ -188,9 +192,9 @@ jobs:
           FAIL=0
           MISSING=0
           FUNCTIONALS=(
-            PBEINTC BECKESRX P86C P86CORRC PW91C SPBEC APBEC B97C B97_1C B97_2C PW91K
-            M05X M05C M05X2C M06X M06C M06LX M06LC M06HFX M06HFC M06X2C
-            B97X B97_1X B97_2X LYPC VWN_PBEC PW92C PBEC OPTX
+            pbeintc beckesrx p86c p86corrc pw91c spbec apbec b97c b97_1c b97_2c pw91k
+            m05x m05c m05x2c m06x m06c m06lx m06lc m06hfx m06hfc m06x2c
+            b97x b97_1x b97_2x lypc vwn_pbec pw92c pbec optx
           )
           for fn in "${FUNCTIONALS[@]}"; do
             exit_file="artifacts/validate-$fn/exit-$fn.txt"
