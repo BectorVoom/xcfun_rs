@@ -1,0 +1,11 @@
+# maturin / Python build + cache artifacts (Phase 7 Plan 07-01)
+target/
+target/wheels/
+dist/
+*.so
+*.dylib
+*.pyd
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.venv/

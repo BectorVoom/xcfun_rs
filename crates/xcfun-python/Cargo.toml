@@ -1,9 +1,0 @@
-[package]
-name = "xcfun-python"
-version.workspace = true
-edition.workspace = true
-description = "Python bindings for xcfun_rs via PyO3"
-
-[dependencies]
-xcfun-core = { path = "../xcfun-core" }
-# pyo3 and xcfun-eval dependencies added in Phase 7

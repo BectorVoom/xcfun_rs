@@ -20,12 +20,15 @@ members = [
     "crates/xcfun-gpu",
     "crates/xcfun-rs",
     "crates/xcfun-capi",
+    # Phase 7 Plan 07-01 (D-01): xcfun-py promoted from exclude. Renamed
+    # from the prior xcfun-python stub via `git mv` to preserve history.
+    # Houses the PyO3 0.28 + rust-numpy 0.28 Python bindings; full
+    # #[pymodule] skeleton lands in Plan 07-02. CPU-only by default per D-03.
+    "crates/xcfun-py",
     "xtask",
     "validation",
 ]
-exclude = [
-    "crates/xcfun-python",
-]
+exclude = []
 resolver = "2"
 
 [workspace.package]
