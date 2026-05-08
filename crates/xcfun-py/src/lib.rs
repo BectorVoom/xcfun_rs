@@ -6,7 +6,9 @@
 //! `python/xcfun_rs/`, which re-exports the symbols defined here.
 //!
 //! Phase 7 Plan 07-02 — module skeleton + 11 free fns (PY-01 + PY-04).
-//! Functional + Mode + Vars + XcfunError land in Plans 07-03 / 07-04 / 07-05.
+//! Plan 07-03 — XcfunError exception class (PY-05).
+//! Plan 07-04 — Functional pyclass + Mode/Vars IntEnum mirrors (PY-02).
+//! Plan 07-05 — fills the strict-zero-copy `eval_vec` body in `numpy_io`.
 
 #![allow(non_local_definitions)] // PyO3 macros emit non-local trait impls
 
@@ -14,6 +16,7 @@ use pyo3::prelude::*;
 
 mod errors;
 mod functional;
+mod numpy_io;
 
 use functional::free_fns::{
     authors, describe_long, describe_short, enumerate_aliases, enumerate_parameters,
@@ -24,10 +27,10 @@ use functional::free_fns::{
 /// `[tool.maturin] module-name` value in `pyproject.toml`.
 #[pymodule]
 fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    // ----- Class registrations land in Plans 07-03 / 07-04 / 07-05.
-    // m.add_class::<functional::Functional>()?;          // Plan 07-04 (PY-02)
-    // m.add_class::<functional::Mode>()?;                // Plan 07-04
-    // m.add_class::<functional::Vars>()?;                // Plan 07-04
+    // PY-02 — Functional class + Mode/Vars IntEnum mirrors (Plan 07-04).
+    m.add_class::<functional::Functional>()?;
+    m.add_class::<functional::Mode>()?;
+    m.add_class::<functional::Vars>()?;
     // PY-05 — single XcfunError class (the .code/.kind shim is in __init__.py).
     m.add("XcfunError", m.py().get_type::<errors::XcfunError>())?;
 

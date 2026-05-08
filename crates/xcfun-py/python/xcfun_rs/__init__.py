@@ -4,11 +4,12 @@ This module re-exports the symbols from the native ``_native`` cdylib produced
 by maturin and provides the Python-source ``XcfunError`` shim that grafts
 ``.code`` / ``.kind`` attributes (D-09; abi3 §5 workaround per 07-RESEARCH).
 
-``Functional`` / ``Mode`` / ``Vars`` are added to this re-export list by
-Plan 07-04.
+Plan 07-04 — exports ``Functional`` (PY-02) plus ``Mode`` and ``Vars``
+IntEnums whose discriminants are byte-matched against ``xcfun-core``.
 """
 
 from ._native import (  # type: ignore[attr-defined]
+    Functional, Mode, Vars,
     XcfunError as _XcfunErrorBase,
     version, splash, authors, self_test, is_compatible_library,
     which_vars, which_mode,
@@ -53,6 +54,7 @@ class XcfunError(_XcfunErrorBase):  # noqa: N818  (suffix-Error name is intentio
 __version__ = version()
 
 __all__ = [
+    "Functional", "Mode", "Vars",
     "XcfunError",
     "version", "splash", "authors", "self_test", "is_compatible_library",
     "which_vars", "which_mode",

@@ -5,9 +5,6 @@
 //! itself lands in Task 4.2; the `eval_vec` numpy zero-copy path is added by
 //! Plan 07-05 (PY-03).
 
-#![allow(unused_imports)] // RsFunctional is consumed by Task 4.2; kept here so the
-// import survives `cargo build` of the Task 4.1 increment.
-
 use pyo3::prelude::*;
 
 use xcfun_rs::{Functional as RsFunctional, Mode as RsMode, Vars as RsVars};
@@ -142,6 +139,144 @@ const _: () = {
     assert!(Vars::A_B_2ND_TAYLOR as u32 == 28);
     assert!(Vars::N_S_2ND_TAYLOR as u32 == 30);
 };
+
+/// Python `Functional` class wrapping `xcfun_rs::Functional`.
+///
+/// Source signatures: `crates/xcfun-rs/src/functional.rs:166-491`.
+/// Each method delegates 1:1; `Result<T, XcError>` is mapped via
+/// `crate::errors::xc_to_py`.
+#[pyclass(name = "Functional", module = "xcfun_rs")]
+pub struct Functional {
+    inner: RsFunctional,
+}
+
+#[pymethods]
+impl Functional {
+    /// D-05 — eager constructor.
+    ///
+    /// `Functional("pbe", vars=Vars.A_B_GAA_GAB_GBB, mode=Mode.PartialDerivatives, order=2)`
+    /// performs `set(name, 1.0)` AND `eval_setup(vars, mode, order)` at construction.
+    /// `Functional("pbe")` (no kwargs) leaves the Functional in a constructed-but-not-set-up
+    /// state; the caller must invoke `configure(...)` (low-level escape hatch) before
+    /// `eval` / `eval_vec`.
+    ///
+    /// D-12 — invalid (vars, mode, order) combos raise XcfunError from the constructor.
+    ///
+    /// Source: pyo3 guide §function/signature — `#[pyo3(signature = ...)]`.
+    #[new]
+    #[pyo3(signature = (name, *, vars=None, mode=None, order=None))]
+    fn new(
+        name: &str,
+        vars: Option<Vars>,
+        mode: Option<Mode>,
+        order: Option<u32>,
+    ) -> PyResult<Self> {
+        let mut inner = RsFunctional::new();
+        inner.set(name, 1.0).map_err(crate::errors::xc_to_py)?;
+        if let (Some(v), Some(m), Some(o)) = (vars, mode, order) {
+            inner
+                .eval_setup(v.into(), m.into(), o)
+                .map_err(crate::errors::xc_to_py)?;
+        }
+        Ok(Self { inner })
+    }
+
+    /// D-05 escape hatch — `f.configure(vars=..., mode=..., order=...)` runs eval_setup
+    /// later. Same XcfunError mapping on bad combos as the constructor.
+    fn configure(&mut self, vars: Vars, mode: Mode, order: u32) -> PyResult<()> {
+        self.inner
+            .eval_setup(vars.into(), mode.into(), order)
+            .map_err(crate::errors::xc_to_py)
+    }
+
+    /// D-06 — `set()` mutates in place, returns None. Aliases compose additively
+    /// across repeated `set` calls (Phase 4 alias-engine semantics).
+    fn set(&mut self, name: &str, value: f64) -> PyResult<()> {
+        self.inner.set(name, value).map_err(crate::errors::xc_to_py)
+    }
+
+    fn get(&self, name: &str) -> PyResult<f64> {
+        self.inner.get(name).map_err(crate::errors::xc_to_py)
+    }
+
+    fn is_gga(&self) -> bool {
+        self.inner.is_gga()
+    }
+    fn is_metagga(&self) -> bool {
+        self.inner.is_metagga()
+    }
+
+    fn eval_setup(&mut self, vars: Vars, mode: Mode, order: u32) -> PyResult<()> {
+        self.inner
+            .eval_setup(vars.into(), mode.into(), order)
+            .map_err(crate::errors::xc_to_py)
+    }
+
+    #[pyo3(signature = (order, func_type, dens_type, mode_type,
+                        laplacian, kinetic, current, explicit_derivatives))]
+    #[allow(clippy::too_many_arguments)]
+    fn user_eval_setup(
+        &mut self,
+        order: i32,
+        func_type: u32,
+        dens_type: u32,
+        mode_type: u32,
+        laplacian: u32,
+        kinetic: u32,
+        current: u32,
+        explicit_derivatives: u32,
+    ) -> PyResult<()> {
+        self.inner
+            .user_eval_setup(
+                order,
+                func_type,
+                dens_type,
+                mode_type,
+                laplacian,
+                kinetic,
+                current,
+                explicit_derivatives,
+            )
+            .map_err(crate::errors::xc_to_py)
+    }
+
+    fn input_length(&self) -> usize {
+        self.inner.input_length()
+    }
+
+    fn output_length(&self) -> PyResult<usize> {
+        self.inner.output_length().map_err(crate::errors::xc_to_py)
+    }
+
+    /// Per-point eval. `density` and `out` are 1-D f64 arrays. Mutates `out`
+    /// in place; returns None on success.
+    ///
+    /// Releases the GIL via `py.detach()` (PyO3 0.28; renamed from
+    /// `py.allow_threads`). Source: pyo3 guide §parallelism.md.
+    fn eval<'py>(
+        &self,
+        py: Python<'py>,
+        density: numpy::PyReadonlyArray1<'py, f64>,
+        mut out: numpy::PyReadwriteArray1<'py, f64>,
+    ) -> PyResult<()> {
+        let dens_view = density.as_slice()?;
+        let out_view = out.as_slice_mut()?;
+        py.detach(|| self.inner.eval(dens_view, out_view))
+            .map_err(crate::errors::xc_to_py)
+    }
+
+    /// PY-03 / D-07 / D-08 — strict-zero-copy `eval_vec`. Implementation in Plan 07-05.
+    /// The Plan 07-04 stub in `crate::numpy_io::eval_vec_impl` raises
+    /// `NotImplementedError` until Plan 07-05 fills the body.
+    #[pyo3(signature = (densities))]
+    fn eval_vec<'py>(
+        &self,
+        py: Python<'py>,
+        densities: numpy::PyReadonlyArray2<'py, f64>,
+    ) -> PyResult<Bound<'py, numpy::PyArray2<f64>>> {
+        crate::numpy_io::eval_vec_impl(py, &self.inner, densities)
+    }
+}
 
 pub mod free_fns {
     //! Module-level free fns. Each delegates 1:1 to `xcfun_rs::<fn>`.
