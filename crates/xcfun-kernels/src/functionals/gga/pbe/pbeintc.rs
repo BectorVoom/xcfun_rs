@@ -124,3 +124,22 @@ pub fn pbeintc_kernel<F: Float>(
     // out = n · sum.
     ctaylor_mul::<F>(&d.n, &sum, out, n);
 }
+
+#[cfg(test)]
+mod tests {
+    /// Regression lock for the PBEINTC β/γ precomputation. The previous
+    /// value `0.167_252_472_614_525_44_f64` was a copy-paste typo from
+    /// `ZVPBEINTC_BG_F64 = 1.672_524_726_145_254_4_f64` with the decimal
+    /// shifted one place left, making the GGA-correction term H ≈ 10× too
+    /// small everywhere and producing 99.84% record-level FAIL against
+    /// C++ at order 0 in the Phase 7 Plan 07-00 Task 0.3 sweep.
+    /// The mathematically correct value is exactly β/γ where β = 0.052
+    /// and γ = (1 - log(2)) / π² ≈ 0.0310906908696549.
+    #[test]
+    fn pbeintc_bg_locked() {
+        // Recompute from full-precision γ rather than the imprecise constant
+        // used historically; this is the f64-nearest of `0.052 / γ`.
+        let truth: f64 = 1.672_526_359_031_570_2_f64;
+        assert_eq!(super::PBEINTC_BG_F64, truth);
+    }
+}
