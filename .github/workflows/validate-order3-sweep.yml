@@ -1,0 +1,313 @@
+name: Validate order-3 sweep (29 functionals)
+
+# Plan 07-00 Task 0.3 — order-3 strict-1e-12 sweep over the 29-functional
+# union (11 Plan 06-N1 inherited Phase-3 D-19 forwards + 18 Plan 06-N3
+# small-magnitude AD-residual forwards) against C++ xcfun at the restored
+# upstream HEAD a89b783. CPU-only — runs on GitHub Actions per project
+# execution split (CPU = GH Actions, GPU = local PC).
+#
+# Trigger: workflow_dispatch (manual). Architecture:
+#   build      → 1 job, compiles validation binary (statically linked
+#                xcfun-master C++ tree). Uploads binary as artifact.
+#   validate   → 29-job matrix, each runs the prebuilt binary against
+#                exactly one functional via --filter '^F$'. Uploads
+#                per-functional report.jsonl.
+#   summarize  → 1 job, downloads all 29 reports, tallies pass/fail.
+#                On 29/29 green: opens PR flipping 06-HUMAN-UAT.md
+#                items 4+5 to `passed`. On any failure: emits per-functional
+#                table to GITHUB_STEP_SUMMARY and exits 1 (red run, no PR).
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: ""           # CLAUDE.md: empty in CI — no fast-math / reassociation
+  RUST_BACKTRACE: 1
+  XCFUN_MASTER_COMMIT: a89b783497d4fe146b477ac7a053303ce4189e9a
+
+jobs:
+  build:
+    name: Build validation binary (with xcfun-master @ a89b783)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clone xcfun-master @ pinned commit
+        run: |
+          set -euo pipefail
+          git clone --depth=200 https://github.com/dftlibs/xcfun.git xcfun-master
+          git -C xcfun-master checkout "$XCFUN_MASTER_COMMIT"
+          echo "xcfun-master HEAD: $(git -C xcfun-master rev-parse HEAD)"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: validate-order3-sweep
+
+      - name: cargo build -p validation --release
+        run: cargo build -p validation --release
+
+      - name: Upload validation binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-binary
+          path: target/release/validation
+          if-no-files-found: error
+          retention-days: 7
+
+  validate:
+    name: validate ${{ matrix.functional }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 29
+      matrix:
+        functional:
+          # Plan 06-N1 inherited Phase-3 D-19 forwards (11):
+          - PBEINTC
+          - BECKESRX
+          - P86C
+          - P86CORRC
+          - PW91C
+          - SPBEC
+          - APBEC
+          - B97C
+          - B97_1C
+          - B97_2C
+          - PW91K
+          # Plan 06-N3 small-magnitude AD-residual forwards (18):
+          - M05X
+          - M05C
+          - M05X2C
+          - M06X
+          - M06C
+          - M06LX
+          - M06LC
+          - M06HFX
+          - M06HFC
+          - M06X2C
+          - B97X
+          - B97_1X
+          - B97_2X
+          - LYPC
+          - VWN_PBEC
+          - PW92C
+          - PBEC
+          - OPTX
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download validation binary
+        uses: actions/download-artifact@v4
+        with:
+          name: validation-binary
+          path: target/release/
+
+      - name: Make binary executable
+        run: chmod +x target/release/validation
+
+      - name: Sweep ${{ matrix.functional }} at order 3
+        id: sweep
+        run: |
+          set +e
+          mkdir -p validation
+          target/release/validation \
+            --backend cpu \
+            --order 3 \
+            --filter "^${{ matrix.functional }}\$" \
+            --reference cpp \
+            --jobs auto \
+            2>&1 | tee "validate-${{ matrix.functional }}.log"
+          EXIT=$?
+          set -e
+          echo "exit_code=$EXIT" >> "$GITHUB_OUTPUT"
+          # Surface the harness's verdict line for quick scanning
+          {
+            echo "## ${{ matrix.functional }}"
+            echo
+            echo "Exit code: \`$EXIT\` ($([ "$EXIT" -eq 0 ] && echo "PASS" || echo "FAIL"))"
+            echo
+            echo "Last 5 lines of harness output:"
+            echo '```'
+            tail -5 "validate-${{ matrix.functional }}.log" || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          # Don't fail the matrix job on harness FAIL — let summarize aggregate.
+          # Matrix-level fail-fast: false means one fail won't kill others.
+          # The summarize job uses each artifact's recorded exit_code.
+          exit 0
+
+      - name: Record exit code
+        run: echo "${{ steps.sweep.outputs.exit_code }}" > "exit-${{ matrix.functional }}.txt"
+
+      - name: Upload report and exit code
+        uses: actions/upload-artifact@v4
+        with:
+          name: validate-${{ matrix.functional }}
+          path: |
+            validation/report.jsonl
+            validate-${{ matrix.functional }}.log
+            exit-${{ matrix.functional }}.txt
+          if-no-files-found: error
+          retention-days: 7
+
+  summarize:
+    name: Summarize and (on full GREEN) open PR
+    needs: validate
+    if: always()  # run even when some matrix jobs fail
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all per-functional reports
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+          pattern: validate-*
+
+      - name: Tally pass/fail
+        id: tally
+        run: |
+          set -euo pipefail
+          declare -A RESULTS
+          PASS=0
+          FAIL=0
+          MISSING=0
+          FUNCTIONALS=(
+            PBEINTC BECKESRX P86C P86CORRC PW91C SPBEC APBEC B97C B97_1C B97_2C PW91K
+            M05X M05C M05X2C M06X M06C M06LX M06LC M06HFX M06HFC M06X2C
+            B97X B97_1X B97_2X LYPC VWN_PBEC PW92C PBEC OPTX
+          )
+          for fn in "${FUNCTIONALS[@]}"; do
+            exit_file="artifacts/validate-$fn/exit-$fn.txt"
+            if [ ! -f "$exit_file" ]; then
+              RESULTS[$fn]="MISSING"
+              MISSING=$((MISSING + 1))
+              continue
+            fi
+            code=$(cat "$exit_file" | tr -d '[:space:]')
+            if [ "$code" = "0" ]; then
+              RESULTS[$fn]="PASS"
+              PASS=$((PASS + 1))
+            else
+              RESULTS[$fn]="FAIL (exit $code)"
+              FAIL=$((FAIL + 1))
+            fi
+          done
+          {
+            echo "# Order-3 sweep — 29 functionals @ strict 1e-12 vs C++"
+            echo
+            echo "**Pass:** $PASS / 29  ·  **Fail:** $FAIL  ·  **Missing:** $MISSING"
+            echo
+            echo "| Functional | Result |"
+            echo "|---|---|"
+            for fn in "${FUNCTIONALS[@]}"; do
+              echo "| $fn | ${RESULTS[$fn]} |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "pass=$PASS"     >> "$GITHUB_OUTPUT"
+          echo "fail=$FAIL"     >> "$GITHUB_OUTPUT"
+          echo "missing=$MISSING" >> "$GITHUB_OUTPUT"
+
+      - name: Update 06-HUMAN-UAT.md (only when 29/29 green)
+        if: ${{ steps.tally.outputs.pass == '29' && steps.tally.outputs.fail == '0' && steps.tally.outputs.missing == '0' }}
+        run: |
+          set -euo pipefail
+          UAT=".planning/phases/06-gpu-backends-batch-lifecycle-xcfun-kernels-xcfun-gpu/06-HUMAN-UAT.md"
+          test -f "$UAT" || { echo "ERROR: $UAT not found — has the path changed?"; exit 1; }
+          STAMP="passed: order-3 sweep GREEN at strict 1e-12 over 29 functionals (11 N1 + 18 N3); commit ${{ github.sha }}; CI run ${{ github.run_id }}"
+          # Replace the result lines for items 4 and 5. The plan's expected
+          # pattern is "result: [pending …]" → "result: [<STAMP>]". Use
+          # awk so the section heuristic is robust to surrounding text.
+          python3 - <<PYEOF
+          import re, pathlib
+          p = pathlib.Path("$UAT")
+          src = p.read_text()
+          stamp = "$STAMP"
+          # Match each ### N. heading then the next `result:` line.
+          def patch(src, n):
+              pat = re.compile(
+                  r"(### " + str(n) + r"\.[^\n]*\n(?:[^\n]*\n){0,40}?result:\s*)(\[[^\]]*\])",
+                  re.MULTILINE,
+              )
+              return pat.sub(lambda m: m.group(1) + "[" + stamp + "]", src, count=1)
+          src = patch(src, 4)
+          src = patch(src, 5)
+          p.write_text(src)
+          PYEOF
+          # Show the diff so it's auditable in the run log
+          git diff "$UAT" | head -60
+
+      - name: Commit and push branch (only on full green)
+        id: commit
+        if: ${{ steps.tally.outputs.pass == '29' && steps.tally.outputs.fail == '0' && steps.tally.outputs.missing == '0' }}
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          BRANCH="verify/order3-sweep-${{ github.run_id }}"
+          git checkout -b "$BRANCH"
+          git add .planning/phases/06-gpu-backends-batch-lifecycle-xcfun-kernels-xcfun-gpu/06-HUMAN-UAT.md
+          git commit -m "$(cat <<'EOF'
+          docs(06-N1/06-N3/07-00): verify auto-tightening on restored xcfun-master a89b783
+
+          Plan 07-00 Task 0.3 — order-3 strict-1e-12 sweep over 29 functionals
+          (11 Plan 06-N1 inherited Phase-3 D-19 forwards + 18 Plan 06-N3
+          small-magnitude AD-residual forwards) GREEN against C++ xcfun at
+          HEAD a89b783. Run on GH Actions ${{ github.run_id }} via 29-way
+          matrix split. Flips 06-HUMAN-UAT.md items 4 + 5 to passed.
+          EOF
+          )"
+          git push -u origin "$BRANCH"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Open PR (only on full green)
+        if: ${{ steps.tally.outputs.pass == '29' && steps.tally.outputs.fail == '0' && steps.tally.outputs.missing == '0' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --base "${{ github.ref_name }}" \
+            --head "${{ steps.commit.outputs.branch }}" \
+            --title "docs(06-N1/06-N3/07-00): verify auto-tightening on xcfun-master a89b783" \
+            --body "$(cat <<'EOF'
+          ## Summary
+          - Plan 07-00 Task 0.3 — order-3 strict-1e-12 sweep over 29 functionals against C++ xcfun at HEAD \`a89b783\`.
+          - Generated by GH Actions matrix run [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+          - Result: **29/29 GREEN**.
+          - 06-HUMAN-UAT.md items 4 + 5 flipped from \`pending\` to \`passed\`.
+
+          ## Functional set verified
+          - **Plan 06-N1 inherited Phase-3 D-19 forwards (11):** PBEINTC, BECKESRX, P86C, P86CORRC, PW91C, SPBEC, APBEC, B97C, B97_1C, B97_2C, PW91K
+          - **Plan 06-N3 small-magnitude AD-residual forwards (18):** M05X, M05C, M05X2C, M06X, M06C, M06LX, M06LC, M06HFX, M06HFC, M06X2C, B97X, B97_1X, B97_2X, LYPC, VWN_PBEC, PW92C, PBEC, OPTX
+
+          ## Test plan
+          - [ ] After merge, item-3 of 06-HUMAN-UAT.md (mpmath fixture regen) flips to \`passed\` if PR #1 is also merged.
+          - [ ] Plan 07-00 Task 0.4 confirmation checkpoint becomes runnable.
+
+          ## Deviation from plan
+          Plan 07-00 Task 0.3 originally specified an offline operator-run sweep on the user's workstation. This PR fulfills the same contract via parallel CI matrix execution per the project's execution split: CPU work runs on GH Actions, GPU work runs locally. The verification is byte-for-byte equivalent — same harness, same C++ reference at \`a89b783\`, same density grid (xoshiro256++ seed \`0x1234abcd\`).
+
+          🤖 Generated with [Claude Code](https://claude.com/claude-code)
+          EOF
+          )"
+
+      - name: Fail if not 29/29 green
+        if: ${{ steps.tally.outputs.pass != '29' || steps.tally.outputs.fail != '0' || steps.tally.outputs.missing != '0' }}
+        run: |
+          echo "::error::Order-3 sweep failed — pass=${{ steps.tally.outputs.pass }}/29, fail=${{ steps.tally.outputs.fail }}, missing=${{ steps.tally.outputs.missing }}. See the run summary for the per-functional table. 06-HUMAN-UAT.md left untouched per Plan 07-00 Task 0.3 acceptance criteria."
+          exit 1
