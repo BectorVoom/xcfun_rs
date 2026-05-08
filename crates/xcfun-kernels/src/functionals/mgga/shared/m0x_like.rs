@@ -31,10 +31,10 @@ use xcfun_ad::ctaylor::{ctaylor_add, ctaylor_scalar_mul, ctaylor_sub};
 use xcfun_ad::ctaylor_rec::mul::ctaylor_mul;
 use xcfun_ad::math::{ctaylor_pow, ctaylor_reciprocal};
 
-#[allow(unused_imports)] // M0X_ALPHA_X_F64 and M0X_SCALEFACTOR_TF_F64 are used by calling kernels
+#[allow(unused_imports)]
+// M0X_ALPHA_X_F64 and M0X_SCALEFACTOR_TF_F64 are used by calling kernels
 use super::constants::{
-    M0X_ALPHA_C_ANTIPARALLEL_F64, M0X_ALPHA_C_PARALLEL_F64, M0X_ALPHA_X_F64,
-    M0X_SCALEFACTOR_TF_F64,
+    M0X_ALPHA_C_ANTIPARALLEL_F64, M0X_ALPHA_C_PARALLEL_F64, M0X_ALPHA_X_F64, M0X_SCALEFACTOR_TF_F64,
 };
 use crate::density_vars::DensVarsDev;
 use crate::functionals::gga::shared::pw91_like;

@@ -1,3 +1,8 @@
+// Each fixture is constructed inline rather than via `vec![...]` because
+// each `run(...)` call has its own logic block (printing, alias mapping,
+// etc.); the explicit `Vec::new() + push` form is easier to read here.
+#![allow(clippy::vec_init_then_push)]
+
 //! Plan 05-04 helper — generate `tests/fixtures/expected.json` by
 //! calling `xcfun_rs::Functional::eval` for each D-14 fixture.
 //!

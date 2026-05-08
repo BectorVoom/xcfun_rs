@@ -36,6 +36,7 @@ pub enum Backend {
 impl Backend {
     /// Parse the `XCFUN_FORCE_BACKEND` env-var value. Case-insensitive;
     /// returns `None` when the value matches no recognised variant.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_ascii_lowercase().as_str() {
             "cpu" => Some(Backend::Cpu),

@@ -7,8 +7,8 @@
 //! - `tpssc_eps.hpp:1-62`     — `C`, `epsc_summax`, `epsc_revpkzb`, `tpssc_eps`
 //! - `revtpssx_eps.hpp:1-65`  — `epsx_unif`, `x`, `F_x`, `revtpssx_eps`
 //! - `revtpssc_eps.hpp:1-111` — `revtpssA`, `revtpssH`, `revtpss_beta`,
-//!                               `revtpss_pbec_eps`, `revtpss_pbec_eps_polarized`,
-//!                               `C`, `epsc_summax`, `epsc_revpkzb`, `revtpssc_eps`
+//!   `revtpss_pbec_eps`, `revtpss_pbec_eps_polarized`,
+//!   `C`, `epsc_summax`, `epsc_revpkzb`, `revtpssc_eps`
 
 #![allow(non_snake_case)]
 
@@ -1332,7 +1332,7 @@ fn revtpss_pbec_eps<F: Float>(d: &DensVarsDev<F>, out: &mut Array<F>, #[comptime
     ctaylor_scalar_mul::<F>(&g_over_d, F::cast_from(PBEC_D2_PREFACTOR_F64), &mut d2, n);
 
     let mut h = Array::<F>::new(size);
-    revtpss_H::<F>(&d2, &eps, &u3, &mut beta_tpss, &mut h, n);
+    revtpss_H::<F>(&d2, &eps, &u3, &beta_tpss, &mut h, n);
 
     ctaylor_add::<F>(&eps, &h, out, n);
 }
@@ -1378,7 +1378,7 @@ fn revtpss_pbec_eps_polarized<F: Float>(
     ctaylor_scalar_mul::<F>(&g_over_d, F::cast_from(PBEC_D2_PREFACTOR_F64), &mut d2, n);
 
     let mut h = Array::<F>::new(size);
-    revtpss_H::<F>(&d2, &eps, &u3, &mut beta_tpss, &mut h, n);
+    revtpss_H::<F>(&d2, &eps, &u3, &beta_tpss, &mut h, n);
 
     ctaylor_add::<F>(&eps, &h, out, n);
 }

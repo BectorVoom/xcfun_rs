@@ -1,3 +1,8 @@
+// App-boundary binary; explicit `drop(cfg)` makes intent clear at the top
+// level even when cfg has no Drop impl, and the rest of the lints below
+// fight against deliberately-explicit harness style. See validation/src/lib.rs.
+#![allow(clippy::drop_non_drop)]
+
 //! `validation` binary — tier-2 parity harness CLI.
 //!
 //! Usage:

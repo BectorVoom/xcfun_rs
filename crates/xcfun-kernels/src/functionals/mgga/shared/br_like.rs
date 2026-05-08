@@ -105,7 +105,7 @@ pub fn br_newton_cube<F: Float>(z: F) -> F {
     #[unroll]
     for _i in 0_u32..20_u32 {
         let step = br_nr_step_cube::<F>(x, z);
-        x = x + step;
+        x += step;
     }
     let _ = half;
     x

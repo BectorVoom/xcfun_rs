@@ -48,7 +48,7 @@ fn batch_api_surface_exists() {
         let _d: Result<(), xcfun_core::XcError> = b.download_result(dummy_out, 0, 0);
     }
     // Ensure the generic associated fn is reachable from outside.
-    fn _assert_eval_vec_host_exists<'fun>(fun: &'fun xcfun_eval::Functional) {
+    fn _assert_eval_vec_host_exists(fun: &xcfun_eval::Functional) {
         let mut out: Vec<f64> = Vec::new();
         let _e: Result<(), xcfun_core::XcError> =
             Batch::<CpuRuntime>::eval_vec_host(fun, &[], 0, &mut out, 0, 0);

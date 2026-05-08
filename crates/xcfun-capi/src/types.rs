@@ -46,6 +46,7 @@ pub enum xcfun_mode_t {
 ///
 /// `xcfun_vars_t` per xcfun-master/api/xcfun.h:86-122. 31 active variants
 /// + UNSET = -1 + NR_VARS = 31. Discriminants MUST match `xcfun_core::Vars`.
+///
 /// Verified by the smoke test. Same rationale as `xcfun_mode_t` above —
 /// the upstream-equivalent `xcfun_vars` enum is emitted from the
 /// cbindgen.toml prelude (D-12).

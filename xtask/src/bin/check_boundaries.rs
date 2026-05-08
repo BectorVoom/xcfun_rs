@@ -9,9 +9,10 @@
 //!   - xcfun-ad:      {cubecl, cubecl-cpu, bytemuck}
 //!   - xcfun-kernels: {xcfun-core, xcfun-ad, cubecl, thiserror}
 //!     (D-08 contract: NEVER depends on cubecl-cpu/-hip/-cuda/-wgpu —
-//!      kernel bodies do not instantiate runtimes; only `cubecl` core.)
+//!     kernel bodies do not instantiate runtimes; only `cubecl` core.)
 //!   - xcfun-eval:    {xcfun-core, xcfun-ad, xcfun-kernels, cubecl, cubecl-cpu, thiserror}
 //!     (per-point cubecl-cpu validation substrate; consumes xcfun-kernels.)
+//!
 //! `validation` / `xtask` — unrestricted (app-boundary).
 //!
 //! Exit codes:

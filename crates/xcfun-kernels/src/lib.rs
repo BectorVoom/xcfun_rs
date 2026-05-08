@@ -5,6 +5,11 @@
 // `launch_unchecked` adapters in any tests that move into this crate later.
 #![cfg_attr(not(feature = "testing"), forbid(unsafe_code))]
 #![cfg_attr(feature = "testing", deny(unsafe_code))]
+// Algorithmic-identity rule (CLAUDE.md): functional constants are ported verbatim
+// from `xcfun-master/src/functionals/*` and the libm s_erf reference. Keeping the
+// exact literal forms (more digits than f64 represents, and decimal forms of
+// `f64::consts::*`) is the auditable parity contract; these clippy lints fight that.
+#![allow(clippy::excessive_precision, clippy::approx_constant)]
 
 //! # xcfun-kernels
 //!

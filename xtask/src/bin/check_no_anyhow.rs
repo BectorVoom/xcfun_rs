@@ -38,13 +38,13 @@ fn check_cargo_toml(path: &Path) -> Result<Vec<String>> {
     let value: Value =
         toml::from_str(&contents).with_context(|| format!("parse {}", path.display()))?;
     let mut violations = Vec::new();
-    if let Some(deps) = value.get("dependencies").and_then(|v| v.as_table()) {
-        if deps.contains_key("anyhow") {
-            violations.push(format!(
-                "{}: [dependencies] contains `anyhow` (library crates must use thiserror + XcError)",
-                path.display()
-            ));
-        }
+    if let Some(deps) = value.get("dependencies").and_then(|v| v.as_table())
+        && deps.contains_key("anyhow")
+    {
+        violations.push(format!(
+            "{}: [dependencies] contains `anyhow` (library crates must use thiserror + XcError)",
+            path.display()
+        ));
     }
     Ok(violations)
 }

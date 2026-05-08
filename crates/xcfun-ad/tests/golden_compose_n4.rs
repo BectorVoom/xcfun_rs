@@ -22,6 +22,10 @@
 //! n_var=4 op="compose" cases.
 
 #![cfg(feature = "testing")]
+// Test data uses arbitrary float literals that happen to approximate PI; clippy's
+// approximate_constants lint here would replace test inputs with f64::consts::PI,
+// changing what the test exercises.
+#![allow(clippy::approx_constant)]
 
 use cubecl::prelude::*;
 use cubecl_cpu::CpuRuntime;
@@ -62,24 +66,25 @@ fn run_compose_n4(x: &[f64; SIZE], f_coef: &[f64; F_LEN]) -> [f64; SIZE] {
 /// `f(t) = c` (constant) → out = [c, 0, 0, ..., 0] regardless of x.
 #[test]
 fn compose_n4_constant_function_returns_constant() {
-    let f_coef: [f64; F_LEN] = [3.14, 0.0, 0.0, 0.0, 0.0];
+    const C: f64 = 3.14_f64;
+    let f_coef: [f64; F_LEN] = [C, 0.0, 0.0, 0.0, 0.0];
     let x: [f64; SIZE] = [
         1.0, 0.5, 0.25, 0.125, 0.0625, 0.03125, 0.015625, 0.0078125, 0.5, 0.25, 0.125, 0.0625,
         0.03125, 0.015625, 0.0078125, 0.00390625,
     ];
     let out = run_compose_n4(&x, &f_coef);
     assert!(
-        (out[0] - 3.14).abs() < 1e-15,
+        (out[0] - C).abs() < 1e-15,
         "compose_n4 with f=const: out[0] = {}, expected {}",
         out[0],
-        3.14
+        C
     );
-    for i in 1..SIZE {
+    for (i, val) in out.iter().enumerate().skip(1) {
         assert!(
-            out[i].abs() < 1e-15,
+            val.abs() < 1e-15,
             "compose_n4 with f=const: out[{}] = {}, expected 0",
             i,
-            out[i]
+            val
         );
     }
 }

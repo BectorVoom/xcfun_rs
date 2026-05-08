@@ -1,7 +1,7 @@
 //! `validation/build.rs` — compiles the xcfun-master C++ reference sources
 //! (XCFunctional.cpp + xcint.cpp + 11 Phase-2 LDA .cpp + common_parameters.cpp
 //! + aliases.cpp) plus the auto-generated `c_stubs.cpp` (67 non-LDA stubs,
-//! emitted by `xtask regen-registry`) into the static lib `xcfun_cpp_lda`.
+//!   emitted by `xtask regen-registry`) into the static lib `xcfun_cpp_lda`.
 //!
 //! Flags:
 //!   -std=c++17                     — xcfun-master requires C++17.

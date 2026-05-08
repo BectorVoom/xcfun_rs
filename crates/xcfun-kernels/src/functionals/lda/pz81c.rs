@@ -8,6 +8,7 @@
 //! Two regions per spin channel:
 //!   - `r_s < 1`: Ehd branch — `c[1] + log(rs)*(c[0] + rs*c[2]) + c[3]*rs`
 //!   - `r_s >= 1`: Eld branch — `c[0] / (1 + c[1]*sqrt(rs) + c[2]*rs)`
+//!
 //! Spin-interpolated via `fz(d) = (2^(4/3)*(a_43+b_43)*n_m13/n - 2) / (2*2^(1/3) - 2)`.
 //!
 //! # Implementation note — runtime if-else over ctaylor scalar

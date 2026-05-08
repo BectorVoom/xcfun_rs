@@ -22,6 +22,7 @@
 //!          sourced from the xcint_vars table.
 //!        - `ALIASES.rs` — a `pub static ALIASES: &[Alias] = &[]` (Phase 2
 //!          empty; Phase 4 populates 46 aliases).
+//!
 //!      Alongside each `.rs` file an `<NAME>.rs.sha256` stamp is written
 //!      containing the hex SHA-256 of the Rust source (for `--check` drift
 //!      detection).
@@ -98,7 +99,7 @@ fn run_extractor(exe: &Path, xcfun_root: &Path) -> Result<String> {
             stderr
         );
     }
-    Ok(String::from_utf8(output.stdout).context("extractor stdout not UTF-8")?)
+    String::from_utf8(output.stdout).context("extractor stdout not UTF-8")
 }
 
 // ---------- parsed shapes ----------
@@ -393,25 +394,25 @@ fn emit_functional_descriptors_rs(functionals: &[FunctionalRec]) -> String {
 
     // Per-LDA `static <ID>_TEST_IN: [f64; N] = [...];` rodata arrays.
     for id in FUNCTIONAL_IDS {
-        if let Some(rec) = map.get(id) {
-            if let (Some(ti), Some(to)) = (rec.test_in.as_ref(), rec.test_out.as_ref()) {
-                out.push_str(&format!("static {}_TEST_IN: [f64; {}] = [", id, ti.len()));
-                for (i, v) in ti.iter().enumerate() {
-                    if i > 0 {
-                        out.push_str(", ");
-                    }
-                    out.push_str(&format_f64(*v));
+        if let Some(rec) = map.get(id)
+            && let (Some(ti), Some(to)) = (rec.test_in.as_ref(), rec.test_out.as_ref())
+        {
+            out.push_str(&format!("static {}_TEST_IN: [f64; {}] = [", id, ti.len()));
+            for (i, v) in ti.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(", ");
                 }
-                out.push_str("];\n");
-                out.push_str(&format!("static {}_TEST_OUT: [f64; {}] = [", id, to.len()));
-                for (i, v) in to.iter().enumerate() {
-                    if i > 0 {
-                        out.push_str(", ");
-                    }
-                    out.push_str(&format_f64(*v));
-                }
-                out.push_str("];\n");
+                out.push_str(&format_f64(*v));
             }
+            out.push_str("];\n");
+            out.push_str(&format!("static {}_TEST_OUT: [f64; {}] = [", id, to.len()));
+            for (i, v) in to.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(", ");
+                }
+                out.push_str(&format_f64(*v));
+            }
+            out.push_str("];\n");
         }
     }
     out.push('\n');
@@ -424,10 +425,8 @@ fn emit_functional_descriptors_rs(functionals: &[FunctionalRec]) -> String {
     ));
     for id in FUNCTIONAL_IDS {
         if let Some(rec) = map.get(id) {
-            if rec.test_in.is_some() && rec.test_out.is_some() {
+            if let (Some(ti), Some(to)) = (rec.test_in.as_ref(), rec.test_out.as_ref()) {
                 // Fully-populated entry.
-                let ti = rec.test_in.as_ref().unwrap();
-                let to = rec.test_out.as_ref().unwrap();
                 out.push_str("    FunctionalDescriptor {\n");
                 out.push_str(&format!("        id: FunctionalId::{},\n", id));
                 out.push_str(&format!("        name: \"{}\",\n", id));

@@ -1,3 +1,8 @@
+// Test deliberately spells out the eval_vec function-pointer type to lock the
+// public signature; clippy's type_complexity hint here would push us into a
+// type alias that hides what the test is asserting.
+#![allow(clippy::type_complexity)]
+
 //! Phase 6 Plan 06-05 — RS-08 + D-14 + GPU-05 integration tests for
 //! `Functional::eval_vec` (threshold dispatch + ERF auto-fallback +
 //! `XCFUN_MIN_BATCH_SIZE` env override + pitched-layout contract).

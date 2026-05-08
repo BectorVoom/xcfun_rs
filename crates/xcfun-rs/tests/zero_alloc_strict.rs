@@ -8,9 +8,10 @@
 //! after warm-up — i.e., the substrate ALSO contributes nothing per call.
 //!
 //! Achieving strict 0 requires the D-12 reusable handle in
-//! `xcfun-rs::Functional` (`UnsafeCell<EvalHandle>` with input_buf + out_buf
-//! + dens_vars sized at `eval_setup` time) AND a cubecl-cpu launch path that
-//! does not call `client.create_from_slice` / `client.empty` per eval.
+//! `xcfun-rs::Functional` (`UnsafeCell<EvalHandle>` with `input_buf`,
+//! `out_buf`, `dens_vars` sized at `eval_setup` time) AND a cubecl-cpu launch
+//! path that does not call `client.create_from_slice` / `client.empty`
+//! per eval.
 //!
 //! # Status — Plan 06-06 sign-off
 //!

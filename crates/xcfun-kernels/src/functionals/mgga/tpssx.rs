@@ -45,7 +45,7 @@ fn tpss_exchange_spin<F: Float>(
 
     // F_x(2rho, 4grad2, 2tau)
     let mut fx = Array::<F>::new(size);
-    tpss_like::tpss_F_x::<F>(&two_rho, &four_grad2, &mut two_tau, &mut fx, n);
+    tpss_like::tpss_F_x::<F>(&two_rho, &four_grad2, &two_tau, &mut fx, n);
 
     // fx_unif(2*rho)
     let mut eps_unif = Array::<F>::new(size);

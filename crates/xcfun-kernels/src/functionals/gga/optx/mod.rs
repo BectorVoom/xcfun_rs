@@ -5,5 +5,8 @@
 //!
 //! Both port the inline body in `optx.cpp:18-26` and `optxcorr.cpp:18-33`.
 
+// `optx::optx` repeats the parent module name (Handy-Cohen kernel sits at
+// `xc_optx_*` in C++; the layout mirrors the C++ functional file naming).
+#[allow(clippy::module_inception)]
 pub mod optx;
 pub mod optxcorr;

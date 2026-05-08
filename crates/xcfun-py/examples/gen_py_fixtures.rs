@@ -1,3 +1,7 @@
+// Each fixture is built up with explicit logic per case rather than via
+// `vec![...]`; the explicit `Vec::new() + push` form is clearer per-case.
+#![allow(clippy::vec_init_then_push)]
+
 //! Rust binary that emits a parity ground-truth JSON fixture for the
 //! Python pytest cross-language gate (PY-03 + the Phase 5 D-08-A bit-pattern).
 //!

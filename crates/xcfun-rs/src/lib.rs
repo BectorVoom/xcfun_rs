@@ -1,3 +1,8 @@
+// Public facade with `Functional::eval(...)` that mirrors xcfun-eval's
+// many-arg signature; reducing them would require a builder layer outside
+// the Phase 5 D-02 contract. Allow the linted argument count.
+#![allow(clippy::too_many_arguments)]
+
 //! xcfun-rs — native Rust public API for xcfun_rs (Phase 5).
 //!
 //! Stable Rust facade over `xcfun-eval::Functional`. Decouples the

@@ -8,6 +8,11 @@
 
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
+// C ABI symbols deliberately dereference raw pointers passed across the FFI
+// boundary; the public functions are `extern "C"` (callable from C) where
+// `unsafe` cannot be expressed at the public signature level. The unsafe is
+// confined to the inner block per the `c_entry!` macro contract.
+#![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 pub mod c_entry;
 pub mod types;

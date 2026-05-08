@@ -6,10 +6,10 @@
 //!
 //! Sources:
 //! - TPSS:    `xcfun-master/src/functionals/tpssx_eps.hpp:29-33`,
-//!            `xcfun-master/src/functionals/tpssc_eps.hpp:59`
+//!   `xcfun-master/src/functionals/tpssc_eps.hpp:59`
 //! - revTPSS: `xcfun-master/src/functionals/revtpssx_eps.hpp:28-32`
 //! - SCAN:    `xcfun-master/src/functionals/SCAN_like_eps.hpp:82-84` + family
-//!            constants (multiple variants).
+//!   constants (multiple variants).
 //! - M0x:     `xcfun-master/src/functionals/m0xy_fun.hpp:35-46`
 //! - BLOCX:   `xcfun-master/src/functionals/blocx.cpp:20-24`
 //! - CSC:     `xcfun-master/src/functionals/cs.cpp:18-21`

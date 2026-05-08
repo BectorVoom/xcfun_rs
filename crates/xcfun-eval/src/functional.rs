@@ -694,8 +694,8 @@ impl Functional {
             for dir in 0..3_usize {
                 // Zero ct_in completely; per XCFunctional.cpp:686-687/744-745
                 // slots 4..9 (and β-side 14..19) are explicitly zeroed.
-                for slot in 0..(inlen * SIZE_N2) {
-                    ct_in[slot] = 0.0;
+                for slot in ct_in.iter_mut().take(inlen * SIZE_N2) {
+                    *slot = 0.0;
                 }
 
                 // Populate spin channels (always BOTH for spin-resolved —
@@ -703,10 +703,10 @@ impl Functional {
                 // belongs to).
                 let spin_offsets: &[usize] = if nspin == 2 { &[0, 10] } else { &[0] };
                 for &off in spin_offsets {
-                    // in[0 + off].CNST = input[0 + off] (density)
-                    ct_in[(0 + off) * SIZE_N2] = input[off];
-                    // in[0 + off].VAR0 = input[(1 + dir) + off] (1st-order density gradient)
-                    ct_in[(0 + off) * SIZE_N2 + 1] = input[(1 + dir) + off];
+                    // in[off].CNST = input[off] (density)
+                    ct_in[off * SIZE_N2] = input[off];
+                    // in[off].VAR0 = input[(1 + dir) + off] (1st-order density gradient)
+                    ct_in[off * SIZE_N2 + 1] = input[(1 + dir) + off];
 
                     // in[src + off] for src = 1..=3 (gx/gy/gz):
                     //   CNST = input[src + off]

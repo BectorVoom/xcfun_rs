@@ -26,6 +26,7 @@
 //!   - All upstream LDA test cases use `XC_A_B` variant, inlen = 2.
 //!   - Order 1 → outlen = 3 (1 + 2 = energy + 2 first-derivs).
 //!   - Order 2 → outlen = 6 (1 + 2 + 3 = energy + 2 first + 3 second).
+//!
 //! The registry's `test_outlen` field captures the observed length.
 
 #![cfg(feature = "testing")]
@@ -42,12 +43,7 @@ use xcfun_eval::Functional;
 /// This compensates for the regen-registry extractor's literal reading of the
 /// macro's order field; fixing the extractor is deferred to a future task.
 fn infer_order_from_outlen(inlen: usize, outlen: usize) -> Option<u32> {
-    for k in 0_u32..=2 {
-        if taylorlen(inlen, k as usize) == outlen {
-            return Some(k);
-        }
-    }
-    None
+    (0_u32..=2).find(|&k| taylorlen(inlen, k as usize) == outlen)
 }
 
 #[test]

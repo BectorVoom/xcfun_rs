@@ -1,3 +1,6 @@
+// Test fixtures: explicit `drop(cfg)` and `|r| key(r)` are intentional structure.
+#![allow(clippy::drop_non_drop, clippy::redundant_closure)]
+
 //! Parallel parity integration test for the validation harness.
 //!
 //! Quick task 260430-4x7 — proves `--jobs 1` and `--jobs N>1` produce

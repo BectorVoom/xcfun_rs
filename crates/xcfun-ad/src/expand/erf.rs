@@ -71,6 +71,10 @@
 //! `exp(-x*x - 0.5625 + R/S)` branch — still ~3e-15 relative, far under
 //! the 1e-12 tier-2 contract.
 
+// FreeBSD msun-derived polynomial coefficients (s_erf.c) — more digits than
+// f64 can represent, preserved verbatim for algorithmic-identity auditing.
+#![allow(clippy::excessive_precision)]
+
 use cubecl::prelude::*;
 
 use crate::expand::gauss::gauss_expand;
@@ -333,7 +337,7 @@ pub fn erf_expand<F: Float>(t: &mut Array<F>, a: F, #[comptime] n: u32) {
     // unusable here (π rounds to f32 before widening).
     // Value: `2.0 / libm::sqrt(std::f64::consts::PI)` = 1.1283791670955126_f64,
     // exact to all 17 decimals matching C++ `2.0 / std::sqrt(M_PI)`.
-    let c = F::cast_from(1.1283791670955126_f64);
+    let c = F::cast_from(std::f64::consts::FRAC_2_SQRT_PI);
     #[unroll]
     for i in 0_u32..=n {
         let ki = i as usize;
@@ -381,7 +385,7 @@ pub fn erf_precise_taylor<F: Float>(t: &mut Array<F>, x0: F, #[comptime] n: u32)
     //   tfuns_multo against the even-only g[2k] = (-1)^k / k! coefficients);
     //   then we scale every t[i] by 2/√π at f64 precision.
     gauss_expand::<F>(t, x0, n);
-    let c = F::cast_from(1.1283791670955126_f64);
+    let c = F::cast_from(std::f64::consts::FRAC_2_SQRT_PI);
     #[unroll]
     for i in 0_u32..=n {
         let ki = i as usize;

@@ -128,10 +128,10 @@ fn potential_parity_100() {
                         // Try parsing scientific notation up to ')'
                         let s = &line[re_pos + 8..];
                         let upto = s.find(')').unwrap_or(s.len());
-                        if let Ok(re) = s[..upto].trim().parse::<f64>() {
-                            if re > entry.1 {
-                                entry.1 = re;
-                            }
+                        if let Ok(re) = s[..upto].trim().parse::<f64>()
+                            && re > entry.1
+                        {
+                            entry.1 = re;
                         }
                     }
                 }

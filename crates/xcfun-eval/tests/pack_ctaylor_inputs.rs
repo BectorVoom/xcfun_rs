@@ -1,3 +1,8 @@
+// `0 * size_n3 + ...` and `1 + 0` are intentional pedagogical structure mirroring
+// the underlying CTaylor slot layout — clippy's identity_op / erasing_op hints
+// would obscure the algorithm-faithful indexing.
+#![allow(clippy::identity_op, clippy::erasing_op)]
+
 //! W9 — pack_ctaylor_inputs_order3 / order4 unit tests (Plan 03-06 Task 1).
 //!
 //! Verifies VAR0/VAR1/VAR2/VAR3 bit-flag seeding for the CTaylor<F, 3> and

@@ -3,7 +3,7 @@
 //! # Source
 //! - `xcfun-master/src/functionals/pw92c.cpp:18-20` (`pw92eps::pw92eps(d) * d.n`)
 //! - `xcfun-master/src/functionals/pw92eps.hpp:48-61` (epsilon helper, accurate constants
-//!    per RESEARCH §"PW92C Legacy Constants")
+//!   per RESEARCH §"PW92C Legacy Constants")
 //!
 //! # Phase 2 PW92C Legacy Constants (RESEARCH §"PW92C Legacy Constants")
 //! Ships ACCURATE constants only (XCFUN_REF_PW92C undefined). No Cargo feature flag.

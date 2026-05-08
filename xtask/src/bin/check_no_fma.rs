@@ -240,13 +240,14 @@ fn scan_asm_file(contents: &str, path: &str, needles: &[&str], violations: &mut 
         let trimmed = line.trim_start();
 
         // Detect a new symbol label: e.g. `_ZN8xcfun_ad12ctaylor_rec3mul...:`
-        if let Some(stripped) = trimmed.strip_suffix(':') {
-            if !stripped.starts_with('.') && !stripped.is_empty() {
-                let demangled = rustc_demangle::demangle(stripped).to_string();
-                sym_of_interest = needles.iter().any(|n| demangled.contains(n));
-                current_sym = Some(demangled);
-                continue;
-            }
+        if let Some(stripped) = trimmed.strip_suffix(':')
+            && !stripped.starts_with('.')
+            && !stripped.is_empty()
+        {
+            let demangled = rustc_demangle::demangle(stripped).to_string();
+            sym_of_interest = needles.iter().any(|n| demangled.contains(n));
+            current_sym = Some(demangled);
+            continue;
         }
 
         if !sym_of_interest {

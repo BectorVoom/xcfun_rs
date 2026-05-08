@@ -374,6 +374,9 @@ pub fn dispatch_kernel<F: Float>(
 /// Phase 4 plan 04-03 Wave 3 adds M0x family (12) + BLOCX (1):
 ///   {29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 70}.
 /// Total: 78 functional ids supported.
+// Explicit `|`-joined ID lists keep wave/phase grouping comments aligned with
+// the functional IDs they describe; clippy's range suggestion fragments that.
+#[allow(clippy::manual_range_patterns)]
 pub fn supports(id: FunctionalId) -> bool {
     matches!(
         id as u32,

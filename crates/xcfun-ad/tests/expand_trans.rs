@@ -302,7 +302,7 @@ fn host_erf_expand(a: f64, n: usize) -> Vec<f64> {
     // Plan 02-06 Fix A: kernel scales by `2/√π` injected at f64 precision
     // via `F::cast_from(1.1283791670955126_f64)`. Mirror the same constant
     // here so the host oracle stays bit-close to the kernel.
-    let c = 1.1283791670955126_f64;
+    let c = std::f64::consts::FRAC_2_SQRT_PI;
     for i in 0..=n {
         t[i] *= c;
     }

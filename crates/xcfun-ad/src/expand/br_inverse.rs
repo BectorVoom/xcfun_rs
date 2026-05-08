@@ -251,7 +251,7 @@ pub fn br_inverse_expand<F: Float>(t: &mut Array<F>, #[comptime] n: u32) {
             br_z_ctaylor::<F>(t, &mut f, n);
             // t[i] = -f[i] * t[1]  (== -f[i] * inv_f1; we re-read t[1] for
             //                       clarity / symmetry with the C++ source).
-            t[i as usize] = -f[i as usize] * t[1];
+            t[i] = -f[i] * t[1];
         }
     }
 }

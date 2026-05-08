@@ -3,8 +3,8 @@
 //!
 //! Workflow:
 //!   1. cbindgen::Builder::new().with_crate(/* crates/xcfun-capi */)
-//!        .with_config(/* cbindgen.toml */).generate()?
-//!        .write_to_file(/* include/xcfun.h */).
+//!      .with_config(/* cbindgen.toml */).generate()?
+//!      .write_to_file(/* include/xcfun.h */).
 //!   2. Read the just-written file; sha256 it; write `xcfun.h.sha256`.
 //!   3. `--check` mode: regenerate in memory, sha256 it, compare to
 //!      committed stamp; exit 2 on drift.

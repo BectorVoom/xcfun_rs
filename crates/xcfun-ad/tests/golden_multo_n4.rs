@@ -24,6 +24,9 @@
 //! cross-check vs `mul_set_n4` provides high confidence in correctness.
 
 #![cfg(feature = "testing")]
+// Arbitrary fixture inputs approximate PI/etc; clippy would otherwise replace them
+// with f64::consts::PI and change the test fixture contents.
+#![allow(clippy::approx_constant)]
 
 use cubecl::prelude::*;
 use cubecl_cpu::CpuRuntime;
