@@ -31,8 +31,13 @@ const P86_CX: f64 = 0.001_667_f64;
 const P86_BG: f64 = 7.389e-6_f64;
 const P86_FG: f64 = 0.11_f64;
 const P86_CINF: f64 = 0.004_235_f64;
-/// `(9π)^(1/6)` precomputed in f64. 9·π = 28.27433..., ^(1/6) = 1.7450503...
-const P86_PI_EXPR: f64 = 1.745_050_359_752_853_5_f64;
+/// `(9π)^(1/6)` precomputed at higher precision then rounded to the
+/// f64-nearest. 9·π ≈ 28.274333882308138, ^(1/6) = 1.745415106125124.
+/// The previous literal `1.745_050_359_752_853_5` was incorrect by
+/// ~2e-4 relative (origin unknown — does not match any standard
+/// formulation of (9π)^(1/6)). Locked by
+/// `tests::p86_pi_expr_locked` (06-N7/07-00).
+const P86_PI_EXPR: f64 = 1.745_415_106_125_124_f64;
 const P86_DBL_EPS: f64 = 2.220_446_049_250_313e-16_f64;
 /// `cbrt(2.0) = 1.2599210498948732`.
 const P86_CBRT2: f64 = 1.259_921_049_894_873_2_f64;

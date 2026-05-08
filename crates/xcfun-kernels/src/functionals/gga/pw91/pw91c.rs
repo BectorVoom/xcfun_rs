@@ -67,10 +67,11 @@ const PW91C_D2FZ0: f64 = 1.709_921_f64;
 const PW91C_ALPHA: f64 = 0.09_f64;
 const PW91C_CC0: f64 = 0.004_235_f64;
 const PW91C_CX: f64 = -0.001_667_f64;
-/// `nu = 16 · cbrt(3π²) / π` precomputed in f64.
-/// cbrt(3π²) = cbrt(29.608813...) = 3.09360...
-/// 16 · 3.09360... / π = 49.4977... / 3.14159... = 15.7559...
-const PW91C_NU: f64 = 15.755_926_546_290_507_f64;
+/// `nu = 16 · cbrt(3π²) / π` precomputed at higher precision then
+/// rounded to the f64-nearest. The previous literal `15.755_926_546_290_507`
+/// was hand-derived at insufficient precision (off by ~4e-7 relative);
+/// locked by `tests::pw91c_nu_locked` (06-N7/07-00).
+const PW91C_NU: f64 = 15.755_920_349_483_143_f64;
 /// `beta = nu · Cc0`.
 const PW91C_BETA: f64 = PW91C_NU * PW91C_CC0;
 

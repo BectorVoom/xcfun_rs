@@ -23,11 +23,17 @@ use crate::functionals::gga::shared::constants::PBEC_D2_PREFACTOR_F64;
 use crate::functionals::gga::shared::pbec_eps;
 use crate::functionals::lda::vwn_eps;
 
-// SPBEC paper constants (spbec.cpp:22-24). Note: β = 0.031091 is
-// referenced only via the precomputed β/γ ratio; we keep the literal
-// 0.466006... to avoid ULP drift from a runtime division.
+// SPBEC paper constants (spbec.cpp:22-24). Note: SPBEC swaps the standard
+// PBE β/γ convention — its β = 0.031091 is what most PBE papers call γ,
+// and its γ = 0.066725 is what most call β. The β/γ ratio is computed via
+// `const` division (rather than a hand-derived literal) so the bits match
+// what C++ produces at runtime via `static const parameter beta_gamma =
+// beta / gamm`. The previous literal `0.466_006_366_055_452_4` was
+// γ_standard_PBE / β_paper, with β and γ swapped; locked by
+// `tests::spbec_beta_gamma_locked` (06-N7/07-00).
 const SPBEC_GAMM_F64: f64 = 0.066725_f64;
-const SPBEC_BETA_GAMMA_F64: f64 = 0.466_006_366_055_452_4_f64; // 0.031091 / 0.066725
+const SPBEC_BETA_F64: f64 = 0.031091_f64;
+const SPBEC_BETA_GAMMA_F64: f64 = SPBEC_BETA_F64 / SPBEC_GAMM_F64;
 
 /// W5: We use the same numerical value as PBEC_D2_PREFACTOR_F64
 /// (= cbrt(π/3) / 16 = 0.06346820609770369). Algebraically identical
