@@ -47,7 +47,7 @@ The dependency DAG (per `ARCHITECTURE.md` section 7 and `SUMMARY.md` "Phase Orde
 - [x] 07-01-PLAN.md — Wave 1: rename xcfun-python → xcfun-py + workspace member promotion + dep wiring (D-01, D-03)
 - [x] 07-02-PLAN.md — Wave 2: pyproject.toml + #[pymodule] _native skeleton + 11 free fns (PY-01, PY-04)
 - [x] 07-03-PLAN.md — Wave 3: XcfunError + abi3 §5 PyException workaround (PY-05; D-09, D-10)
-- [ ] 07-04-PLAN.md — Wave 4: Functional #[pyclass] + Mode/Vars IntEnum + 9 method delegates (PY-02; D-05, D-06, D-12)
+- [x] 07-04-PLAN.md — Wave 4: Functional #[pyclass] + Mode/Vars IntEnum + 9 method delegates (PY-02; D-05, D-06, D-12)
 - [ ] 07-05-PLAN.md — Wave 5: NumPy strict zero-copy eval_vec + cross-language parity (PY-03; D-07, D-08)
 - [ ] 07-06-PLAN.md — Wave 6: crates/xcfun-py/README.md (D-03, D-04, D-13)
 - [ ] 07-07-PLAN.md — Wave 7: release.yml sdist + 3 wheel matrix + pytest-from-wheel (PY-06)
