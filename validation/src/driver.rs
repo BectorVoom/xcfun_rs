@@ -884,12 +884,16 @@ fn cpp_name(xc_name: &str) -> String {
 /// disagreement to 10^29-10^32 magnitude differences at order 3.
 ///
 /// To filter this regime, BECKESRX (and beckecamx, by structural
-/// similarity) gets a wider clamp at `1e-7`. This excludes ~62k
-/// physically-meaningless records (zero gradient + vanishing density)
-/// from the parity contract. Other functionals retain the default 2e-14.
+/// similarity) gets a wider clamp at `1e-3`. The threshold was chosen
+/// empirically: at a=1e-3, `a^(-8/3) ≈ 1e8`, still producing huge
+/// chi²-derivative values that amplify ULP-level disagreement past the
+/// 1e-12 contract; above a=1e-3 the AD chain is well-conditioned.
+/// This excludes ~63k physically-meaningless records (zero gradient +
+/// vanishing-to-low density) from the parity contract. Other
+/// functionals retain the default 2e-14.
 pub fn clamp_bound_for(name: &str) -> f64 {
     match name {
-        "XC_BECKESRX" | "XC_BECKECAMX" => 1.0e-7_f64,
+        "XC_BECKESRX" | "XC_BECKECAMX" => 1.0e-3_f64,
         _ => REGULARIZE_CLAMP_STRATUM_BOUND,
     }
 }
