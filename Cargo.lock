@@ -4853,6 +4853,8 @@ version = "0.1.0"
 dependencies = [
  "numpy",
  "pyo3",
+ "serde",
+ "serde_json",
  "xcfun-core",
  "xcfun-rs",
 ]
