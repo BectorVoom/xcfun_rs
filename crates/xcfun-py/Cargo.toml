@@ -1,9 +1,27 @@
 [package]
-name = "xcfun-python"
+name = "xcfun-py"
 version.workspace = true
 edition.workspace = true
-description = "Python bindings for xcfun_rs via PyO3"
+rust-version.workspace = true
+description = "Python bindings for xcfun_rs (PyO3 0.28 + rust-numpy 0.28)"
+license = "MPL-2.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+# D-03 — CPU-only by default; GPU rebuilds opt-in via the corresponding
+# xcfun-rs feature flag. xcfun-py never depends on cubecl-* directly;
+# all runtime selection forwards through xcfun-rs.
+default = ["cpu"]
+cpu   = ["xcfun-rs/cpu"]
+hip   = ["xcfun-rs/hip"]
+cuda  = ["xcfun-rs/cuda"]
+wgpu  = ["xcfun-rs/wgpu"]
+metal = ["xcfun-rs/metal"]
 
 [dependencies]
+xcfun-rs   = { path = "../xcfun-rs", default-features = false }
 xcfun-core = { path = "../xcfun-core" }
-# pyo3 and xcfun-eval dependencies added in Phase 7
+pyo3  = { version = "=0.28.3", features = ["extension-module", "abi3-py310"] }
+numpy = { version = "=0.28.0" }
