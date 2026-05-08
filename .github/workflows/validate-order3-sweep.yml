@@ -124,7 +124,12 @@ jobs:
       - name: Sweep ${{ matrix.functional }} at order 3
         id: sweep
         run: |
+          # `set -o pipefail` is REQUIRED — without it, `$?` after
+          # `validation ... | tee log` captures tee's exit (always 0)
+          # instead of validation's real exit code (2 on FAIL). Run
+          # 25531270289 was a false-green because of this.
           set +e
+          set -o pipefail
           mkdir -p validation
           # Filter target is the FunctionalId enum name lowercased, with
           # the `XC_` prefix retained (see `validation/src/driver.rs:1028`
@@ -139,13 +144,20 @@ jobs:
             --jobs auto \
             2>&1 | tee "validate-${{ matrix.functional }}.log"
           EXIT=$?
+          set +o pipefail
           set -e
-          # Defensive guard: harness emits "iterated 0 records" if the
-          # filter regex matched no functional. That's a vacuous PASS
-          # we must NOT treat as success. Force a failure here.
+          # Defensive guard 1: harness emits "iterated 0 records" if the
+          # filter regex matched no functional. Vacuous PASS — force fail.
           if grep -qF 'iterated 0 records' "validate-${{ matrix.functional }}.log"; then
             echo "::error::Filter '^xc_${{ matrix.functional }}\$' matched 0 records — vacuous PASS rejected."
             EXIT=99
+          fi
+          # Defensive guard 2: harness logs "Tier-2 FAIL: N failing records"
+          # on any non-zero failure count. Belt-and-braces if the exit-code
+          # capture ever regresses again.
+          if grep -qE 'Tier-2 FAIL:' "validate-${{ matrix.functional }}.log"; then
+            echo "::error::Harness reported Tier-2 FAIL for ${{ matrix.functional }}"
+            [ "$EXIT" = "0" ] && EXIT=2
           fi
           echo "exit_code=$EXIT" >> "$GITHUB_OUTPUT"
           # Surface the harness's verdict line for quick scanning
