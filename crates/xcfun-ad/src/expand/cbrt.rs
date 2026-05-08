@@ -54,8 +54,13 @@ pub fn cbrt_expand<F: Float>(t: &mut Array<F>, x0: F, #[comptime] n: u32) {
     // tmath.hpp:173 — precondition moved to host-side guard.
 
     // tmath.hpp:174 — `t[0] = cbrt(x0)` via `powf(1/3)` fallback (see
-    // module header for the 1–2 ULP deviation note).
-    t[0] = x0.powf(F::new(1.0_f32 / 3.0_f32));
+    // module header for the 1–2 ULP deviation note). The exponent must be
+    // computed in f64 — the previous literal `1.0_f32 / 3.0_f32` produced
+    // `0.3333333432674408_f32-promoted`, NOT `1/3` to f64 precision, with
+    // a ~3e-8 relative error in the exponent. That accumulated through the
+    // `pow` evaluation and propagated downstream to any functional using
+    // `cbrt_expand` (06-N7/07-00 audit).
+    t[0] = x0.powf(F::cast_from(1.0_f64 / 3.0_f64));
     // tmath.hpp:175 — `T x0inv = 1 / x0`
     let x0inv = F::new(1.0) / x0;
 

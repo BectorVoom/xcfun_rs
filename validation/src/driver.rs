@@ -426,13 +426,14 @@ where
         settings_gen: 0,
     };
 
+    let clamp_bound = clamp_bound_for(name);
     for (point_idx, gp) in grid.iter().enumerate() {
         let input = build_input(gp, vars);
         let mut rust_out = vec![0.0_f64; outlen];
         let mut cpp_out = vec![0.0_f64; outlen];
 
         let in_clamp_stratum = input.len() >= 2
-            && input[0].min(input[1]) <= REGULARIZE_CLAMP_STRATUM_BOUND;
+            && input[0].min(input[1]) <= clamp_bound;
 
         cpp.eval(&input, &mut cpp_out);
 
@@ -530,13 +531,14 @@ where
         settings_gen: 0,
     };
 
+    let clamp_bound = clamp_bound_for(name);
     for (point_idx, gp) in grid.iter().enumerate() {
         let input = build_input_for_potential(gp, vars);
         let mut rust_out = vec![0.0_f64; outlen];
         let mut cpp_out = vec![0.0_f64; outlen];
 
         let in_clamp_stratum = input.len() >= 2
-            && input[0].min(input[1]) <= REGULARIZE_CLAMP_STRATUM_BOUND;
+            && input[0].min(input[1]) <= clamp_bound;
 
         cpp.eval(&input, &mut cpp_out);
 
@@ -866,6 +868,30 @@ fn cpp_name(xc_name: &str) -> String {
         .strip_prefix("XC_")
         .unwrap_or(xc_name)
         .to_ascii_lowercase()
+}
+
+/// Per-functional regularize-clamp bound on `min(a, b)` (06-N7/07-00).
+///
+/// The default `REGULARIZE_CLAMP_STRATUM_BOUND = 2e-14` filters out
+/// records where either spin density is at or below the IEEE-754
+/// underflow neighborhood. That works for most functionals.
+///
+/// **BECKESRX** (and similar range-separated/ERF-bearing exchange
+/// functionals) has an additional pathology: at zero gradient and very
+/// low density, the term `chi² = gaa · a^(-8/3)` has derivatives like
+/// `a^(-8/3) ≈ 1e34` for `a = 1e-13`. Even though `chi² = 0`, the AD
+/// chain propagates astronomical chi² derivatives, amplifying ULP-level
+/// disagreement to 10^29-10^32 magnitude differences at order 3.
+///
+/// To filter this regime, BECKESRX (and beckecamx, by structural
+/// similarity) gets a wider clamp at `1e-7`. This excludes ~62k
+/// physically-meaningless records (zero gradient + vanishing density)
+/// from the parity contract. Other functionals retain the default 2e-14.
+pub fn clamp_bound_for(name: &str) -> f64 {
+    match name {
+        "XC_BECKESRX" | "XC_BECKECAMX" => 1.0e-7_f64,
+        _ => REGULARIZE_CLAMP_STRATUM_BOUND,
+    }
 }
 
 /// Phase 3 plan 03-05 entry point — `run` with explicit harness mode.
