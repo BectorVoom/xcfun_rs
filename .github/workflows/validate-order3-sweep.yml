@@ -126,15 +126,27 @@ jobs:
         run: |
           set +e
           mkdir -p validation
+          # Filter target is the FunctionalId enum name lowercased, with
+          # the `XC_` prefix retained (see `validation/src/driver.rs:1028`
+          # — `filter.is_match(&name.to_ascii_lowercase())` against names
+          # like "XC_PBEINTC" → matches `xc_pbeintc`). The plan body's
+          # literal regex was wrong on both counts; this is the fix.
           target/release/validation \
             --backend cpu \
             --order 3 \
-            --filter "^${{ matrix.functional }}\$" \
+            --filter "^xc_${{ matrix.functional }}\$" \
             --reference cpp \
             --jobs auto \
             2>&1 | tee "validate-${{ matrix.functional }}.log"
           EXIT=$?
           set -e
+          # Defensive guard: harness emits "iterated 0 records" if the
+          # filter regex matched no functional. That's a vacuous PASS
+          # we must NOT treat as success. Force a failure here.
+          if grep -qF 'iterated 0 records' "validate-${{ matrix.functional }}.log"; then
+            echo "::error::Filter '^xc_${{ matrix.functional }}\$' matched 0 records — vacuous PASS rejected."
+            EXIT=99
+          fi
           echo "exit_code=$EXIT" >> "$GITHUB_OUTPUT"
           # Surface the harness's verdict line for quick scanning
           {
