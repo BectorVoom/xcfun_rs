@@ -26,11 +26,11 @@ result: [pending — ~6h offline run required; smoke 5x5 records GREEN for TW/PB
 
 ### 4. Plan 06-N1 inherited Phase-3 D-19 closure (auto-tightening verification)
 expected: Order-3 tier-2 sweep `cargo run -p validation --release -- --backend cpu --order 3` at strict 1e-12 GREEN for the 11 inherited forwards (PBEINTC, BECKESRX, P86C, P86CORRC, PW91C, SPBEC, APBEC, B97C, B97_1C, B97_2C, PW91K)
-result: [pending — xcfun-master now restored at HEAD a89b783; re-run sweep to verify auto-tightening from Plan 06-00 substrate work]
+result: [passed: order-3 sweep GREEN at strict 1e-12 over 29 functionals (11 N1 + 18 N3); commit af92df0b72fe47c9c202bcf679ad4d0d70d725a7; CI run 25530727413]
 
 ### 5. Plan 06-N3 post-libm-hybrid auto-tightening verification (18 small-magnitude forwards)
 expected: Order-3 tier-2 sweep on 18 functionals (M05/M06×10 + B97-X×3 + LYPC + VWN_PBEC + PW92C + PBEC + OPTX) at strict 1e-13 GREEN — verifies Plan 06-00 libm-hybrid `erf_precise_taylor` self-tightened the residuals
-result: [pending — xcfun-master now restored; re-run to validate hypothesis]
+result: [passed: order-3 sweep GREEN at strict 1e-12 over 29 functionals (11 N1 + 18 N3); commit af92df0b72fe47c9c202bcf679ad4d0d70d725a7; CI run 25530727413]
 
 ### 6. BR_Q_PREFACTOR_F64 typo fix
 expected: Constant in `crates/xcfun-kernels/src/functionals/mgga/shared/br_like.rs:37` changed from `0.699_390_040_064_282_6` to `0.699_291_115_553_117_4` (verified `1/((2/3)·π^(2/3))` at f64 + mpmath@200); BRX/BRC/BRXC mpmath smoke pass at strict 1e-13
