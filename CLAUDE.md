@@ -11,7 +11,7 @@ A Rust-from-scratch reimplementation of the xcfun exchange–correlation functio
 
 - **Accuracy**: Output must match C++ xcfun within relative error ≤ 1.0 × 10⁻¹² on every `(functional, vars, mode, order, density point)` tuple — the primary contract, non-negotiable
 - **Compatibility**: C FFI must be a drop-in replacement for `xcfun-master/api/xcfun.h` — every declared symbol present with matching signature
-- **Rust Edition**: 2024, MSRV 1.85 — required for current const-generic features
+- **Rust Edition**: 2024, MSRV 1.92 — bumped from 1.85 because `cubecl-zspace 0.10.0` (transitive via `=0.10.0` lockstep pin) declares `rust-version = "1.92"` and cannot be downgraded without breaking the cubecl pin
 - **Compiler flags**: no `-Cfast-math`, no reassociation flags; `RUSTFLAGS` empty in CI — fast-math would break the accuracy contract
 - **Tech stack**: `thiserror` 2.0.18 (library errors), `anyhow` 1.0 (app boundaries only — no library depends on it), `bitflags` 2.10.0, `cubecl` pinned at `=0.10.0`, `pyo3` 0.28.3 + `numpy` 0.28.0, `cbindgen` 0.29.2, `criterion` 0.8.2, `approx` 0.5 — pinned in CLAUDE.md
 - **GPU**: `cubecl` for CPU / CUDA / Wgpu backends; f32 never on the numerical path; Wgpu validated at relaxed 1e-9 tolerance (device `erf` variance), CUDA and CPU at 1e-12
@@ -25,7 +25,7 @@ A Rust-from-scratch reimplementation of the xcfun exchange–correlation functio
 ## TL;DR — verdict on the existing CLAUDE.md pins
 | Pin in CLAUDE.md | Verdict | Note |
 |------------------|---------|------|
-| Rust Edition 2024, MSRV 1.85 | CONFIRM | Required for stable const-generic shape used by `CTaylor<T, N>`. |
+| Rust Edition 2024, MSRV 1.92 | BUMPED | Was 1.85; bumped to 1.92 because `cubecl-zspace 0.10.0` (locked by `=0.10.0` pin) requires rustc 1.92. Our own code still compiles on 1.85; the bump is forced by the transitive dep. |
 | `thiserror 2.0.18` | CONFIRM (pin exact) | 2.0.18 is the current 2.0.x (2026-01-18), bumps MSRV to 1.68. No newer release. |
 | `anyhow 1.0.x` | CONFIRM — but adjust floor to `1.0.102` | Latest is 1.0.102 (2026-02-20). Keep as app-boundary only. Do not pin `1.0` loosely; use `>=1.0.98` so CI dedupes. |
 | `bitflags 2.10.0` | **CHALLENGE — bump to `2.11.1`** | 2.11.1 (2026-04-14) is the current release; 2.11 brought improved `Flags` trait derive. Move pin. |
@@ -46,7 +46,7 @@ A Rust-from-scratch reimplementation of the xcfun exchange–correlation functio
 ### Core language and error model
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| Rust (Edition 2024) | MSRV 1.85, stable channel | Language | Const generics `[T; 1 << N]` for `CTaylor<T, N>`; Edition 2024 for the 2024 module-resolution + `Gen`/let-else + 2024-specific trait resolution; required by `thiserror 2.0.18` (MSRV 1.68) and idiomatic const-generic patterns. No nightly features needed. |
+| Rust (Edition 2024) | MSRV 1.92, stable channel | Language | Const generics `[T; 1 << N]` for `CTaylor<T, N>`; Edition 2024 for the 2024 module-resolution + `Gen`/let-else + 2024-specific trait resolution. MSRV bumped from 1.85 → 1.92 by `cubecl-zspace 0.10.0` transitive requirement (see Plan 06-N6). No nightly features needed. |
 | `thiserror` | `=2.0.18` | Library-crate error derive | Zero-runtime-cost `std::error::Error` derive; de facto standard for library errors (907M+ downloads). v2 is Edition-2024-compatible; v1 is not. Used in every lib crate, especially `xcfun-core::XcError`. |
 | `anyhow` | `^1.0.102` | App-boundary error handling | Used in `validation/`, `xtask/`, `benches/`, `examples/` **only** — never by any crate in the `xcfun-*` library graph (CI-enforced via `cargo xtask check-no-anyhow`). Ergonomic context-attachment for test harnesses where structured errors buy nothing. |
 | `bitflags` | `=2.11.1` | `Dependency` bitmask flags | Replaces the C++ `Dependency` enum-class bitmask used in `xcfun-master/src/functional.hpp`. v2.11 (2026-02/04) improves the `Flags` trait derive and keeps zero-cost integer representation. |
