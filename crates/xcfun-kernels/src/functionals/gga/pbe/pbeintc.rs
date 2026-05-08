@@ -18,8 +18,12 @@ use crate::functionals::gga::shared::pbec_eps;
 use crate::functionals::lda::pw92eps;
 
 const PBEINTC_BETA_F64: f64 = 0.052_f64;
-// β / γ = 0.052 / 0.0310906908696549.
-const PBEINTC_BG_F64: f64 = 0.167_252_472_614_525_44_f64;
+// β / γ = 0.052 / ((1 - log(2)) / π²) = 0.052 / 0.0310906908696549.
+// Locked by `tests::pbeintc_bg_locked`. Previous value 0.167_252_472_614_525_44
+// was a copy-paste typo from `ZVPBEINTC_BG_F64 = 1.672_524_726_145_254_4` with
+// the decimal shifted one place left, causing 99.84% order-0 record-level
+// FAIL in the Phase-7 Plan 07-00 Task 0.3 sweep against C++ a89b783.
+const PBEINTC_BG_F64: f64 = 1.672_526_359_031_570_2_f64;
 
 #[cube]
 pub fn pbeintc_kernel<F: Float>(
