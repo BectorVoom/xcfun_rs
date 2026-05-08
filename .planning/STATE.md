@@ -8,8 +8,8 @@ progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 61
-  completed_plans: 56
-  percent: 92
+  completed_plans: 57
+  percent: 93
 ---
 
 # Project State: xcfun_rs
@@ -43,8 +43,8 @@ progress:
 ## Current Position
 
 Phase: 07 (python-bindings-release) — EXECUTING
-Plan: 6 of 11
-Plans (Phase 7): 11 (07-00 ✓, 07-01 ✓, 07-02 ✓, 07-03 ✓, 07-04 ✓, 07-05 ✓, 07-06 ⬜, 07-07 ⬜, 07-08 ⬜, 07-09 ⬜, 07-10 ⬜)
+Plan: 7 of 11
+Plans (Phase 7): 11 (07-00 ✓, 07-01 ✓, 07-02 ✓, 07-03 ✓, 07-04 ✓, 07-05 ✓, 07-06 ✓, 07-07 ⬜, 07-08 ⬜, 07-09 ⬜, 07-10 ⬜)
 Scope (Phase 7): Wave 0 = ✓ done (HUMAN-UAT items 3+6 passed; items 4+5 partially-passed via Plan 06-N7 substrate audit; BR_Q_PREFACTOR_F64 corrected; mpmath fixtures regenerated and committed). Waves 1-10 = pyproject.toml + #[pymodule] _native skeleton + 11 free fns + abi3 §5 PyException workaround + Functional #[pyclass] + Mode/Vars IntEnum + NumPy strict zero-copy eval_vec + cross-language parity + CI wheel matrix on {Linux x86_64, macOS arm64, Windows x86_64} + xtask release-publish topological cargo publish + GH Release artifacts (xcfun.h + 3× libxcfun_capi) + CHANGELOG.md (Keep-a-Changelog) + tag v0.1.0 (CHECKPOINT — irreversible PyPI yank).
 
 - **Milestone:** Initial v1 build-out
