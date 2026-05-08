@@ -2,19 +2,21 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: phase-7-ready-to-resume
-last_updated: "2026-05-07T08:00:00Z"
+status: phase-7-wave-1-ready
+last_updated: "2026-05-08T05:55:00Z"
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 72
-  completed_plans: 60
-  percent: 83
+  completed_plans: 61
+  percent: 85
 ---
 
 # Project State: xcfun_rs
 
-**2026-05-07 (latest):** Phase 6 gap-closure Plan 06-N5 GREEN on GitHub Actions (run #25526864865) — `cargo build --workspace --exclude validation --release` ✓, `mpmath fixture smoke regen` ✓ (5 functionals × 5 records on a clean Ubuntu runner with `python3.12 -m pip install mpmath` + `XCFUN_MPMATH_PYTHON=python3.12`), single-record invocation ✓ for all 6 ACC-04 functionals. CI bring-up surfaced 4 pre-existing repo-drift items (none caused by N5): (1) MSRV pin 1.85 broken by transitive deps requiring rustc ≥ 1.86–1.92 (`cubecl-zspace`, `darling`, `icu_*`, `sysinfo`, `tracel-*`); (2) `xcfun-master/` not available on CI (validation crate + headers_match test fail); (3) fmt drift across `crates/xcfun-ad/src/`; (4) clippy unused-import / dead-code in 6 xcfun-kernels files. One of the surfaced issues — `pbex_potential_non_2nd_taylor_vars_rejects` test asserting only `InvalidVars` instead of `InvalidVars | InvalidVarsAndMode` (since Phase 5) — was rolled into N5's chain at `f61afa2`. The 4 design-level items deferred to gap-closure Plan 06-N6 (autonomous: false; operator decisions required for Tasks 1+2). CI workflow added at `.github/workflows/ci.yml` — fmt + clippy currently advisory (`continue-on-error: true`); 06-N6 Task 5 tightens to strict. Phase 7 Wave 0 Plan 07-00 Task 0.2 still unblocked.
+**2026-05-08 (latest):** Plan 07-00 COMPLETE — all 4 tasks closed. Plan 06-N7 substrate audit (transcripted into Plan 07-00 Task 0.3) found 9 distinct GGA-tier bugs and fixed each with TDD RED→GREEN regression-locked commits. ~3.35M failing records eliminated across PBEINTC + SPBEC + P86C + P86CORRC + BECKESRX + PW91C. Final per-functional fail counts at strict 1e-12 against C++ a89b783 (run #25538406774): all 5 originally-systemic Tier-1 functionals now in small AD-residual zone (≤ 2,247 fails each, < 0.27% rate); orders 0+1 100% pass for all audited functionals. Bug list: (1) PBEINTC_BG_F64 decimal-shift typo (×10 off), (2) SPBEC_BETA_GAMMA_F64 β/γ swap, (3) PW91C_NU 4e-7 imprecision, (4) P86_PI_EXPR wrong literal in 2 files, (5) PW91C_FZ_DENOM 1-ULP, (6) becke{srx,camx}::SQRT_PI_F64 1-ULP cross-file, (7) cbrt_expand f32 division + Newton-refinement seed, (8) BECKESRX/BECKECAMX zero-grad clamp policy, (9) `F::new(0.001)` cubecl API gotcha (4.75e-8 in Cc multiplier — single-line fix closed PW91C from 541k → 1.8k). New primitive `xcfun_ad::math::ctaylor_cbrt` added. New CI workflows: `.github/workflows/regen-mpmath-full.yml` (26-job matrix for mpmath fixtures), `.github/workflows/validate-order3-sweep.yml` (29-job matrix for tier-2 sweep). PR #1 (mpmath fixtures) merged at `44ddb58` — `validation/fixtures/mpmath/` now committed (52 files = 26 functionals × 30 records + sha256 stamps). 06-HUMAN-UAT.md items 3+6 → passed; items 4+5 → partially-passed (substrate clean; AD-residual tail forwarded to v0.2 per amended D-14). cubecl `F::new(value: f32)` gotcha documented in project memory. Phase 7 Wave 1 (Plan 07-01: workspace member promotion + crate rename `xcfun-python → xcfun-py`) UNBLOCKED. Next action: `/gsd:execute-phase 7 --wave 1` (or continue inline).
+
+**2026-05-07 entry (superseded):** Phase 6 gap-closure Plan 06-N5 GREEN on GitHub Actions (run #25526864865) — `cargo build --workspace --exclude validation --release` ✓, `mpmath fixture smoke regen` ✓ (5 functionals × 5 records on a clean Ubuntu runner with `python3.12 -m pip install mpmath` + `XCFUN_MPMATH_PYTHON=python3.12`), single-record invocation ✓ for all 6 ACC-04 functionals. CI bring-up surfaced 4 pre-existing repo-drift items (none caused by N5): (1) MSRV pin 1.85 broken by transitive deps requiring rustc ≥ 1.86–1.92 (`cubecl-zspace`, `darling`, `icu_*`, `sysinfo`, `tracel-*`); (2) `xcfun-master/` not available on CI (validation crate + headers_match test fail); (3) fmt drift across `crates/xcfun-ad/src/`; (4) clippy unused-import / dead-code in 6 xcfun-kernels files. One of the surfaced issues — `pbex_potential_non_2nd_taylor_vars_rejects` test asserting only `InvalidVars` instead of `InvalidVars | InvalidVarsAndMode` (since Phase 5) — was rolled into N5's chain at `f61afa2`. The 4 design-level items deferred to gap-closure Plan 06-N6 (autonomous: false; operator decisions required for Tasks 1+2). CI workflow added at `.github/workflows/ci.yml` — fmt + clippy currently advisory (`continue-on-error: true`); 06-N6 Task 5 tightens to strict. Phase 7 Wave 0 Plan 07-00 Task 0.2 still unblocked.
 
 **2026-05-07 entry (superseded):** Phase 6 gap-closure Plan 06-N5 (mpmath ACC-04 bodies) GREEN. Filled 6 mpmath sidecar functional bodies (LDAERF×3 + TPSS-C×3) at prec=200 + 2 new private substrates (`_ldaerf_eps.py`, `_tpss_eps.py` with D-10 `tau_clamp` guard) + driver fix replacing hardcoded `python3.12` with `XCFUN_MPMATH_PYTHON` env-var-overridable `python3` default. 4 atomic commits on master (`677e775`, `06d4fb5`, `d32e267`, `2eb6012`). Numerical validation: LDAERFX matches C++ at order=2 to 16 digits; LDAERFC to 14 digits (documented `ldaerfc.cpp:117-119` pw92c-precision drift); TPSSC matches C++ at order=1 within the 1e-6 threshold. Smoke regen exits 0 (5/5 functionals × 5 records into `target/mpmath_smoke/`). All 6 ACC-04 functionals respond to single-record invocation with finite floats — no NotImplementedError. **Plan 07-00 Task 0.2 unblocked**: operator can now resume Phase 7 Wave 0 with `XCFUN_MPMATH_PYTHON=python3.12 cargo run --release -p xtask --bin regen-mpmath-fixtures` for the full ~6h offline regen. Phase 6 plans now 12/12 complete (counting 06-N5 as the 12th gap-closure plan). Three minor deviations auto-fixed by executor: `mp.fmax` doesn't exist (replaced with built-in `max()`), `pw92eps_polarized` was missing from `_pw92eps.py` (added per `pw92eps.hpp:63-67`), doc-comment example interpreter changed from `python3.12` to `/path/to/venv/bin/python` to satisfy literal-grep gate. Next action: `/gsd:execute-phase 7`.
 
@@ -36,19 +38,19 @@ progress:
 
 **Core Value:** Every functional must produce numerical output matching C++ xcfun within relative error <= 1.0e-12, across all evaluation modes and derivative orders.
 
-**Current focus:** Phase 07 ready to **resume** (2026-05-07); Plan 07-00 Task 0.1 GREEN, Task 0.2 unblocked by Phase 6 gap-closure 06-N5.
+**Current focus:** Phase 07 Wave 1 ready (2026-05-08); Plan 07-00 COMPLETE; substrate audit (Plan 06-N7) closed 9 GGA-tier bugs.
 
 ## Current Position
 
-Phase: 07 (python-bindings-release) — **READY TO RESUME (2026-05-07)** — Plan 07-00 Task 0.2 unblocked by Phase 6 06-N5 gap-closure
-Plans (Phase 7): 11 (07-00 ◆ at Task 0.2, 07-01 ⬜, 07-02 ⬜, 07-03 ⬜, 07-04 ⬜, 07-05 ⬜, 07-06 ⬜, 07-07 ⬜, 07-08 ⬜, 07-09 ⬜, 07-10 ⬜)
-Scope (Phase 7): Wave 0 = clear 4 blocking Phase-6 HUMAN-UAT items {3,4,5,6} + BR_Q_PREFACTOR_F64 typo fix + crate rename `xcfun-python → xcfun-py` + workspace member promotion + dep wiring; Waves 1-10 = pyproject.toml + #[pymodule] _native skeleton + 11 free fns + abi3 §5 PyException workaround + Functional #[pyclass] + Mode/Vars IntEnum + NumPy strict zero-copy eval_vec + cross-language parity + CI wheel matrix on {Linux x86_64, macOS arm64, Windows x86_64} + xtask release-publish topological cargo publish + GH Release artifacts (xcfun.h + 3× libxcfun_capi) + CHANGELOG.md (Keep-a-Changelog) + tag v0.1.0 (CHECKPOINT — irreversible PyPI yank).
+Phase: 07 (python-bindings-release) — **WAVE 1 READY (2026-05-08)** — Plan 07-00 complete; all 4 blocking HUMAN-UAT items resolved.
+Plans (Phase 7): 11 (07-00 ✓, 07-01 ⬜, 07-02 ⬜, 07-03 ⬜, 07-04 ⬜, 07-05 ⬜, 07-06 ⬜, 07-07 ⬜, 07-08 ⬜, 07-09 ⬜, 07-10 ⬜)
+Scope (Phase 7): Wave 0 = ✓ done (HUMAN-UAT items 3+6 passed; items 4+5 partially-passed via Plan 06-N7 substrate audit; BR_Q_PREFACTOR_F64 corrected; mpmath fixtures regenerated and committed). Waves 1-10 = pyproject.toml + #[pymodule] _native skeleton + 11 free fns + abi3 §5 PyException workaround + Functional #[pyclass] + Mode/Vars IntEnum + NumPy strict zero-copy eval_vec + cross-language parity + CI wheel matrix on {Linux x86_64, macOS arm64, Windows x86_64} + xtask release-publish topological cargo publish + GH Release artifacts (xcfun.h + 3× libxcfun_capi) + CHANGELOG.md (Keep-a-Changelog) + tag v0.1.0 (CHECKPOINT — irreversible PyPI yank).
 
 - **Milestone:** Initial v1 build-out
-- **Phase:** 07 (python-bindings-release) — **PLANNED (2026-05-06)** — 11 plans landed via `/gsd:plan-phase 7`; plan-checker VERIFICATION PASSED with 6 housekeeping warnings (5 applied inline). 16/16 decisions covered after D-02 tag added to 07-02. 6/6 PY-XX requirements covered.
-- **Plan:** 07-00 Task 0.2 next (offline ~6h `cargo run --release -p xtask --bin regen-mpmath-fixtures` with `XCFUN_MPMATH_PYTHON=python3.12`; substrate now complete via 06-N5).
-- **Status:** Ready to resume. Phase 6 sign-off carries forward (12/12 plans complete after 06-N5 gap-closure); HUMAN-UAT item #3 cleared by 06-N5.
-- **Progress:** [███████░] 85% (6/8 phases; 60/71 known plans)
+- **Phase:** 07 (python-bindings-release) — Plan 07-00 COMPLETE (2026-05-08); Waves 1-10 unblocked.
+- **Plan:** 07-01 next (workspace member promotion + crate rename `xcfun-python → xcfun-py` + dep wiring; `autonomous: true`).
+- **Status:** Plan 07-00 COMPLETE. ~3.35M failing records eliminated; substrate clean of constant typos and op-order systematic biases; AD-residual tail (max ~8e-9 at order 3) forwarded to v0.2 per amended D-14.
+- **Progress:** [████████░] 85% (6/8 phases; 61/71 known plans)
 
 ### Phase 4 sign-off summary (2026-04-30)
 
