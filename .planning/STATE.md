@@ -284,6 +284,7 @@ None.
 |---|-------------|------|---------|-----------|
 | 260430-4x7 | Parallelize validation harness — speed up the order=3 full sweep | 2026-04-30 | e79c3ef, 8c59675 | [260430-4x7-parallelize-validation-harness-speed-up-](./quick/260430-4x7-parallelize-validation-harness-speed-up-/) |
 | 260508-epcry7 | Update cubecl from =0.10.0-pre.3 to =0.10.0 stable across all workspace crates | 2026-05-08 | b247997 | [260508-epcry7-cubecl-010-stable-pin](./quick/260508-epcry7-cubecl-010-stable-pin/) |
+| 260508-c4abi8 | Regenerate xcfun-capi c_abi expected.json after 06-N7 substrate fixes | 2026-05-08 | 0a00900 | [260508-c4abi8-regen-c-abi-expected-json](./quick/260508-c4abi8-regen-c-abi-expected-json/) |
 
 ### Recent activity
 
