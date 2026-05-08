@@ -40,8 +40,10 @@ use crate::functionals::gga::shared::pw91_like;
 
 /// Default RANGESEP_MU per `common_parameters.cpp:17`.
 const DEFAULT_MU_F64: f64 = 0.4_f64;
-/// `sqrt(π)` precomputed in f64.
-const SQRT_PI_F64: f64 = 1.772_453_850_905_516_f64;
+/// `sqrt(π)` precomputed in f64. Must match
+/// `lda::ldaerfx::SQRT_PI_F64 = 1.7724538509055159` (which matches what
+/// C++ libm `sqrt(M_PI)` produces). Previous literal was 1 ULP low.
+const SQRT_PI_F64: f64 = 1.7724538509055159_f64;
 
 #[cube]
 fn becke_sr<F: Float>(
