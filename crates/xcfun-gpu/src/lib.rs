@@ -60,9 +60,9 @@ pub use batch::Batch;
 // taking a direct dependency on the individual `cubecl-{hip,cuda,wgpu}`
 // crates — they reach the runtime types through `xcfun-gpu`'s feature
 // forwarding instead.
-#[cfg(feature = "hip")]
-pub use cubecl_hip::HipRuntime;
 #[cfg(feature = "cuda")]
 pub use cubecl_cuda::CudaRuntime;
+#[cfg(feature = "hip")]
+pub use cubecl_hip::HipRuntime;
 #[cfg(feature = "wgpu")]
 pub use cubecl_wgpu::WgpuRuntime;
