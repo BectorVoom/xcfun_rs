@@ -1991,16 +1991,24 @@ pub fn run_tier3(
                      environment before invoking validation."
                 );
             }
-            // Mirrors the CPU arm pattern: skeleton + probe + manual
-            // verification command documented above. The strict-1e-13
-            // body lands in Plan 06-05 (revision-1 B-4).
-            let _ = (order, jobs, filter, exclude_erf);
-            todo!(
-                "Plan 06-03 wires the run_tier3 ROCm probe + dispatch \
-                 skeleton; KER-06 sign-off body (the 17-known-clean \
-                 functional sweep at strict 1e-13 vs CPU baseline) lands \
-                 in Plan 06-05 (revision-1 B-4) atop \
-                 `xcfun_gpu::Batch::<cubecl_hip::HipRuntime>::eval_vec_host_rocm`"
+            // Plan 06-05 (audit-fix F-01) — KER-06 ROCm sign-off body.
+            // Mirrors the CPU arm via the backend-agnostic
+            // `run_tier3_gpu_body`, dispatching on
+            // `Batch::<HipRuntime>::eval_vec_host_rocm` at strict 1e-13
+            // (GPU-07). `jobs`/`exclude_erf` do not apply: the comparison is
+            // intrinsically serial and the known-clean-17 set carries no ERF
+            // functionals.
+            let _ = (jobs, exclude_erf);
+            run_tier3_gpu_body(
+                order,
+                filter,
+                |f, d, dp, o, op, n| {
+                    xcfun_gpu::Batch::<xcfun_gpu::HipRuntime>::eval_vec_host_rocm(
+                        f, d, dp, o, op, n,
+                    )
+                },
+                "ROCm",
+                1e-13,
             )
         }
         // Plan 06-04 — `--backend cuda` arm wired behind `feature =
@@ -2040,13 +2048,21 @@ pub fn run_tier3(
                      re-bail without re-attempting init."
                 );
             }
-            let _ = (order, jobs, filter, exclude_erf);
-            todo!(
-                "Plan 06-04 wires the run_tier3 CUDA probe + dispatch \
-                 skeleton; the strict-1e-13 sweep body is owned by Plan \
-                 06-05 (revision-1 B-4) and runs on cloud CI with NVIDIA \
-                 hardware atop \
-                 `xcfun_gpu::Batch::<cubecl_cuda::CudaRuntime>::eval_vec_host_cuda`"
+            // Plan 06-05 (audit-fix F-02) — KER-06 CUDA sign-off body.
+            // Strict 1e-13 vs CPU baseline (matches the ROCm contract per
+            // D-02). Runs on cloud CI with NVIDIA hardware; the probe gate
+            // above bails on hardware-less runners.
+            let _ = (jobs, exclude_erf);
+            run_tier3_gpu_body(
+                order,
+                filter,
+                |f, d, dp, o, op, n| {
+                    xcfun_gpu::Batch::<xcfun_gpu::CudaRuntime>::eval_vec_host_cuda(
+                        f, d, dp, o, op, n,
+                    )
+                },
+                "CUDA",
+                1e-13,
             )
         }
 
@@ -2085,14 +2101,23 @@ pub fn run_tier3(
                      drivers with the `VK_KHR_shader_float64` extension."
                 );
             }
-            let _ = (order, jobs, filter, exclude_erf);
-            todo!(
-                "Plan 06-04 wires the run_tier3 Wgpu probe + dispatch \
-                 skeleton; the relaxed-1e-9 sweep body (GPU-08; ROADMAP \
-                 success criterion 4) lands in Plan 06-05 (revision-1 B-4) \
-                 atop `xcfun_gpu::Batch::<cubecl_wgpu::WgpuRuntime>::eval_vec_host_wgpu` \
-                 with `--exclude-erf` filtering range-separated functionals \
-                 (which auto-fall-back to CPU per GPU-05)"
+            // Plan 06-05 (audit-fix F-03) — KER-06 Wgpu sign-off body
+            // (GPU-08; ROADMAP success criterion 4). Relaxed 1e-9 tolerance
+            // per CONTEXT D-02 (driver-dependent `erf`/`log` variance on
+            // Vulkan/SPIR-V). `eval_vec_host_wgpu` auto-falls-back range-
+            // separated functionals to CPU per GPU-05; the known-clean-17 set
+            // carries none, so `--exclude-erf` is a no-op here.
+            let _ = (jobs, exclude_erf);
+            run_tier3_gpu_body(
+                order,
+                filter,
+                |f, d, dp, o, op, n| {
+                    xcfun_gpu::Batch::<xcfun_gpu::WgpuRuntime>::eval_vec_host_wgpu(
+                        f, d, dp, o, op, n,
+                    )
+                },
+                "Wgpu",
+                1e-9,
             )
         }
 
@@ -2115,14 +2140,29 @@ pub fn run_tier3(
                      on Apple Silicon."
                 );
             }
-            let _ = (order, jobs, filter, exclude_erf);
-            todo!(
-                "Plan 06-04 wires the run_tier3 Metal-via-Wgpu probe + \
-                 dispatch skeleton; the sweep body lands in Plan 06-05 \
-                 (revision-1 B-4) atop \
-                 `xcfun_gpu::Batch::<cubecl_wgpu::WgpuRuntime>::eval_vec_host_wgpu_with_request` \
-                 with `Backend::Metal` propagated so XcError::WgpuNoF64 \
-                 payloads carry the correct request tag"
+            // Plan 06-05 (audit-fix F-04) — KER-06 Metal-via-Wgpu sign-off
+            // body. Relaxed 1e-9 (same SPIR-V/Metal variance budget as Wgpu).
+            // The non-capturing closure pins `Backend::Metal` into
+            // `eval_vec_host_wgpu_with_request` so the GPU-05 ERF fallback
+            // decision and the `XcError::WgpuNoF64.requested_runtime` payload
+            // carry the correct request tag.
+            let _ = (jobs, exclude_erf);
+            run_tier3_gpu_body(
+                order,
+                filter,
+                |f, d, dp, o, op, n| {
+                    xcfun_gpu::Batch::<xcfun_gpu::WgpuRuntime>::eval_vec_host_wgpu_with_request(
+                        f,
+                        d,
+                        dp,
+                        o,
+                        op,
+                        n,
+                        xcfun_gpu::Backend::Metal,
+                    )
+                },
+                "Metal",
+                1e-9,
             )
         }
     }
@@ -2614,6 +2654,214 @@ fn run_tier3_cpu_body(order: u32, filter: &str) -> Result<()> {
         }
         anyhow::bail!(
             "tier-3 CPU sign-off FAILED: {} per-tuple failure entries (total {} elements)",
+            per_functional_failures.len(),
+            total_fail,
+        );
+    }
+}
+
+// ===========================================================================
+// Phase 6 Plan 06-05 (audit-fix F-01..F-04) — KER-06 tier-3 GPU sign-off body.
+// ===========================================================================
+//
+// `run_tier3_gpu_body` is the backend-agnostic twin of `run_tier3_cpu_body`.
+// It iterates the same 17 known-clean Phase-4 functional set over the Phase-2
+// stratified xoshiro 10k grid (seed 0x1234abcd), runs the supplied
+// `eval_host` batch entry point (one of
+// `Batch::<HipRuntime>::eval_vec_host_rocm`,
+// `Batch::<CudaRuntime>::eval_vec_host_cuda`, or
+// `Batch::<WgpuRuntime>::eval_vec_host_wgpu[_with_request]`), and compares the
+// result element-wise against the scalar `Functional::eval` baseline at the
+// caller-supplied `threshold` (strict 1e-13 for ROCm/CUDA per GPU-07; relaxed
+// 1e-9 for Wgpu/Metal per CONTEXT D-02). `backend_label` is woven into the
+// progress / failure messages so a CI runner can tell the arms apart.
+//
+// The `eval_host` parameter is a plain `fn` pointer — every host entry point
+// shares the identical `eval_vec_host_cpu` signature, and the Metal arm passes
+// a non-capturing closure that pins `Backend::Metal` into
+// `eval_vec_host_wgpu_with_request` (so the GPU-05 ERF fallback decision and
+// the `XcError::WgpuNoF64.requested_runtime` payload stay correct).
+//
+// NOTE (audit-fix honesty): this body is compile-verified under
+// `--features {hip,cuda,wgpu,metal}` but has NOT been executed on GPU
+// hardware — there is no AMD/NVIDIA/SHADER_F64 device in the dev environment
+// (CONTEXT D-06/D-07). The probe gate in each `run_tier3` arm bails before
+// reaching this body on hardware-less runners; the 0-failure GPU sign-off
+// (GPU-07 / GPU-08) is closed by a hardware run per `06-HUMAN-UAT.md`.
+#[cfg(any(feature = "hip", feature = "cuda", feature = "wgpu"))]
+fn run_tier3_gpu_body(
+    order: u32,
+    filter: &str,
+    eval_host: fn(
+        &Functional,
+        &[f64],
+        usize,
+        &mut [f64],
+        usize,
+        usize,
+    ) -> Result<(), xcfun_core::XcError>,
+    backend_label: &str,
+    threshold: f64,
+) -> Result<()> {
+    let regex = regex::Regex::new(filter)
+        .map_err(|e| anyhow::anyhow!("--filter regex parse failed: {e}"))?;
+
+    let grid = crate::fixtures::generate_grid();
+    let nr_points = grid.len();
+    tracing::info!(
+        "KER-06 {} sign-off: {} grid points, {} candidate functionals, threshold = {:e}",
+        backend_label,
+        nr_points,
+        TIER3_CPU_KNOWN_CLEAN_17.len(),
+        threshold,
+    );
+
+    let mut total_pass = 0_usize;
+    let mut total_fail = 0_usize;
+    let mut per_functional_failures: Vec<(String, u32, usize, f64)> = Vec::new();
+
+    for (id, name, vars) in TIER3_CPU_KNOWN_CLEAN_17 {
+        if !regex.is_match(name) {
+            continue;
+        }
+        // Sweep orders 0..=order (Mode::PartialDerivatives).
+        for ord in 0..=order {
+            let outlen = match Functional::output_length(*vars, Mode::PartialDerivatives, ord) {
+                Ok(n) => n,
+                Err(e) => {
+                    anyhow::bail!(
+                        "tier-3 {}: output_length({:?}, PartialDerivatives, {}) failed: {}",
+                        backend_label,
+                        vars,
+                        ord,
+                        e
+                    );
+                }
+            };
+            let inlen = Functional::input_length(*vars);
+
+            let fun = Functional {
+                weights: vec![(*id, 1.0)],
+                vars: *vars,
+                mode: Mode::PartialDerivatives,
+                order: ord,
+                settings: xcfun_eval::functional::DEFAULT_SETTINGS,
+                settings_gen: 0,
+            };
+
+            let mut density_flat: Vec<f64> = Vec::with_capacity(nr_points * inlen);
+            for gp in &grid {
+                let row = build_input(gp, *vars);
+                debug_assert_eq!(row.len(), inlen);
+                density_flat.extend_from_slice(&row);
+            }
+
+            let mut batch_out = vec![0.0_f64; nr_points * outlen];
+            let mut scalar_out = vec![0.0_f64; nr_points * outlen];
+
+            // Batch path — the backend-specific host entry point supplied by
+            // the caller. Pitch == inlen / outlen (no padding); the
+            // xcfun-master/api/xcfun.h:54 contract is preserved exactly as in
+            // the CPU arm.
+            eval_host(
+                &fun,
+                &density_flat,
+                inlen,
+                &mut batch_out,
+                outlen,
+                nr_points,
+            )
+            .map_err(|e| {
+                anyhow::anyhow!(
+                    "tier-3 {} batch eval failed for {} order {}: {}",
+                    backend_label,
+                    name,
+                    ord,
+                    e
+                )
+            })?;
+
+            // Scalar baseline — per-point loop.
+            for (p, gp) in grid.iter().enumerate() {
+                let row = build_input(gp, *vars);
+                let dout = &mut scalar_out[p * outlen..(p + 1) * outlen];
+                if let Err(e) = fun.eval(&row, dout) {
+                    anyhow::bail!(
+                        "tier-3 {} scalar eval failed at {} order {} point {}: {}",
+                        backend_label,
+                        name,
+                        ord,
+                        p,
+                        e,
+                    );
+                }
+            }
+
+            // Element-wise comparison at the backend's threshold.
+            let mut tuple_pass = 0_usize;
+            let mut tuple_fail = 0_usize;
+            let mut tuple_max_rel = 0.0_f64;
+            for i in 0..batch_out.len() {
+                let b = batch_out[i];
+                let s = scalar_out[i];
+                let abs_err = (b - s).abs();
+                let rel_err = abs_err / s.abs().max(1.0);
+                if rel_err > threshold {
+                    tuple_fail += 1;
+                } else {
+                    tuple_pass += 1;
+                }
+                if rel_err > tuple_max_rel {
+                    tuple_max_rel = rel_err;
+                }
+            }
+
+            tracing::info!(
+                "  {} {} order {}: pass={} fail={} max_rel_err={:.3e}",
+                backend_label,
+                name,
+                ord,
+                tuple_pass,
+                tuple_fail,
+                tuple_max_rel
+            );
+            total_pass += tuple_pass;
+            total_fail += tuple_fail;
+            if tuple_fail > 0 {
+                per_functional_failures.push((name.to_string(), ord, tuple_fail, tuple_max_rel));
+            }
+        }
+    }
+
+    println!(
+        "tier-3 {} sign-off: {} elements compared, {} pass, {} fail (threshold {:e})",
+        backend_label,
+        total_pass + total_fail,
+        total_pass,
+        total_fail,
+        threshold,
+    );
+    if total_fail == 0 {
+        println!(
+            "KER-06 ({}): 0 failures across the 17 known-clean Phase-4 functional set.",
+            backend_label
+        );
+        Ok(())
+    } else {
+        eprintln!(
+            "KER-06 ({}): {} failure(s) detected:",
+            backend_label,
+            per_functional_failures.len()
+        );
+        for (name, ord, count, max_rel) in &per_functional_failures {
+            eprintln!(
+                "  {} order {}: {} record(s) above threshold; max rel-err {:.3e}",
+                name, ord, count, max_rel
+            );
+        }
+        anyhow::bail!(
+            "tier-3 {} sign-off FAILED: {} per-tuple failure entries (total {} elements)",
+            backend_label,
             per_functional_failures.len(),
             total_fail,
         );

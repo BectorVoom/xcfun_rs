@@ -53,3 +53,16 @@ pub mod runtime;
 pub use auto_backend::auto_backend;
 pub use backend::Backend;
 pub use batch::Batch;
+
+// Phase 6 Plan 06-05 (audit-fix F-01..F-04): re-export the cubecl runtime
+// marker types behind their feature flags so downstream crates (notably the
+// `validation` tier-3 driver) can name `Batch::<R>::eval_vec_host_*` without
+// taking a direct dependency on the individual `cubecl-{hip,cuda,wgpu}`
+// crates — they reach the runtime types through `xcfun-gpu`'s feature
+// forwarding instead.
+#[cfg(feature = "hip")]
+pub use cubecl_hip::HipRuntime;
+#[cfg(feature = "cuda")]
+pub use cubecl_cuda::CudaRuntime;
+#[cfg(feature = "wgpu")]
+pub use cubecl_wgpu::WgpuRuntime;
