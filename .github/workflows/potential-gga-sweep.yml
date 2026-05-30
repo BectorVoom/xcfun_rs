@@ -1,0 +1,345 @@
+name: Validate Mode::Potential GGA sweep (32 functionals)
+
+# F-06 item #3 (03-VERIFICATION.md "Human Verification Required") — the full
+# Mode::Potential GGA sweep. Plan 03-05 directly verified only 8 of the 36
+# ported GGAs; this closes the loop over the 32 GGAs that are comparable
+# against C++ under Mode::Potential (35 GGA entries in
+# `validation::driver::run_potential` minus the 3 C++-abort exclusions
+# ZVPBESOLC / ZVPBEINTC / PBELOCC, which hit `pow_expand(x<=0)` on the
+# regularize-stress stratum and are forwarded to the Phase 6 mpmath bridge).
+#
+# CPU-only — runs on GitHub Actions per the project execution split
+# (CPU = GH Actions, GPU = local PC). Mirrors validate-order3-sweep.yml.
+#
+# Trigger: workflow_dispatch (manual). Architecture:
+#   build      → 1 job, compiles the validation binary (statically-linked
+#                xcfun-master C++ tree @ pinned a89b783). Uploads as artifact.
+#   validate   → 32-job matrix, each runs the prebuilt binary against exactly
+#                one GGA via `--mode potential --filter '^xc_<name>$'`.
+#                Uploads per-functional report.jsonl + log + exit code.
+#   summarize  → 1 job, downloads all 32 reports, tallies pass/fail. On
+#                32/32 green: opens a PR appending a CI-verification appendix
+#                to 03-VERIFICATION.md recording item #3 as closed. On any
+#                failure: emits the per-functional D-19-candidate table to
+#                GITHUB_STEP_SUMMARY and exits 1 (red run, no PR) so a human
+#                can document new D-19 entries per D-18.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: ""           # CLAUDE.md: empty in CI — no fast-math / reassociation
+  RUST_BACKTRACE: 1
+  XCFUN_MASTER_COMMIT: a89b783497d4fe146b477ac7a053303ce4189e9a
+
+jobs:
+  build:
+    name: Build validation binary (with xcfun-master @ a89b783)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clone xcfun-master @ pinned commit
+        run: |
+          set -euo pipefail
+          git clone --depth=200 https://github.com/dftlibs/xcfun.git xcfun-master
+          git -C xcfun-master checkout "$XCFUN_MASTER_COMMIT"
+          echo "xcfun-master HEAD: $(git -C xcfun-master rev-parse HEAD)"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: potential-gga-sweep
+
+      - name: cargo build -p validation --release
+        run: cargo build -p validation --release
+
+      - name: Upload validation binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-binary
+          path: target/release/validation
+          if-no-files-found: error
+          retention-days: 7
+
+  validate:
+    name: potential ${{ matrix.functional }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 32
+      matrix:
+        # The 32 GGAs comparable under Mode::Potential. Names lowercased to
+        # match the harness's `--filter` target (`FunctionalId` enum name with
+        # the `XC_` prefix retained, lowercased — see
+        # `validation/src/driver.rs::run_potential`, which matches
+        # `filter.is_match(&name.to_ascii_lowercase())`). The 3 C++-abort
+        # GGAs (zvpbesolc / zvpbeintc / pbelocc) are intentionally absent.
+        functional:
+          # Wave-2 GGAs (14 of 17 — minus the 3 C++-abort exclusions)
+          - xc_pbex
+          - xc_pbec
+          - xc_revpbex
+          - xc_rpbex
+          - xc_pbesolx
+          - xc_pbeintx
+          - xc_pbeintc
+          - xc_spbec
+          - xc_vwn_pbec
+          - xc_beckex
+          - xc_beckecorrx
+          - xc_beckesrx
+          - xc_beckecamx
+          - xc_lypc
+          # Wave-3 GGAs (10)
+          - xc_pw86x
+          - xc_optx
+          - xc_optxcorr
+          - xc_pw91x
+          - xc_pw91k
+          - xc_p86c
+          - xc_p86corrc
+          - xc_apbex
+          - xc_apbec
+          - xc_pw91c
+          # Wave-4 GGAs (8)
+          - xc_ktx
+          - xc_btk
+          - xc_b97x
+          - xc_b97c
+          - xc_b97_1x
+          - xc_b97_1c
+          - xc_b97_2x
+          - xc_b97_2c
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download validation binary
+        uses: actions/download-artifact@v4
+        with:
+          name: validation-binary
+          path: target/release/
+
+      - name: Make binary executable
+        run: chmod +x target/release/validation
+
+      - name: Sweep ${{ matrix.functional }} in Mode::Potential
+        id: sweep
+        run: |
+          # `set -o pipefail` is REQUIRED — without it, `$?` after
+          # `validation ... | tee log` captures tee's exit (always 0)
+          # instead of validation's real exit code (2 on FAIL). See the
+          # same guard in validate-order3-sweep.yml.
+          set +e
+          set -o pipefail
+          mkdir -p validation
+          # Mode::Potential has implicit order 0; --order is ignored by
+          # run_potential, so it is omitted here. Filter is anchored to the
+          # exact lowercased functional name.
+          target/release/validation \
+            --backend cpu \
+            --mode potential \
+            --filter "^${{ matrix.functional }}\$" \
+            --reference cpp \
+            --jobs auto \
+            2>&1 | tee "potential-${{ matrix.functional }}.log"
+          EXIT=$?
+          set +o pipefail
+          set -e
+          # Defensive guard 1: harness emits "iterated 0 records" if the
+          # filter matched no functional. Vacuous PASS — force fail.
+          if grep -qF 'iterated 0 records' "potential-${{ matrix.functional }}.log"; then
+            echo "::error::Filter '^${{ matrix.functional }}\$' matched 0 records — vacuous PASS rejected."
+            EXIT=99
+          fi
+          # Defensive guard 2: harness logs "Tier-2 FAIL: N failing records"
+          # on any non-zero failure count.
+          if grep -qE 'Tier-2 FAIL:' "potential-${{ matrix.functional }}.log"; then
+            echo "::error::Harness reported Tier-2 FAIL for ${{ matrix.functional }}"
+            [ "$EXIT" = "0" ] && EXIT=2
+          fi
+          echo "exit_code=$EXIT" >> "$GITHUB_OUTPUT"
+          {
+            echo "## ${{ matrix.functional }} (Mode::Potential)"
+            echo
+            echo "Exit code: \`$EXIT\` ($([ "$EXIT" -eq 0 ] && echo "PASS" || echo "FAIL"))"
+            echo
+            echo "Last 5 lines of harness output:"
+            echo '```'
+            tail -5 "potential-${{ matrix.functional }}.log" || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          # Don't fail the matrix job on harness FAIL — let summarize aggregate
+          # via each artifact's recorded exit_code (fail-fast: false).
+          exit 0
+
+      - name: Record exit code
+        run: echo "${{ steps.sweep.outputs.exit_code }}" > "exit-${{ matrix.functional }}.txt"
+
+      - name: Upload report and exit code
+        uses: actions/upload-artifact@v4
+        with:
+          name: potential-${{ matrix.functional }}
+          path: |
+            validation/report.jsonl
+            potential-${{ matrix.functional }}.log
+            exit-${{ matrix.functional }}.txt
+          if-no-files-found: error
+          retention-days: 7
+
+  summarize:
+    name: Summarize and (on full GREEN) open PR
+    needs: validate
+    if: always()  # run even when some matrix jobs fail
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all per-functional reports
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+          pattern: potential-*
+
+      - name: Tally pass/fail
+        id: tally
+        run: |
+          set -euo pipefail
+          declare -A RESULTS
+          PASS=0
+          FAIL=0
+          MISSING=0
+          FUNCTIONALS=(
+            xc_pbex xc_pbec xc_revpbex xc_rpbex xc_pbesolx xc_pbeintx xc_pbeintc
+            xc_spbec xc_vwn_pbec xc_beckex xc_beckecorrx xc_beckesrx xc_beckecamx xc_lypc
+            xc_pw86x xc_optx xc_optxcorr xc_pw91x xc_pw91k xc_p86c xc_p86corrc
+            xc_apbex xc_apbec xc_pw91c
+            xc_ktx xc_btk xc_b97x xc_b97c xc_b97_1x xc_b97_1c xc_b97_2x xc_b97_2c
+          )
+          for fn in "${FUNCTIONALS[@]}"; do
+            exit_file="artifacts/potential-$fn/exit-$fn.txt"
+            if [ ! -f "$exit_file" ]; then
+              RESULTS[$fn]="MISSING"
+              MISSING=$((MISSING + 1))
+              continue
+            fi
+            code=$(cat "$exit_file" | tr -d '[:space:]')
+            if [ "$code" = "0" ]; then
+              RESULTS[$fn]="PASS"
+              PASS=$((PASS + 1))
+            else
+              RESULTS[$fn]="FAIL (exit $code)"
+              FAIL=$((FAIL + 1))
+            fi
+          done
+          {
+            echo "# Mode::Potential GGA sweep — 32 functionals @ strict 1e-12 vs C++"
+            echo
+            echo "**Pass:** $PASS / 32  ·  **Fail:** $FAIL  ·  **Missing:** $MISSING"
+            echo
+            echo "| Functional | Result |"
+            echo "|---|---|"
+            for fn in "${FUNCTIONALS[@]}"; do
+              echo "| $fn | ${RESULTS[$fn]} |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "pass=$PASS"       >> "$GITHUB_OUTPUT"
+          echo "fail=$FAIL"       >> "$GITHUB_OUTPUT"
+          echo "missing=$MISSING" >> "$GITHUB_OUTPUT"
+
+      - name: Append CI-verification appendix to 03-VERIFICATION.md (only when 32/32 green)
+        if: ${{ steps.tally.outputs.pass == '32' && steps.tally.outputs.fail == '0' && steps.tally.outputs.missing == '0' }}
+        run: |
+          set -euo pipefail
+          VERIF=".planning/phases/03-gga-tier-mode-potential/03-VERIFICATION.md"
+          test -f "$VERIF" || { echo "ERROR: $VERIF not found — has the path changed?"; exit 1; }
+          # Build via indented `{ echo ...; } >> file` so the appended markdown
+          # carries no leading whitespace (a heredoc body would have to sit at
+          # the YAML block-scalar indentation and leak spaces into the doc).
+          # EOF append is regex-free and leaves frontmatter + body untouched.
+          {
+            echo ""
+            echo "---"
+            echo ""
+            echo "## CI Verification Appendix — Mode::Potential GGA Sweep (F-06 item #3)"
+            echo ""
+            echo '**Closed:** Human-verification item #3 ("Full 36-GGA Mode::Potential sweep").'
+            echo ""
+            echo "- **Result:** 32 / 32 comparable GGAs GREEN at strict 1e-12 vs C++ xcfun @ \`${XCFUN_MASTER_COMMIT}\`."
+            echo "- **Set:** the 35 GGA entries in \`validation::driver::run_potential\` minus the 3 C++-abort exclusions (ZVPBESOLC / ZVPBEINTC / PBELOCC), forwarded to the Phase 6 mpmath bridge per the Deferred Items table."
+            echo "- **Harness:** \`validation --backend cpu --mode potential --filter '^xc_<name>\$' --reference cpp\`, 32-way GH Actions matrix; same xoshiro256++ grid (seed 0x1234abcd)."
+            echo "- **CI run:** ${GITHUB_RUN_ID} (commit ${GITHUB_SHA})."
+          } >> "$VERIF"
+          git diff "$VERIF" | head -40
+
+      - name: Commit and push branch (only on full green)
+        id: commit
+        if: ${{ steps.tally.outputs.pass == '32' && steps.tally.outputs.fail == '0' && steps.tally.outputs.missing == '0' }}
+        env:
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          BRANCH="verify/potential-gga-sweep-${RUN_ID}"
+          git checkout -b "$BRANCH"
+          git add .planning/phases/03-gga-tier-mode-potential/03-VERIFICATION.md
+          git commit \
+            -m "docs(03): close F-06 item #3 — Mode::Potential GGA sweep GREEN" \
+            -m "Full Mode::Potential sweep over the 32 comparable GGAs (35 ported minus the 3 C++-abort exclusions) GREEN at strict 1e-12 vs C++ xcfun @ a89b783. Run on GH Actions ${RUN_ID} via 32-way matrix per the project execution split (CPU = GH Actions). Appends the CI-verification appendix to 03-VERIFICATION.md."
+          git push -u origin "$BRANCH"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Open PR (only on full green)
+        if: ${{ steps.tally.outputs.pass == '32' && steps.tally.outputs.fail == '0' && steps.tally.outputs.missing == '0' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.run_id }}
+          SERVER_URL: ${{ github.server_url }}
+          REPO: ${{ github.repository }}
+          BASE_REF: ${{ github.ref_name }}
+          HEAD_BRANCH: ${{ steps.commit.outputs.branch }}
+        run: |
+          set -euo pipefail
+          # Write the PR body to a file via indented echoes so no leading
+          # whitespace leaks into the rendered markdown.
+          {
+            echo "## Summary"
+            echo "- F-06 item #3 (03-VERIFICATION.md \"Human Verification Required\") — full Mode::Potential sweep over the 32 comparable GGAs at strict 1e-12 vs C++ xcfun @ \`a89b783\`."
+            echo "- Generated by GH Actions matrix run [${RUN_ID}](${SERVER_URL}/${REPO}/actions/runs/${RUN_ID})."
+            echo "- Result: **32/32 GREEN**."
+            echo "- Appends a CI-verification appendix to 03-VERIFICATION.md."
+            echo ""
+            echo "## Set verified"
+            echo "The 35 GGA entries in \`validation::driver::run_potential\` minus the 3 C++-abort exclusions (ZVPBESOLC / ZVPBEINTC / PBELOCC), which hit \`pow_expand(x<=0)\` on the regularize-stress stratum and remain forwarded to the Phase 6 mpmath bridge."
+            echo ""
+            echo "## Deviation from item #3"
+            echo "Item #3 originally specified a local \`cargo xtask validate --mode potential\` run (~14 min). This PR fulfills the same contract via parallel CI matrix execution per the project execution split (CPU = GH Actions, GPU = local). Byte-for-byte equivalent: same harness, same C++ reference @ \`a89b783\`, same density grid (xoshiro256++ seed \`0x1234abcd\`)."
+            echo ""
+            echo "🤖 Generated with [Claude Code](https://claude.com/claude-code)"
+          } > pr-body.md
+          gh pr create \
+            --base "$BASE_REF" \
+            --head "$HEAD_BRANCH" \
+            --title "docs(03): close F-06 item #3 — Mode::Potential GGA sweep GREEN" \
+            --body-file pr-body.md
+
+      - name: Fail if not 32/32 green
+        if: ${{ steps.tally.outputs.pass != '32' || steps.tally.outputs.fail != '0' || steps.tally.outputs.missing != '0' }}
+        run: |
+          echo "::error::Mode::Potential GGA sweep failed — pass=${{ steps.tally.outputs.pass }}/32, fail=${{ steps.tally.outputs.fail }}, missing=${{ steps.tally.outputs.missing }}. See the run summary for the per-functional table; document any new failures as D-19 entries per D-18. 03-VERIFICATION.md left untouched."
+          exit 1
