@@ -35,9 +35,11 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Clone xcfun-master at pinned HEAD (a89b783)
         run: |
-          git clone https://github.com/dftlibs/xcfun.git --depth 1 xcfun-master
-          git -C xcfun-master fetch --depth 1 origin a89b783
-          git -C xcfun-master checkout a89b783
+          # `git fetch origin <abbrev-sha>` treats the SHA as a ref name and
+          # fails ("couldn't find remote ref"); fetch recent history instead and
+          # check out the full 40-char SHA (mirrors validate-order3-sweep.yml).
+          git clone --depth=200 https://github.com/dftlibs/xcfun.git xcfun-master
+          git -C xcfun-master checkout a89b783497d4fe146b477ac7a053303ce4189e9a
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
   build:
@@ -51,9 +53,11 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Clone xcfun-master at pinned HEAD (a89b783)
         run: |
-          git clone https://github.com/dftlibs/xcfun.git --depth 1 xcfun-master
-          git -C xcfun-master fetch --depth 1 origin a89b783
-          git -C xcfun-master checkout a89b783
+          # `git fetch origin <abbrev-sha>` treats the SHA as a ref name and
+          # fails ("couldn't find remote ref"); fetch recent history instead and
+          # check out the full 40-char SHA (mirrors validate-order3-sweep.yml).
+          git clone --depth=200 https://github.com/dftlibs/xcfun.git xcfun-master
+          git -C xcfun-master checkout a89b783497d4fe146b477ac7a053303ce4189e9a
       - run: cargo build --workspace --locked --release
 
   test:
@@ -71,9 +75,11 @@ jobs:
           tool: cargo-nextest
       - name: Clone xcfun-master at pinned HEAD (a89b783)
         run: |
-          git clone https://github.com/dftlibs/xcfun.git --depth 1 xcfun-master
-          git -C xcfun-master fetch --depth 1 origin a89b783
-          git -C xcfun-master checkout a89b783
+          # `git fetch origin <abbrev-sha>` treats the SHA as a ref name and
+          # fails ("couldn't find remote ref"); fetch recent history instead and
+          # check out the full 40-char SHA (mirrors validate-order3-sweep.yml).
+          git clone --depth=200 https://github.com/dftlibs/xcfun.git xcfun-master
+          git -C xcfun-master checkout a89b783497d4fe146b477ac7a053303ce4189e9a
       - run: cargo nextest run --workspace --locked --release --no-fail-fast
 
   mpmath-smoke:
