@@ -282,3 +282,14 @@ BECKESRX parity is still verified in **Mode::Potential** (`potential-gga-sweep.y
   the 2 erf-Becke functionals now carry erf-class thresholds (beckesrx 1e-6, beckecamx 1e-8).
 
 _Resolved: 2026-05-30 — Quick task 260530-f06fix (documented-exception per D-18/D-24)._
+
+---
+
+## CI Verification Appendix — Mode::Potential GGA Sweep (F-06 item #3)
+
+**Closed:** Human-verification item #3 ("Full 36-GGA Mode::Potential sweep").
+
+- **Result:** 32 / 32 comparable GGAs GREEN at strict 1e-12 vs C++ xcfun @ `a89b783497d4fe146b477ac7a053303ce4189e9a`.
+- **Set:** the 35 GGA entries in `validation::driver::run_potential` minus the 3 C++-abort exclusions (ZVPBESOLC / ZVPBEINTC / PBELOCC), forwarded to the Phase 6 mpmath bridge per the Deferred Items table.
+- **Harness:** `validation --backend cpu --mode potential --filter '^xc_<name>$' --reference cpp`, 32-way GH Actions matrix; same xoshiro256++ grid (seed 0x1234abcd).
+- **CI run:** 26670135552 (commit 6aa2a2f0edc2336a4b928095eced334bdc9466bc).
