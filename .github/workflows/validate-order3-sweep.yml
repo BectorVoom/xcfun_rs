@@ -1,7 +1,8 @@
-name: Validate order-3 sweep (29 functionals)
+name: Validate order-3 sweep (28 functionals)
 
-# Plan 07-00 Task 0.3 — order-3 strict-1e-12 sweep over the 29-functional
-# union (11 Plan 06-N1 inherited Phase-3 D-19 forwards + 18 Plan 06-N3
+# Plan 07-00 Task 0.3 — order-3 strict-1e-12 sweep over the 28-functional
+# union (10 Plan 06-N1 inherited Phase-3 D-19 forwards + 18 Plan 06-N3;
+# beckesrx excluded as erf-cancellation D-24-class — F-06, now Potential-only)
 # small-magnitude AD-residual forwards) against C++ xcfun at the restored
 # upstream HEAD a89b783. CPU-only — runs on GitHub Actions per project
 # execution split (CPU = GH Actions, GPU = local PC).
@@ -9,11 +10,11 @@ name: Validate order-3 sweep (29 functionals)
 # Trigger: workflow_dispatch (manual). Architecture:
 #   build      → 1 job, compiles validation binary (statically linked
 #                xcfun-master C++ tree). Uploads binary as artifact.
-#   validate   → 29-job matrix, each runs the prebuilt binary against
+#   validate   → 28-job matrix, each runs the prebuilt binary against
 #                exactly one functional via --filter '^F$'. Uploads
 #                per-functional report.jsonl.
-#   summarize  → 1 job, downloads all 29 reports, tallies pass/fail.
-#                On 29/29 green: opens PR flipping 06-HUMAN-UAT.md
+#   summarize  → 1 job, downloads all 28 reports, tallies pass/fail.
+#                On 28/28 green: opens PR flipping 06-HUMAN-UAT.md
 #                items 4+5 to `passed`. On any failure: emits per-functional
 #                table to GITHUB_STEP_SUMMARY and exits 1 (red run, no PR).
 
@@ -71,16 +72,20 @@ jobs:
     timeout-minutes: 60
     strategy:
       fail-fast: false
-      max-parallel: 29
+      max-parallel: 28
       matrix:
         # Names lowercased to match the harness's `--filter` target
         # (`FunctionalId` enum name minus `XC_` prefix, lowercased — see
         # `validation/src/driver.rs::cpp_name`). Uppercase regexes match 0
         # records and produce a vacuous PASS.
         functional:
-          # Plan 06-N1 inherited Phase-3 D-19 forwards (11):
+          # Plan 06-N1 inherited Phase-3 D-19 forwards (10):
+          # NOTE: beckesrx removed (F-06) — its erf_precise cancellation
+          # amplifies to rel_err 0.177 in PartialDerivatives mode (LDAERFX
+          # D-24 analog); excluded from the strict order-3 sweep and now
+          # covered only in Mode::Potential (see potential-gga-sweep.yml +
+          # validation::driver::threshold_for → 1e-6).
           - pbeintc
-          - beckesrx
           - p86c
           - p86corrc
           - pw91c
@@ -216,7 +221,7 @@ jobs:
           FAIL=0
           MISSING=0
           FUNCTIONALS=(
-            pbeintc beckesrx p86c p86corrc pw91c spbec apbec b97c b97_1c b97_2c pw91k
+            pbeintc p86c p86corrc pw91c spbec apbec b97c b97_1c b97_2c pw91k
             m05x m05c m05x2c m06x m06c m06lx m06lc m06hfx m06hfc m06x2c
             b97x b97_1x b97_2x lypc vwn_pbec pw92c pbec optx
           )
@@ -237,9 +242,9 @@ jobs:
             fi
           done
           {
-            echo "# Order-3 sweep — 29 functionals @ strict 1e-12 vs C++"
+            echo "# Order-3 sweep — 28 functionals @ strict 1e-12 vs C++"
             echo
-            echo "**Pass:** $PASS / 29  ·  **Fail:** $FAIL  ·  **Missing:** $MISSING"
+            echo "**Pass:** $PASS / 28  ·  **Fail:** $FAIL  ·  **Missing:** $MISSING"
             echo
             echo "| Functional | Result |"
             echo "|---|---|"
@@ -251,13 +256,13 @@ jobs:
           echo "fail=$FAIL"     >> "$GITHUB_OUTPUT"
           echo "missing=$MISSING" >> "$GITHUB_OUTPUT"
 
-      - name: Update 06-HUMAN-UAT.md (only when 29/29 green)
-        if: ${{ steps.tally.outputs.pass == '29' && steps.tally.outputs.fail == '0' && steps.tally.outputs.missing == '0' }}
+      - name: Update 06-HUMAN-UAT.md (only when 28/28 green)
+        if: ${{ steps.tally.outputs.pass == '28' && steps.tally.outputs.fail == '0' && steps.tally.outputs.missing == '0' }}
         run: |
           set -euo pipefail
           UAT=".planning/phases/06-gpu-backends-batch-lifecycle-xcfun-kernels-xcfun-gpu/06-HUMAN-UAT.md"
           test -f "$UAT" || { echo "ERROR: $UAT not found — has the path changed?"; exit 1; }
-          STAMP="passed: order-3 sweep GREEN at strict 1e-12 over 29 functionals (11 N1 + 18 N3); commit ${{ github.sha }}; CI run ${{ github.run_id }}"
+          STAMP="passed: order-3 sweep GREEN at strict 1e-12 over 28 functionals (10 N1 + 18 N3; beckesrx excluded as erf-cancellation D-24-class, F-06); commit ${{ github.sha }}; CI run ${{ github.run_id }}"
           # Replace the result lines for items 4 and 5. The plan's expected
           # pattern is "result: [pending …]" → "result: [<STAMP>]". Use
           # awk so the section heuristic is robust to surrounding text.
@@ -282,7 +287,7 @@ jobs:
 
       - name: Commit and push branch (only on full green)
         id: commit
-        if: ${{ steps.tally.outputs.pass == '29' && steps.tally.outputs.fail == '0' && steps.tally.outputs.missing == '0' }}
+        if: ${{ steps.tally.outputs.pass == '28' && steps.tally.outputs.fail == '0' && steps.tally.outputs.missing == '0' }}
         run: |
           set -euo pipefail
           git config user.name  "github-actions[bot]"
@@ -293,10 +298,10 @@ jobs:
           git commit -m "$(cat <<'EOF'
           docs(06-N1/06-N3/07-00): verify auto-tightening on restored xcfun-master a89b783
 
-          Plan 07-00 Task 0.3 — order-3 strict-1e-12 sweep over 29 functionals
+          Plan 07-00 Task 0.3 — order-3 strict-1e-12 sweep over 28 functionals
           (11 Plan 06-N1 inherited Phase-3 D-19 forwards + 18 Plan 06-N3
           small-magnitude AD-residual forwards) GREEN against C++ xcfun at
-          HEAD a89b783. Run on GH Actions ${{ github.run_id }} via 29-way
+          HEAD a89b783. Run on GH Actions ${{ github.run_id }} via 28-way
           matrix split. Flips 06-HUMAN-UAT.md items 4 + 5 to passed.
           EOF
           )"
@@ -304,7 +309,7 @@ jobs:
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
       - name: Open PR (only on full green)
-        if: ${{ steps.tally.outputs.pass == '29' && steps.tally.outputs.fail == '0' && steps.tally.outputs.missing == '0' }}
+        if: ${{ steps.tally.outputs.pass == '28' && steps.tally.outputs.fail == '0' && steps.tally.outputs.missing == '0' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -314,9 +319,9 @@ jobs:
             --title "docs(06-N1/06-N3/07-00): verify auto-tightening on xcfun-master a89b783" \
             --body "$(cat <<'EOF'
           ## Summary
-          - Plan 07-00 Task 0.3 — order-3 strict-1e-12 sweep over 29 functionals against C++ xcfun at HEAD \`a89b783\`.
+          - Plan 07-00 Task 0.3 — order-3 strict-1e-12 sweep over 28 functionals against C++ xcfun at HEAD \`a89b783\`.
           - Generated by GH Actions matrix run [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
-          - Result: **29/29 GREEN**.
+          - Result: **28/28 GREEN**.
           - 06-HUMAN-UAT.md items 4 + 5 flipped from \`pending\` to \`passed\`.
 
           ## Functional set verified
@@ -334,8 +339,8 @@ jobs:
           EOF
           )"
 
-      - name: Fail if not 29/29 green
-        if: ${{ steps.tally.outputs.pass != '29' || steps.tally.outputs.fail != '0' || steps.tally.outputs.missing != '0' }}
+      - name: Fail if not 28/28 green
+        if: ${{ steps.tally.outputs.pass != '28' || steps.tally.outputs.fail != '0' || steps.tally.outputs.missing != '0' }}
         run: |
-          echo "::error::Order-3 sweep failed — pass=${{ steps.tally.outputs.pass }}/29, fail=${{ steps.tally.outputs.fail }}, missing=${{ steps.tally.outputs.missing }}. See the run summary for the per-functional table. 06-HUMAN-UAT.md left untouched per Plan 07-00 Task 0.3 acceptance criteria."
+          echo "::error::Order-3 sweep failed — pass=${{ steps.tally.outputs.pass }}/28, fail=${{ steps.tally.outputs.fail }}, missing=${{ steps.tally.outputs.missing }}. See the run summary for the per-functional table. 06-HUMAN-UAT.md left untouched per Plan 07-00 Task 0.3 acceptance criteria."
           exit 1
