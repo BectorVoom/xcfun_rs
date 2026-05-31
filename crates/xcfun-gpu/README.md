@@ -49,6 +49,7 @@ export XCFUN_FORCE_BACKEND=rocm   # or cpu | cuda | metal | wgpu
 | Variable                          | Required by                                        | Effect                                                                                                                                                                                                                                                                                                                                |
 |-----------------------------------|----------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `HSA_OVERRIDE_GFX_VERSION=10.3.0` | RDNA-2 GPUs (RX 6000-series, gfx1031/1032/1033)    | Coerces RDNA-2 to RDNA-3 PTX. Without this, kernel launches fail with `code object load failed`. **MANDATORY** before any `Backend::Rocm` use on RX 6000-series. Set in the process environment **before** the first call to `auto_backend()` / `Batch::open_rocm()` — HIP's runtime loader consults the env var at client init time. |
+| `HSA_OVERRIDE_GFX_VERSION=11.0.0` | RDNA-3.5 iGPUs not in the HIP target list (e.g. gfx1152 / Radeon 860M, Ryzen AI 300-series) | Coerces a too-new gfx target to gfx1100's code object. Without this the `HipRuntime` probe (`rocm_available()` / `Batch::open_rocm()`) bails because the installed HIP compiler ships no native code object for the device. Same timing rule as the 10.3.0 row: export **before** the first `auto_backend()` / `Batch::open_rocm()`. Verified 2026-06-01 on gfx1152 — tier-3 oracle 0 failing at 1e-13. |
 | `XCFUN_FORCE_BACKEND=<name>`      | optional                                           | Forces `auto_backend()` selection. Recognised: `cpu`, `rocm`, `hip` (alias of `rocm`), `cuda`, `metal`, `wgpu`. Unrecognised values panic.                                                                                                                                                                                            |
 | `XCFUN_MIN_BATCH_SIZE=<usize>`    | optional                                           | Overrides default `eval_vec` dispatch threshold (default 64 per CONTEXT D-14). Below the threshold `eval_vec` falls back to a scalar `Functional::eval` loop on the host.                                                                                                                                                             |
 
@@ -84,7 +85,15 @@ sudo apt install rocm-hip-runtime libamd-comgr-dev
 
 # RDNA-2 users (RX 6000-series only):
 export HSA_OVERRIDE_GFX_VERSION=10.3.0
+
+# RDNA-3.5 iGPUs the installed HIP compiler has no code object for
+# (e.g. gfx1152 / Radeon 860M on Ryzen AI 300-series) — coerce to gfx1100:
+export HSA_OVERRIDE_GFX_VERSION=11.0.0
 ```
+
+If `rocminfo` lists your `gfx` target but `Batch::open_rocm()` still bails at
+the probe, the HIP compiler likely lacks a native code object for that target —
+pick the override row above matching your architecture generation.
 
 System prerequisites compiled in via `cargo build --features hip`:
 - ROCm runtime libraries on the loader path (`/opt/rocm/lib` typical).
