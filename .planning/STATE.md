@@ -286,9 +286,11 @@ None.
 | 260508-epcry7 | Update cubecl from =0.10.0-pre.3 to =0.10.0 stable across all workspace crates | 2026-05-08 | b247997 | [260508-epcry7-cubecl-010-stable-pin](./quick/260508-epcry7-cubecl-010-stable-pin/) |
 | 260508-c4abi8 | Regenerate xcfun-capi c_abi expected.json after 06-N7 substrate fixes | 2026-05-08 | 0a00900 | [260508-c4abi8-regen-c-abi-expected-json](./quick/260508-c4abi8-regen-c-abi-expected-json/) |
 | 260530-f06fix | F-06 documented-exception thresholds + beckesrx erf exclusion (resolve red order-3 + Potential sweeps) | 2026-05-30 | 2667a9a, 1f705af | [260530-f06fix-f06-doc-exception](./quick/260530-f06fix-f06-doc-exception/) |
+| 260601-hsaov | Document HSA_OVERRIDE_GFX_VERSION=11.0.0 override for RDNA-3.5 iGPUs (gfx1152 / Radeon 860M) in xcfun-gpu README | 2026-06-01 | d4e59d0 | [260601-hsaov-hsa-override-gfx1152-readme](./quick/260601-hsaov-hsa-override-gfx1152-readme/) |
 
 ### Recent activity
 
+- 2026-06-01: Quick task 260601-hsaov complete. Documented `HSA_OVERRIDE_GFX_VERSION=11.0.0` override for RDNA-3.5 iGPUs (gfx1152 / Radeon 860M) in `crates/xcfun-gpu/README.md`. Verified tier-3 ROCm oracle 0 failing at 1e-13 on gfx1152. Commit `d4e59d0`.
 - 2026-04-19: Research complete (`.planning/research/SUMMARY.md`, `STACK.md`, `FEATURES.md`, `ARCHITECTURE.md`, `PITFALLS.md`)
 - 2026-04-19: `PROJECT.md` and `REQUIREMENTS.md` defined (103 v1 requirements)
 - 2026-04-19: `ROADMAP.md` created (7 phases, 100% requirement coverage)
